@@ -59,7 +59,7 @@ func (r *Repo) ListRepositories(ctx context.Context) ([]GithubRepository, error)
 		path:        githubAPIURL + "/user/repos",
 		contentType: "application/json",
 		queryParams: map[string]string{
-			"visibility": "all",
+			"visibility": "private",
 		},
 	})
 	if err != nil {

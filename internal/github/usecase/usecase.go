@@ -4,7 +4,6 @@ import (
 	"context"
 
 	gr "github.com/termkit/gama/internal/github/repository"
-	gt "github.com/termkit/gama/internal/github/types"
 	pw "github.com/termkit/gama/pkg/workflow"
 	py "github.com/termkit/gama/pkg/yaml"
 )
@@ -19,15 +18,15 @@ func New(githubRepository gr.Repository) UseCase {
 	}
 }
 
-func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInput) (*ListRepositoriesOutput, []error) {
+func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInput) (*ListRepositoriesOutput, error) {
 	repositories, err := u.githubRepository.ListRepositories(ctx)
 	if err != nil {
-		return nil, []error{err}
+		return nil, err
 	}
 
 	// Create a buffered channel for jobs, results and errors
 	jobs := make(chan gr.GithubRepository, len(repositories))
-	results := make(chan gt.GithubRepository, len(repositories))
+	results := make(chan GithubRepository, len(repositories))
 	errors := make(chan error, len(repositories))
 
 	// Start a number of workers
@@ -42,46 +41,42 @@ func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInp
 	close(jobs)
 
 	// Collect the results and errors
-	var result []gt.GithubRepository
-	var errs []error
+	var result []GithubRepository
+	var resultErr error
 	for range repositories {
 		select {
 		case res := <-results:
 			result = append(result, res)
 		case err := <-errors:
-			errs = append(errs, err)
+			resultErr = err
 		}
-	}
-
-	// Combine all errors into a single error
-	if len(errs) > 0 {
-		return nil, errs
 	}
 
 	return &ListRepositoriesOutput{
 		Repositories: result,
-	}, nil
+	}, resultErr
 }
 
-func (u useCase) workerListRepositories(ctx context.Context, jobs <-chan gr.GithubRepository, results chan<- gt.GithubRepository, errors chan<- error) {
+func (u useCase) workerListRepositories(ctx context.Context, jobs <-chan gr.GithubRepository, results chan<- GithubRepository, errors chan<- error) {
 	for repository := range jobs {
-		triggerableWorkflows, err := u.githubRepository.GetTriggerableWorkflows(ctx, repository.Name)
+		triggerableWorkflows, err := u.githubRepository.GetTriggerableWorkflows(ctx, repository.FullName)
 		if err != nil {
 			errors <- err
 			continue
 		}
 
-		var workflows []gt.Workflow
+		var workflows []Workflow
 		for _, workflow := range triggerableWorkflows {
-			workflows = append(workflows, gt.Workflow{
+			workflows = append(workflows, Workflow{
 				ID:    workflow.Id,
 				Name:  workflow.Name,
 				State: workflow.State,
 			})
 		}
 
-		results <- gt.GithubRepository{
-			Name:                 repository.Name,
+		results <- GithubRepository{
+			Name:                 repository.FullName,
+			Stars:                repository.StargazersCount,
 			Private:              repository.Private,
 			DefaultBranch:        repository.DefaultBranch,
 			TriggerableWorkflows: workflows,

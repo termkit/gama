@@ -1,8 +1,8 @@
 package ghrepository
 
 import (
-	"errors"
-	"math/rand"
+	"context"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -33,62 +33,13 @@ var baseStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("240"))
 
 func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository {
-	tableColumnsGithubRepository := []table.Column{
-		{Title: "Repository", Width: 24},
-		{Title: "Stars", Width: 6},
-		{Title: "Workflows", Width: 9},
-	}
-
-	tableColumnsWorkflow := []table.Column{
-		{Title: "Workflow", Width: 24},
-	}
-
-	tableColumnsWorkflowHistory := []table.Column{
-		{Title: "Workflow", Width: 24},
-		{Title: "Triggered", Width: 12},
-		{Title: "Started At", Width: 22},
-		{Title: "Status", Width: 9},
-		{Title: "Duration", Width: 8},
-	}
-
-	tableRowsGithubRepository := []table.Row{
-		{"canack/testrepo", "1,000", "15"},
-		{"canack/anotherrepo", "321", "3"},
-		{"canack/funny", "2", "1"},
-		{"canack/testrepo", "0", "0"},
-	}
-
-	tableRowsWorkflow := []table.Row{
-		{"Auto Deploy"},
-		{"Run Tests"},
-	}
-
-	tableRowsWorkflowHistory := []table.Row{
-		{"Auto Deploy", "canack", "2021-01-01 12:00:00", "Success", "1m 30s"},
-		{"Run Tests", "canack", "2021-01-01 12:00:00", "Success", "1m 5s"},
-		{"Auto Deploy", "canack", "2021-01-01 12:00:00", "Success", "5m 11s"},
-		{"Run Tests", "canack", "2021-01-01 12:00:00", "Cancelled", "50s"},
-	}
+	tableRowsGithubRepository := []table.Row{}
 
 	tableGithubRepository := table.New(
 		table.WithColumns(tableColumnsGithubRepository),
 		table.WithRows(tableRowsGithubRepository),
 		table.WithFocused(true),
 		table.WithHeight(13),
-	)
-
-	tableWorkflow := table.New(
-		table.WithColumns(tableColumnsWorkflow),
-		table.WithRows(tableRowsWorkflow),
-		table.WithFocused(false),
-		table.WithHeight(3),
-	)
-
-	tableWorkflowHistory := table.New(
-		table.WithColumns(tableColumnsWorkflowHistory),
-		table.WithRows(tableRowsWorkflowHistory),
-		table.WithFocused(false),
-		table.WithHeight(7),
 	)
 
 	s := table.DefaultStyles()
@@ -102,8 +53,6 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository
 		Background(lipgloss.Color("57")).
 		Bold(false)
 	tableGithubRepository.SetStyles(s)
-	tableWorkflow.SetStyles(s)
-	tableWorkflowHistory.SetStyles(s)
 
 	// setup models
 	modelError := hdlerror.SetupModelError()
@@ -118,6 +67,21 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository
 }
 
 func (m *ModelGithubRepository) Init() tea.Cmd {
+	workflows, err := m.githubUseCase.ListRepositories(context.Background(), gu.ListRepositoriesInput{})
+	if err != nil {
+		m.modelError.SetError(err)
+		m.modelError.SetErrorMessage("Repositories cannot be listed")
+		return nil
+	}
+
+	var tableRowsGithubRepository []table.Row
+	for _, workflow := range workflows.Repositories {
+		tableRowsGithubRepository = append(tableRowsGithubRepository,
+			table.Row{workflow.Name, strconv.Itoa(workflow.Stars), strconv.Itoa(len(workflow.TriggerableWorkflows))})
+	}
+
+	m.tableGithubRepository.SetRows(tableRowsGithubRepository)
+
 	return nil
 }
 
@@ -138,13 +102,6 @@ func (m *ModelGithubRepository) View() string {
 	termWidth := m.Viewport.Width
 	termHeight := m.Viewport.Height
 
-	if rand.Intn(10)%2 == 0 {
-		m.modelError.SetError(errors.New("test error"))
-		m.modelError.SetErrorMessage("test error message")
-	} else {
-		m.modelError.Reset()
-		m.modelError.SetMessage("test message")
-	}
 	var tableWidth int
 	for _, t := range tableColumnsGithubRepository {
 		tableWidth += t.Width
@@ -160,6 +117,7 @@ func (m *ModelGithubRepository) View() string {
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
+	//doc.WriteString("\n\n")
 
 	return doc.String()
 }

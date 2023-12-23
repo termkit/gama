@@ -76,7 +76,7 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(tea.EnterAltScreen, m.timer.Init(), m.modelInfo.Init())
+	return tea.Batch(tea.EnterAltScreen, m.timer.Init(), m.modelInfo.Init(), m.modelGithubRepository.Init())
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

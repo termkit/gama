@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	gt "github.com/termkit/gama/internal/github/types"
 	pw "github.com/termkit/gama/pkg/workflow"
 )
 
@@ -9,7 +8,17 @@ type ListRepositoriesInput struct {
 }
 
 type ListRepositoriesOutput struct {
-	Repositories []gt.GithubRepository
+	Repositories []GithubRepository
+}
+
+type GithubRepository struct {
+	Name          string
+	Private       bool
+	DefaultBranch string
+	Stars         int
+
+	TriggerableWorkflows []Workflow
+	// We can add more fields here
 }
 
 // ------------------------------------------------------------
@@ -19,7 +28,12 @@ type ListWorkflowByRepositoryInput struct {
 }
 
 type ListWorkflowByRepositoryOutput struct {
-	Workflows []gt.Workflow
+	Workflows []Workflow
+}
+type Workflow struct {
+	ID    int64
+	Name  string
+	State string
 }
 
 // ------------------------------------------------------------
@@ -30,7 +44,7 @@ type ListWorkflowRunsInput struct {
 }
 
 type ListWorkflowRunsOutput struct {
-	Workflows []gt.Workflow
+	Workflows []Workflow
 }
 
 // ------------------------------------------------------------

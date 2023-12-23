@@ -16,6 +16,7 @@ func main() {
 	var ctx = context.Background()
 
 	githubRepository := gr.New()
+	githubRepository.Initialize(ctx, gr.GithubConfig{Token: os.Getenv("GITHUB_TOKEN")})
 
 	setupUseCase := su.New(githubRepository)
 
