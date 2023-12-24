@@ -7,3 +7,5 @@ type SelectedRepository struct {
 	WorkflowName   string // workflow name
 	BranchName     string // branch name
 }
+
+var ScreenWidth *int

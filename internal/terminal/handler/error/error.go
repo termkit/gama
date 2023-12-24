@@ -3,6 +3,10 @@ package error
 import (
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
+	ts "github.com/termkit/gama/internal/terminal/style"
 )
 
 type ModelError struct {
@@ -14,7 +18,23 @@ type ModelError struct {
 
 	// message is hold the message, if there is no error
 	message string
+
+	// messageType is hold the message type
+	messageType MessageType
 }
+
+type MessageType string
+
+const (
+	// MessageTypeDefault is the message type for default
+	MessageTypeDefault MessageType = "default"
+
+	// MessageTypeProgress is the message type for progress
+	MessageTypeProgress MessageType = "progress"
+
+	// MessageTypeSuccess is the message type for success
+	MessageTypeSuccess MessageType = "success"
+)
 
 func SetupModelError() ModelError {
 	return ModelError{
@@ -31,7 +51,18 @@ func (m *ModelError) SetErrorMessage(errorMessage string) {
 	m.errorMessage = errorMessage
 }
 
-func (m *ModelError) SetMessage(message string) {
+func (m *ModelError) SetProgressMessage(message string) {
+	m.messageType = MessageTypeProgress
+	m.message = message
+}
+
+func (m *ModelError) SetSuccessMessage(message string) {
+	m.messageType = MessageTypeSuccess
+	m.message = message
+}
+
+func (m *ModelError) SetDefaultMessage(message string) {
+	m.messageType = MessageTypeDefault
 	m.message = message
 }
 
@@ -78,11 +109,23 @@ func (m *ModelError) ViewMessage() string {
 }
 
 func (m *ModelError) View() string {
+	var windowStyle = lipgloss.NewStyle()
+
 	doc := strings.Builder{}
 	if m.IsError() {
-		doc.WriteString(m.ViewError())
+		windowStyle = ts.WindowStyleError.Width(*hdltypes.ScreenWidth)
+		doc.WriteString(windowStyle.Render(m.ViewError()))
 	} else {
-		doc.WriteString(m.ViewMessage())
+		if m.messageType == MessageTypeDefault {
+			windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+		} else if m.messageType == MessageTypeProgress {
+			windowStyle = ts.WindowStyleProgress.Width(*hdltypes.ScreenWidth)
+		} else if m.messageType == MessageTypeSuccess {
+			windowStyle = ts.WindowStyleSuccess.Width(*hdltypes.ScreenWidth)
+		} else {
+			windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+		}
+		doc.WriteString(windowStyle.Render(m.ViewMessage()))
 	}
 	return doc.String()
 }

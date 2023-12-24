@@ -147,6 +147,8 @@ func (m *model) View() string {
 	mainDoc.WriteString(m.headerView(renderedTabs...) + "\n")
 
 	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - len(renderedTabs)
+	hdltypes.ScreenWidth = &width
+
 	dynamicWindowStyle := ts.WindowStyleCyan.Width(width).Height(m.viewport.Height - 20)
 
 	helpWindowStyle := ts.WindowStyleHelp.Width(width)
@@ -155,47 +157,19 @@ func (m *model) View() string {
 	switch m.currentTab {
 	case 0:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelInfo.View()))
-
-		if m.actualModelInfo.IsError() {
-			operationWindowStyle = ts.WindowStyleError.Width(width)
-		} else {
-			operationWindowStyle = ts.WindowStyleOperation.Width(width)
-		}
 		operationDoc = operationWindowStyle.Render(m.actualModelInfo.ViewErrorOrOperation())
-
 		helpDoc = helpWindowStyle.Render(m.actualModelInfo.ViewHelp())
 	case 1:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelGithubRepository.View()))
-
-		if m.actualModelGithubRepository.IsError() {
-			operationWindowStyle = ts.WindowStyleError.Width(width)
-		} else {
-			operationWindowStyle = ts.WindowStyleOperation.Width(width)
-		}
 		operationDoc = operationWindowStyle.Render(m.actualModelGithubRepository.ViewErrorOrOperation())
-
 		helpDoc = helpWindowStyle.Render(m.actualModelGithubRepository.ViewHelp())
 	case 2:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelWorkflowHistory.View()))
-
-		if m.directModelWorkflowHistory.IsError() {
-			operationWindowStyle = ts.WindowStyleError.Width(width)
-		} else {
-			operationWindowStyle = ts.WindowStyleOperation.Width(width)
-		}
 		operationDoc = operationWindowStyle.Render(m.directModelWorkflowHistory.ViewErrorOrOperation())
-
 		helpDoc = helpWindowStyle.Render(m.directModelWorkflowHistory.ViewHelp())
 	case 3:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelWorkflow.View()))
-
-		if m.directModelWorkflow.IsError() {
-			operationWindowStyle = ts.WindowStyleError.Width(width)
-		} else {
-			operationWindowStyle = ts.WindowStyleOperation.Width(width)
-		}
 		operationDoc = operationWindowStyle.Render(m.directModelWorkflow.ViewErrorOrOperation())
-
 		helpDoc = helpWindowStyle.Render(m.directModelWorkflow.ViewHelp())
 	case 4:
 		mainDoc.WriteString(dynamicWindowStyle.Render("Trigger Page\n"))

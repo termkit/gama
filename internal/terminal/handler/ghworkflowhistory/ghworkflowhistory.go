@@ -88,7 +88,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
-	m.modelError.SetMessage(
+	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s] Fetching workflow history...", m.SelectedRepository.RepositoryName))
 
 	// delete all rows
@@ -100,6 +100,11 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Workflow history cannot be listed")
+	}
+
+	if len(workflowHistory.Workflows) == 0 {
+		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s] No workflows found.", m.SelectedRepository.RepositoryName))
+		return
 	}
 
 	var tableRowsWorkflowHistory []table.Row
@@ -115,7 +120,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	}
 
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
-	m.modelError.SetMessage(fmt.Sprintf("[%s] Workflow history fetched.", m.SelectedRepository.RepositoryName))
+	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s] Workflow history fetched.", m.SelectedRepository.RepositoryName))
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {

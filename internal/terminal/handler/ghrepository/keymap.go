@@ -5,29 +5,29 @@ import (
 )
 
 type keyMap struct {
-	Search      teakey.Binding
+	Refresh     teakey.Binding
 	NextTab     teakey.Binding
 	PreviousTab teakey.Binding
 	Quit        teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.PreviousTab, k.NextTab, k.Search, k.Quit}
+	return []teakey.Binding{k.PreviousTab, k.NextTab, k.Refresh, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.PreviousTab},
 		{k.NextTab},
-		{k.Search},
+		{k.Refresh},
 		{k.Quit},
 	}
 }
 
 var keys = keyMap{
-	Search: teakey.NewBinding(
-		teakey.WithKeys("/"),
-		teakey.WithHelp("/", "Search repository"),
+	Refresh: teakey.NewBinding(
+		teakey.WithKeys("r", "R"),
+		teakey.WithHelp("r/R", "Refresh list"),
 	),
 	PreviousTab: teakey.NewBinding(
 		teakey.WithKeys("left"),

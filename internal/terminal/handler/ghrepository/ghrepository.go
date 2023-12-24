@@ -67,14 +67,30 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 }
 
 func (m *ModelGithubRepository) Init() tea.Cmd {
-	m.modelError.SetMessage("Fetching repositories...")
+	go m.syncRepositories()
+
+	return nil
+}
+
+func (m *ModelGithubRepository) syncRepositories() {
+	m.modelError.ResetError() // reset previous errors
+
+	m.modelError.SetProgressMessage("Fetching repositories...")
+
+	// delete all rows
+	m.tableGithubRepository.SetRows([]table.Row{})
+
 	workflows, err := m.githubUseCase.ListRepositories(context.Background(), gu.ListRepositoriesInput{})
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Repositories cannot be listed")
-		return nil
+		return
 	}
-	m.modelError.SetMessage("Repositories fetched")
+
+	if len(workflows.Repositories) == 0 {
+		m.modelError.SetDefaultMessage("No repositories found")
+		return
+	}
 
 	var tableRowsGithubRepository []table.Row
 	for _, workflow := range workflows.Repositories {
@@ -84,23 +100,31 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 
 	m.tableGithubRepository.SetRows(tableRowsGithubRepository)
 
-	return nil
+	// set cursor to 0
+	m.tableGithubRepository.SetCursor(0)
+
+	m.modelError.SetSuccessMessage("Repositories fetched")
+	m.Update(m) // update model
 }
 
 func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	//switch msg := msg.(type) {
-	//case tea.KeyMsg:
-	//	switch msg.String() {
-	//	case "q", "ctrl+c":
-	//		return m, tea.Quit
-	//	}
-	//}
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "ctrl+c":
+			return m, tea.Quit
+		case "r", "R":
+			go m.syncRepositories()
+		}
+	}
 	m.tableGithubRepository, cmd = m.tableGithubRepository.Update(msg)
 
 	// Synchronize selected repository name with parent model
-	if m.tableGithubRepository.SelectedRow()[0] != "" {
-		m.SelectedRepository.RepositoryName = m.tableGithubRepository.SelectedRow()[0]
+	if len(m.tableGithubRepository.SelectedRow()) > 0 && m.tableGithubRepository.SelectedRow()[0] != "" {
+		if m.tableGithubRepository.SelectedRow()[0] != "" {
+			m.SelectedRepository.RepositoryName = m.tableGithubRepository.SelectedRow()[0]
+		}
 	}
 	return m, cmd
 }

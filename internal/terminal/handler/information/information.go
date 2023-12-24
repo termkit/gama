@@ -47,7 +47,7 @@ func (m *ModelInfo) Init() tea.Cmd {
 		Workflows:    34,
 		ActionRuns:   12,
 	}
-	m.modelError.SetMessage("Welcome to GAMA!")
+	m.modelError.SetSuccessMessage("Welcome to GAMA!")
 
 	return nil
 }
