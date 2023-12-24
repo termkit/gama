@@ -12,28 +12,27 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 )
 
 type ModelGithubRepository struct {
-	Help     help.Model
-	Keys     keyMap
-	Viewport *viewport.Model
-
 	githubUseCase gu.UseCase
 
+	Help                  help.Model
+	Keys                  keyMap
+	Viewport              *viewport.Model
 	tableGithubRepository table.Model
-	tableWorkflow         table.Model
-	tableWorkflowHistory  table.Model
+	modelError            hdlerror.ModelError
 
-	modelError hdlerror.ModelError
+	SelectedRepository *hdltypes.SelectedRepository
 }
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository {
-	tableRowsGithubRepository := []table.Row{}
+func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubRepository {
+	var tableRowsGithubRepository []table.Row
 
 	tableGithubRepository := table.New(
 		table.WithColumns(tableColumnsGithubRepository),
@@ -63,6 +62,7 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository
 		githubUseCase:         githubUseCase,
 		tableGithubRepository: tableGithubRepository,
 		modelError:            modelError,
+		SelectedRepository:    selectedRepository,
 	}
 }
 
@@ -97,6 +97,11 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//	}
 	//}
 	m.tableGithubRepository, cmd = m.tableGithubRepository.Update(msg)
+
+	// Synchronize selected repository name with parent model
+	if m.tableGithubRepository.SelectedRow()[0] != "" {
+		m.SelectedRepository.RepositoryName = m.tableGithubRepository.SelectedRow()[0]
+	}
 	return m, cmd
 }
 
@@ -119,7 +124,6 @@ func (m *ModelGithubRepository) View() string {
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
-	//doc.WriteString("\n\n")
 
 	return doc.String()
 }

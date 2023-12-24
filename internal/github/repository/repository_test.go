@@ -41,12 +41,25 @@ func TestRepo_ListRepositories(t *testing.T) {
 	}
 }
 
+func TestRepo_GetRepository(t *testing.T) {
+	ctx := context.Background()
+
+	repo := newRepo(ctx)
+
+	repository, err := repo.GetRepository(ctx, "canack/tc")
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(repository)
+}
+
 func TestRepo_ListBranches(t *testing.T) {
 	ctx := context.Background()
 
 	repo := newRepo(ctx)
 
-	branches, err := repo.ListBranches(ctx, "canack/railsgoat")
+	branches, err := repo.ListBranches(ctx, "canack/tc")
 	if err != nil {
 		t.Error(err)
 	}
@@ -59,7 +72,15 @@ func TestRepo_ListWorkflowRuns(t *testing.T) {
 
 	repo := newRepo(ctx)
 
-	workflowRuns, err := repo.ListWorkflowRuns(ctx, "canack/tc", "master")
+	targetRepositoryName := "canack/tc"
+	targetRepository, err := repo.GetRepository(ctx, targetRepositoryName)
+	if err != nil {
+		t.Error(err)
+	}
+
+	defaultBranch := targetRepository.DefaultBranch
+
+	workflowRuns, err := repo.ListWorkflowRuns(ctx, targetRepositoryName, defaultBranch)
 	if err != nil {
 		t.Error(err)
 	}

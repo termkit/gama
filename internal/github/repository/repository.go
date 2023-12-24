@@ -71,7 +71,7 @@ func (r *Repo) ListRepositories(ctx context.Context) ([]GithubRepository, error)
 
 func (r *Repo) ListBranches(ctx context.Context, repository string) ([]GithubBranch, error) {
 	// List branches for the given repository
-	var branches []GithubBranch
+	var branches any
 	err := r.do(ctx, nil, &branches, requestOptions{
 		method:      http.MethodGet,
 		path:        githubAPIURL + "/repos/" + repository + "/branches",
@@ -81,12 +81,26 @@ func (r *Repo) ListBranches(ctx context.Context, repository string) ([]GithubBra
 		return nil, err
 	}
 
-	return branches, nil
+	return []GithubBranch{}, nil
 }
 
-func (r *Repo) ListWorkflowRuns(ctx context.Context, repository string, branch string) (any, error) {
+func (r *Repo) GetRepository(ctx context.Context, repository string) (*GithubRepository, error) {
+	var repo GithubRepository
+	err := r.do(ctx, nil, &repo, requestOptions{
+		method:      http.MethodGet,
+		path:        githubAPIURL + "/repos/" + repository,
+		contentType: "application/json",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &repo, nil
+}
+
+func (r *Repo) ListWorkflowRuns(ctx context.Context, repository string, branch string) (*WorkflowRuns, error) {
 	// List workflow runs for the given repository and branch
-	var workflowRuns any
+	var workflowRuns WorkflowRuns
 	err := r.do(ctx, nil, &workflowRuns, requestOptions{
 		method:      http.MethodGet,
 		path:        githubAPIURL + "/repos/" + repository + "/actions/runs",
@@ -99,7 +113,7 @@ func (r *Repo) ListWorkflowRuns(ctx context.Context, repository string, branch s
 		return nil, err
 	}
 
-	return workflowRuns, nil
+	return &workflowRuns, nil
 }
 
 func (r *Repo) TriggerWorkflow(ctx context.Context, repository string, branch string, workflowName string, workflow any) error {
@@ -177,20 +191,20 @@ func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, wo
 	return decodedContent, nil
 }
 
-func (r *Repo) GetWorkflowRun(ctx context.Context, repository string, runId int64) (GithubWorkflowRun, error) {
-	// Get a workflow run for the given repository and runId
-	var workflowRun GithubWorkflowRun
-	err := r.do(ctx, nil, &workflowRun, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10),
-		contentType: "application/json",
-	})
-	if err != nil {
-		return GithubWorkflowRun{}, err
-	}
-
-	return workflowRun, nil
-}
+//func (r *Repo) GetWorkflowRun(ctx context.Context, repository string, runId int64) (GithubWorkflowRun, error) {
+//	// Get a workflow run for the given repository and runId
+//	var workflowRun GithubWorkflowRun
+//	err := r.do(ctx, nil, &workflowRun, requestOptions{
+//		method:      http.MethodGet,
+//		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10),
+//		contentType: "application/json",
+//	})
+//	if err != nil {
+//		return GithubWorkflowRun{}, err
+//	}
+//
+//	return workflowRun, nil
+//}
 
 func (r *Repo) GetWorkflowRunLogs(ctx context.Context, repository string, runId int64) (GithubWorkflowRunLogs, error) {
 	// Get the logs for a given workflow run

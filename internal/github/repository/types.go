@@ -80,30 +80,34 @@ type Workflow struct {
 	HtmlUrl   string    `json:"html_url"`
 }
 
-type GithubWorkflowRun struct {
-	TotalCount   int           `json:"total_count"`
+type WorkflowRuns struct {
+	TotalCount   int64         `json:"total_count"`
 	WorkflowRuns []WorkflowRun `json:"workflow_runs"`
 }
 
 type WorkflowRun struct {
-	Id          int64  `json:"id"`
-	Status      string `json:"status"`
-	Conclusion  string `json:"conclusion"`
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	HeadBranch  string `json:"head_branch"`
+	ID              int64     `json:"id"`
+	WorkflowID      int64     `json:"workflow_id"`
+	Name            string    `json:"name"`
+	DisplayTitle    string    `json:"display_title"`
+	Actor           Actor     `json:"actor"`
+	TriggeringActor Actor     `json:"triggering_actor"`
+	Status          string    `json:"status"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	Conclusion      string    `json:"conclusion"`
+	HeadBranch      string    `json:"head_branch"`
 
-	Actor Actor `json:"actor"`
-
-	URL       string `json:"url"`
-	JobsURL   string `json:"jobs_url"`
-	LogsURL   string `json:"logs_url"`
-	CancelURL string `json:"cancel_url"`
-	RerunURL  string `json:"rerun_url"`
-
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	RunAttempt int       `json:"run_attempt"`
+	RunAttempt    int    `json:"run_attempt"`
+	CheckSuiteURL string `json:"check_suite_url"`
+	CancelURL     string `json:"cancel_url"`
+	RerunURL      string `json:"rerun_url"`
+	Path          string `json:"path"`
+	Event         string `json:"event"`
+	HTMLURL       string `json:"html_url"`
+	LogsURL       string `json:"logs_url"`
+	JobsURL       string `json:"jobs_url"`
+	ArtifactsURL  string `json:"artifacts_url"`
 }
 
 type Actor struct {

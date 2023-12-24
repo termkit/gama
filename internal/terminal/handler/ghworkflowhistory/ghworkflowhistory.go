@@ -1,6 +1,7 @@
 package ghworkflowhistory
 
 import (
+	"context"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -10,32 +11,29 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 )
 
 type ModelGithubWorkflowHistory struct {
-	Help     help.Model
-	Keys     keyMap
-	Viewport *viewport.Model
-
 	githubUseCase gu.UseCase
 
+	Help                 help.Model
+	Keys                 keyMap
+	Viewport             *viewport.Model
 	tableWorkflowHistory table.Model
+	modelError           hdlerror.ModelError
 
-	modelError hdlerror.ModelError
+	SelectedRepository          *hdltypes.SelectedRepository
+	updateRound                 int
+	IsSelectedRepositoryQueried bool
 }
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
-
-	tableRowsWorkflowHistory := []table.Row{
-		{"Auto Deploy", "canack", "2021-01-01 12:00:00", "Success", "1m 30s"},
-		{"Run Tests", "canack", "2021-01-01 12:00:00", "Success", "1m 5s"},
-		{"Auto Deploy", "canack", "2021-01-01 12:00:00", "Success", "5m 11s"},
-		{"Run Tests", "canack", "2021-01-01 12:00:00", "Cancelled", "50s"},
-	}
+func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflowHistory {
+	tableRowsWorkflowHistory := []table.Row{}
 
 	tableWorkflowHistory := table.New(
 		table.WithColumns(tableColumnsWorkflowHistory),
@@ -61,6 +59,8 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase) *ModelGithubWorkf
 		Keys:                 keys,
 		githubUseCase:        githubUseCase,
 		tableWorkflowHistory: tableWorkflowHistory,
+		modelError:           hdlerror.SetupModelError(),
+		SelectedRepository:   selectedRepository,
 	}
 }
 
@@ -69,6 +69,10 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 }
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if !m.IsSelectedRepositoryQueried {
+		go m.updateWorkflowHistory()
+		m.IsSelectedRepositoryQueried = true
+	}
 	var cmd tea.Cmd
 	//switch msg := msg.(type) {
 	//case tea.KeyMsg:
@@ -79,6 +83,32 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//}
 	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
 	return m, cmd
+}
+
+func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
+	m.modelError.SetMessage("Fetching workflow history...")
+	workflowHistory, err := m.githubUseCase.GetWorkflowHistory(context.Background(), gu.GetWorkflowHistoryInput{
+		Repository: m.SelectedRepository.RepositoryName,
+	})
+	if err != nil {
+		m.modelError.SetError(err)
+		m.modelError.SetErrorMessage("Workflow history cannot be listed")
+	}
+
+	var tableRowsWorkflowHistory []table.Row
+	for _, workflowRun := range workflowHistory.Workflows {
+		tableRowsWorkflowHistory = append(tableRowsWorkflowHistory, table.Row{
+			workflowRun.WorkflowName,
+			workflowRun.ActionName,
+			workflowRun.TriggeredBy,
+			workflowRun.StartedAt,
+			workflowRun.Conslusion,
+			workflowRun.Duration,
+		})
+	}
+
+	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
+	m.modelError.SetMessage("Fetched workflow history")
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {
@@ -92,11 +122,18 @@ func (m *ModelGithubWorkflowHistory) View() string {
 
 	newTableColumns := tableColumnsWorkflowHistory
 	widthDiff := termWidth - tableWidth
+
 	if widthDiff > 0 {
-		newTableColumns[0].Width += widthDiff - 19
+		if m.updateRound%2 == 0 {
+			newTableColumns[0].Width += widthDiff - 19
+		} else {
+			newTableColumns[1].Width += widthDiff - 19
+		}
+		m.updateRound++
 		m.tableWorkflowHistory.SetColumns(newTableColumns)
-		m.tableWorkflowHistory.SetHeight(termHeight - 16)
 	}
+
+	m.tableWorkflowHistory.SetHeight(termHeight - 16)
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableWorkflowHistory.View()))

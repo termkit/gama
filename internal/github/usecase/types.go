@@ -23,17 +23,24 @@ type GithubRepository struct {
 
 // ------------------------------------------------------------
 
-type ListWorkflowByRepositoryInput struct {
+type GetWorkflowHistoryInput struct {
 	Repository string
+	Branch     string
 }
 
-type ListWorkflowByRepositoryOutput struct {
+type GetWorkflowHistoryOutput struct {
 	Workflows []Workflow
 }
+
 type Workflow struct {
-	ID    int64
-	Name  string
-	State string
+	ID           int64  // workflow id
+	WorkflowName string // workflow name
+	ActionName   string // commit message
+	TriggeredBy  string // who triggered this workflow
+	StartedAt    string // workflow's started at
+	Status       string // workflow's status, like success, failure, etc.
+	Conslusion   string // workflow's conclusion, like success, failure, etc.
+	Duration     string // workflow's duration
 }
 
 // ------------------------------------------------------------

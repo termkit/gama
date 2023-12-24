@@ -12,21 +12,23 @@ import (
 	hdlWorkflow "github.com/termkit/gama/internal/terminal/handler/ghworkflow"
 	hdlworkflowhistory "github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
 	hdlinfo "github.com/termkit/gama/internal/terminal/handler/information"
+	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 
 	ts "github.com/termkit/gama/internal/terminal/style"
 )
 
 type model struct {
-	TabsWithColor []string
-
-	TabContent  []string
-	currentTab  int
-	isTabActive bool
-
+	// Current Handler's properties
+	TabsWithColor     []string
+	TabContent        []string
+	currentTab        int
+	isTabActive       bool
 	viewport          viewport.Model
 	terminalSizeReady bool
+	timer             timer.Model
 
-	timer timer.Model
+	// Shared properties
+	SelectedRepository *hdltypes.SelectedRepository
 
 	// models
 	modelInfo       tea.Model
@@ -53,10 +55,12 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 		"Trigger Page",
 	}
 
+	selectedRepository := hdltypes.SelectedRepository{}
+
 	// setup models
 	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase)
-	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase)
-	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase)
+	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase, &selectedRepository)
+	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository)
 	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase)
 
 	m := model{TabsWithColor: tabsWithColor,
@@ -66,6 +70,7 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 		modelGithubRepository: hdlModelGithubRepository, actualModelGithubRepository: hdlModelGithubRepository,
 		modelWorkflowHistory: hdlModelWorkflowHistory, directModelWorkflowHistory: hdlModelWorkflowHistory,
 		modelWorkflow: hdlModelWorkflow, directModelWorkflow: hdlModelWorkflow,
+		SelectedRepository: &selectedRepository,
 	}
 
 	hdlModelInfo.Viewport = &m.viewport

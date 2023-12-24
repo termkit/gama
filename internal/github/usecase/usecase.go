@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	gr "github.com/termkit/gama/internal/github/repository"
 	pw "github.com/termkit/gama/pkg/workflow"
@@ -68,9 +70,7 @@ func (u useCase) workerListRepositories(ctx context.Context, jobs <-chan gr.Gith
 		var workflows []Workflow
 		for _, workflow := range triggerableWorkflows {
 			workflows = append(workflows, Workflow{
-				ID:    workflow.Id,
-				Name:  workflow.Name,
-				State: workflow.State,
+				ID: workflow.Id,
 			})
 		}
 
@@ -84,9 +84,39 @@ func (u useCase) workerListRepositories(ctx context.Context, jobs <-chan gr.Gith
 	}
 }
 
-func (u useCase) ListWorkflowByRepository(ctx context.Context, input ListWorkflowByRepositoryInput) (*ListWorkflowByRepositoryOutput, error) {
-	//TODO implement me
-	panic("implement me")
+func (u useCase) GetWorkflowHistory(ctx context.Context, input GetWorkflowHistoryInput) (*GetWorkflowHistoryOutput, error) {
+	var targetRepositoryName = input.Repository
+	var targetBranch = input.Branch
+	if targetBranch == "" {
+		repository, err := u.githubRepository.GetRepository(ctx, targetRepositoryName)
+		if err != nil {
+			return nil, err
+		}
+		targetBranch = repository.DefaultBranch
+	}
+
+	workflowRuns, err := u.githubRepository.ListWorkflowRuns(ctx, targetRepositoryName, targetBranch)
+	if err != nil {
+		return nil, err
+	}
+
+	var workflows []Workflow
+	for _, workflowRun := range workflowRuns.WorkflowRuns {
+		workflows = append(workflows, Workflow{
+			ID:           workflowRun.WorkflowID,
+			WorkflowName: workflowRun.Name,
+			ActionName:   workflowRun.DisplayTitle,
+			TriggeredBy:  workflowRun.Actor.Login,
+			StartedAt:    u.timeToString(workflowRun.CreatedAt),
+			Status:       workflowRun.Status,
+			Conslusion:   workflowRun.Conclusion,
+			Duration:     u.getDuration(workflowRun.CreatedAt, workflowRun.UpdatedAt, workflowRun.Status),
+		})
+	}
+
+	return &GetWorkflowHistoryOutput{
+		Workflows: workflows,
+	}, nil
 }
 
 func (u useCase) ListWorkflowRuns(ctx context.Context, input ListWorkflowRunsInput) (*ListWorkflowRunsOutput, error) {
@@ -118,4 +148,24 @@ func (u useCase) InspectWorkflow(ctx context.Context, input InspectWorkflowInput
 func (u useCase) TriggerWorkflow(ctx context.Context, input TriggerWorkflowInput) (*TriggerWorkflowOutput, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (u useCase) timeToString(t time.Time) string {
+	return t.Format("2006-01-02 15:04:05")
+}
+
+func (u useCase) getDuration(startTime time.Time, endTime time.Time, status string) string {
+	if status != "completed" {
+		return "running"
+	}
+
+	diff := endTime.Sub(startTime)
+
+	if diff.Seconds() < 60 {
+		return fmt.Sprintf("%ds", int(diff.Seconds()))
+	} else if diff.Seconds() < 3600 {
+		return fmt.Sprintf("%dm %ds", int(diff.Minutes()), int(diff.Seconds())%60)
+	} else {
+		return fmt.Sprintf("%dh %dm %ds", int(diff.Hours()), int(diff.Minutes())%60, int(diff.Seconds())%60)
+	}
 }
