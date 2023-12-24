@@ -73,7 +73,7 @@ func (m *ModelError) ViewError() string {
 
 func (m *ModelError) ViewMessage() string {
 	doc := strings.Builder{}
-	doc.WriteString(fmt.Sprintf("Operation: %s", m.message))
+	doc.WriteString(m.message)
 	return doc.String()
 }
 

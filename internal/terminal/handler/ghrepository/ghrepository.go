@@ -117,7 +117,7 @@ func (m *ModelGithubRepository) View() string {
 	newTableColumns := tableColumnsGithubRepository
 	widthDiff := termWidth - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[0].Width += widthDiff - 15
+		newTableColumns[0].Width += widthDiff - 13
 		m.tableGithubRepository.SetColumns(newTableColumns)
 		m.tableGithubRepository.SetHeight(termHeight - 16)
 	}

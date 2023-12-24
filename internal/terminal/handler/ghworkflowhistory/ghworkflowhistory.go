@@ -2,6 +2,7 @@ package ghworkflowhistory
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -23,9 +24,10 @@ type ModelGithubWorkflowHistory struct {
 	tableWorkflowHistory table.Model
 	modelError           hdlerror.ModelError
 
-	SelectedRepository          *hdltypes.SelectedRepository
-	updateRound                 int
-	IsSelectedRepositoryQueried bool
+	SelectedRepository *hdltypes.SelectedRepository
+	updateRound        int
+
+	lastRepository string
 }
 
 var baseStyle = lipgloss.NewStyle().
@@ -69,9 +71,9 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 }
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if !m.IsSelectedRepositoryQueried {
+	if m.lastRepository != m.SelectedRepository.RepositoryName {
 		go m.updateWorkflowHistory()
-		m.IsSelectedRepositoryQueried = true
+		m.lastRepository = m.SelectedRepository.RepositoryName
 	}
 	var cmd tea.Cmd
 	//switch msg := msg.(type) {
@@ -86,7 +88,12 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
-	m.modelError.SetMessage("Fetching workflow history...")
+	m.modelError.SetMessage(
+		fmt.Sprintf("[%s] Fetching workflow history...", m.SelectedRepository.RepositoryName))
+
+	// delete all rows
+	m.tableWorkflowHistory.SetRows([]table.Row{})
+
 	workflowHistory, err := m.githubUseCase.GetWorkflowHistory(context.Background(), gu.GetWorkflowHistoryInput{
 		Repository: m.SelectedRepository.RepositoryName,
 	})
@@ -108,7 +115,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	}
 
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
-	m.modelError.SetMessage("Fetched workflow history")
+	m.modelError.SetMessage(fmt.Sprintf("[%s] Workflow history fetched.", m.SelectedRepository.RepositoryName))
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {

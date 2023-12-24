@@ -95,7 +95,7 @@ func (m *ModelGithubWorkflow) View() string {
 	newTableColumns := tableColumnsWorkflow
 	widthDiff := termWidth - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[1].Width += widthDiff - 13
+		newTableColumns[1].Width += widthDiff - 11
 		m.tableWorkflowHistory.SetColumns(newTableColumns)
 		m.tableWorkflowHistory.SetHeight(termHeight - 16)
 	}
