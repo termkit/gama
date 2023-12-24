@@ -138,6 +138,7 @@ func (m *model) View() string {
 		renderedTabs = append(renderedTabs, style.Render(t))
 	}
 
+	mainDoc.WriteString("\n")
 	mainDoc.WriteString(m.headerView(renderedTabs...) + "\n")
 
 	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - len(renderedTabs)
@@ -200,12 +201,12 @@ func (m *model) View() string {
 	mainDocHeight := strings.Count(mainDocContent, "\n")
 	helpDocHeight = strings.Count(helpDoc, "\n")
 	errorDocHeight := strings.Count(operationDoc, "\n")
-	requiredNewlinesForPadding := m.viewport.Height - mainDocHeight - helpDocHeight - errorDocHeight - 1
+	requiredNewlinesForPadding := m.viewport.Height - mainDocHeight - helpDocHeight - errorDocHeight
 	padding := strings.Repeat("\n", max(0, requiredNewlinesForPadding))
 
-	pageInformation := lipgloss.JoinVertical(lipgloss.Top, operationDoc, helpDoc)
+	informationPane := lipgloss.JoinVertical(lipgloss.Top, operationDoc, helpDoc)
 
-	return mainDocContent + padding + pageInformation
+	return mainDocContent + padding + informationPane
 }
 
 func (m *model) syncTerminal(msg tea.Msg) {
