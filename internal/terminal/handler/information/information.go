@@ -31,10 +31,13 @@ type githubInformation struct {
 }
 
 func SetupModelInfo(githubUseCase gu.UseCase) *ModelInfo {
+	modelError := hdlerror.SetupModelError()
+
 	return &ModelInfo{
 		Help:          help.New(),
 		Keys:          keys,
 		githubUseCase: githubUseCase,
+		modelError:    modelError,
 	}
 }
 
@@ -44,6 +47,7 @@ func (m *ModelInfo) Init() tea.Cmd {
 		Workflows:    34,
 		ActionRuns:   12,
 	}
+	m.modelError.SetMessage("Welcome to GAMA!")
 
 	return nil
 }

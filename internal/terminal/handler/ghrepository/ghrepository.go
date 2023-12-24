@@ -67,12 +67,14 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository
 }
 
 func (m *ModelGithubRepository) Init() tea.Cmd {
+	m.modelError.SetMessage("Fetching repositories...")
 	workflows, err := m.githubUseCase.ListRepositories(context.Background(), gu.ListRepositoriesInput{})
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Repositories cannot be listed")
 		return nil
 	}
+	m.modelError.SetMessage("Repositories fetched")
 
 	var tableRowsGithubRepository []table.Row
 	for _, workflow := range workflows.Repositories {
