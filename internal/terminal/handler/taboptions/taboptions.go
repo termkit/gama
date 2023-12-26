@@ -1,5 +1,7 @@
 package taboptions
 
+// TODO : set Idle to Wait if options isn't ready to use
+
 import (
 	"fmt"
 	"time"
@@ -11,12 +13,29 @@ import (
 type Options struct {
 	Style lipgloss.Style
 
+	status OptionStatus
+
 	options       []string
 	optionsAction []string
+
+	optionsWithFunc map[int]func()
+
+	timer int
 
 	isTabSelected bool
 
 	cursor int
+}
+
+type OptionStatus string
+
+const (
+	Idle OptionStatus = "Idle"
+	Wait OptionStatus = "Wait"
+)
+
+func (o OptionStatus) String() string {
+	return string(o)
 }
 
 func NewOptions() *Options {
@@ -30,25 +49,43 @@ func NewOptions() *Options {
 		Border(b)
 
 	var initalOptions = []string{
-		"Idle",
+		Wait.String(),
 	}
 	var initalOptionsAction = []string{
-		"Idle",
+		Wait.String(),
 	}
 
+	optionsWithFunc := make(map[int]func())
+	optionsWithFunc[0] = func() {}
+
 	return &Options{
-		Style:         OptionsStyle,
-		options:       initalOptions,
-		optionsAction: initalOptionsAction,
+		Style:           OptionsStyle,
+		options:         initalOptions,
+		optionsAction:   initalOptionsAction,
+		optionsWithFunc: optionsWithFunc,
+		status:          Wait,
 	}
 }
 
-func (o *Options) AddOption(option string) {
+func (o *Options) SetStatus(status OptionStatus) {
+	o.status = status
+	o.options[0] = status.String()
+	o.optionsAction[0] = status.String()
+}
+
+func (o *Options) AddOption(option string, action func()) {
 	var optionWithNumber string
 	var optionNumber = len(o.options)
 	optionWithNumber = fmt.Sprintf("%d) %s", optionNumber, option)
 	o.options = append(o.options, optionWithNumber)
 	o.optionsAction = append(o.optionsAction, optionWithNumber)
+	o.optionsWithFunc[optionNumber] = action
+}
+
+func (o *Options) executeOption() {
+	go o.optionsWithFunc[o.cursor]()
+	o.cursor = 0
+	o.timer = -1
 }
 
 func (o *Options) Init() tea.Cmd {
@@ -60,15 +97,13 @@ func (o *Options) resetOptionsWithOriginal() {
 		return
 	}
 	o.isTabSelected = true
-	//time.Sleep(2 * time.Second)
-	//copy(o.optionsAction, o.options)
-	//o.cursor = 0
-	//o.isTabSelected = false
-	for i := 3; i >= 0; i-- {
-		o.optionsAction[0] = fmt.Sprintf("> %ds", i)
+	o.timer = 3
+	for o.timer >= 0 {
+		o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
 		time.Sleep(1 * time.Second)
+		o.timer--
 	}
-	o.optionsAction[0] = "Idle"
+	o.optionsAction[0] = string(Idle)
 	o.cursor = 0
 	o.isTabSelected = false
 }
@@ -76,29 +111,29 @@ func (o *Options) resetOptionsWithOriginal() {
 func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	if o.status == Wait {
+		return o, cmd
+	}
+
+	// TODO: If option less than 4, still count down the timer
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "1":
 			o.cursor = 1
-			//o.isTabSelected = true
 			go o.resetOptionsWithOriginal()
 		case "2":
 			o.cursor = 2
-			//o.isTabSelected = true
 			go o.resetOptionsWithOriginal()
 		case "3":
 			o.cursor = 3
-			//o.isTabSelected = true
 			go o.resetOptionsWithOriginal()
 		case "4":
 			o.cursor = 4
-			//o.isTabSelected = true
 			go o.resetOptionsWithOriginal()
 		case "enter":
-			o.cursor = 0 // debug
+			o.executeOption()
 		}
-
 	}
 
 	return o, cmd
@@ -109,14 +144,21 @@ func (o *Options) View() string {
 	for i, option := range o.optionsAction {
 		var style lipgloss.Style
 		isActive := i == o.cursor
-		if isActive {
+		if o.status == Wait {
+			// orange
 			style = o.Style.Copy().
 				Foreground(lipgloss.Color("15")).
-				BorderForeground(lipgloss.Color("150"))
+				BorderForeground(lipgloss.Color("208"))
 		} else {
-			style = o.Style.Copy().
-				Foreground(lipgloss.Color("15")).
-				BorderForeground(lipgloss.Color("240"))
+			if isActive {
+				style = o.Style.Copy().
+					Foreground(lipgloss.Color("15")).
+					BorderForeground(lipgloss.Color("150"))
+			} else {
+				style = o.Style.Copy().
+					Foreground(lipgloss.Color("15")).
+					BorderForeground(lipgloss.Color("240"))
+			}
 		}
 		opts = append(opts, style.Render(option))
 	}

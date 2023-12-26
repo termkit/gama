@@ -8,24 +8,24 @@ type keyMap struct {
 	NextTab     teakey.Binding
 	PreviousTab teakey.Binding
 	Quit        teakey.Binding
-	Switch      teakey.Binding
+	LaunchTab   teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.PreviousTab, k.NextTab, k.Switch, k.Quit}
+	return []teakey.Binding{k.PreviousTab, k.NextTab, k.LaunchTab, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.PreviousTab},
 		{k.NextTab},
-		{k.Switch},
+		{k.LaunchTab},
 		{k.Quit},
 	}
 }
 
 var keys = keyMap{
-	Switch: teakey.NewBinding(
+	LaunchTab: teakey.NewBinding(
 		teakey.WithKeys("enter"),
 		teakey.WithHelp("enter", "Launch the selected option"),
 	),

@@ -3,7 +3,9 @@ package ghworkflowhistory
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
@@ -14,6 +16,7 @@ import (
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
+	"github.com/termkit/gama/pkg/browser"
 )
 
 type ModelGithubWorkflowHistory struct {
@@ -77,12 +80,30 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 }
 
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
-	m.actualModelTabOptions.AddOption("Open in browser")
-	m.actualModelTabOptions.AddOption("Rerun failed jobs")
-	m.actualModelTabOptions.AddOption("Rerun workflow")
-	m.actualModelTabOptions.AddOption("Cancel workflow")
+	openInBrowser := func() {
+		m.modelError.SetProgressMessage(fmt.Sprintf("Opening in browser..."))
 
-	return nil
+		err := browser.OpenInBrowser(fmt.Sprintf("https://github.com"))
+		if err != nil {
+			m.modelError.SetError(err)
+			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to open in browser"))
+			return
+		}
+		m.modelError.SetSuccessMessage(fmt.Sprintf("Opened in browser"))
+	}
+
+	x := func() {
+		m.modelError.SetProgressMessage(fmt.Sprintf("Executing..."))
+		time.Sleep(2 * time.Second)
+		m.modelError.SetSuccessMessage(fmt.Sprintf("%d", rand.Intn(100)))
+	}
+
+	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
+	m.actualModelTabOptions.AddOption("Rerun failed jobs", x)
+	m.actualModelTabOptions.AddOption("Rerun workflow", x)
+	m.actualModelTabOptions.AddOption("Cancel workflow", x)
+	return m.modelTabOptions.Init()
+
 }
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -90,30 +111,19 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		go m.updateWorkflowHistory()
 		m.lastRepository = m.SelectedRepository.RepositoryName
 	}
-	//var cmd tea.Cmd
 
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "tab":
-			if m.isTableFocused {
-				m.isTableFocused = false
-				m.tableWorkflowHistory.Blur()
-			} else {
-				m.isTableFocused = true
-				m.tableWorkflowHistory.Focus()
+	//switch msg := msg.(type) {
+	//case tea.KeyMsg:
+	//	switch msg.String() {
+	//	case "right":
+	//
+	//	}
+	//}
 
-			}
-		}
-	}
-
-	if !m.isTableFocused {
-		//m.modelTabOptions.Update(msg)
-		m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
-		cmds = append(cmds, cmd)
-	}
+	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
+	cmds = append(cmds, cmd)
 
 	//m.tableWorkflowHistory, cmd := m.tableWorkflowHistory.Update(msg)
 	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
@@ -124,6 +134,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+	m.actualModelTabOptions.SetStatus(taboptions.Wait)
 
 	// delete all rows
 	m.tableWorkflowHistory.SetRows([]table.Row{})
@@ -155,6 +166,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	}
 
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
+	m.actualModelTabOptions.SetStatus(taboptions.Idle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 

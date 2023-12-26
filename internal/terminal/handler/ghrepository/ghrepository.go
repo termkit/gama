@@ -2,6 +2,7 @@ package ghrepository
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -12,7 +13,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
+	"github.com/termkit/gama/pkg/browser"
 )
 
 type ModelGithubRepository struct {
@@ -23,6 +26,9 @@ type ModelGithubRepository struct {
 	Viewport              *viewport.Model
 	tableGithubRepository table.Model
 	modelError            hdlerror.ModelError
+
+	modelTabOptions       tea.Model
+	actualModelTabOptions *taboptions.Options
 
 	githubRepositories []gu.GithubRepository
 
@@ -57,6 +63,7 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 
 	// setup models
 	modelError := hdlerror.SetupModelError()
+	tabOptions := taboptions.NewOptions()
 
 	return &ModelGithubRepository{
 		Help:                  help.New(),
@@ -65,17 +72,35 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 		tableGithubRepository: tableGithubRepository,
 		modelError:            modelError,
 		SelectedRepository:    selectedRepository,
+		modelTabOptions:       tabOptions,
+		actualModelTabOptions: tabOptions,
 	}
 }
 
 func (m *ModelGithubRepository) Init() tea.Cmd {
 	go m.syncRepositories()
 
+	openInBrowser := func() {
+		m.modelError.SetProgressMessage(fmt.Sprintf("Opening in browser..."))
+
+		err := browser.OpenInBrowser(fmt.Sprintf("https://github.com/%s", m.SelectedRepository.RepositoryName))
+		if err != nil {
+			m.modelError.SetError(err)
+			m.modelError.SetErrorMessage(fmt.Sprintf("Cannot open in browser: %v", err))
+			return
+		}
+
+		m.modelError.SetSuccessMessage(fmt.Sprintf("Opened in browser"))
+	}
+
+	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
+
 	return nil
 }
 
 func (m *ModelGithubRepository) syncRepositories() {
 	m.modelError.ResetError() // reset previous errors
+	m.actualModelTabOptions.SetStatus(taboptions.Wait)
 
 	m.modelError.SetProgressMessage("Fetching repositories...")
 
@@ -109,6 +134,7 @@ func (m *ModelGithubRepository) syncRepositories() {
 	m.tableGithubRepository.SetCursor(0)
 
 	m.modelError.SetSuccessMessage("Repositories fetched")
+	m.actualModelTabOptions.SetStatus(taboptions.Idle)
 	m.Update(m) // update model
 }
 
@@ -132,6 +158,9 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.SelectedRepository.BranchName = m.tableGithubRepository.SelectedRow()[1]
 		}
 	}
+
+	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
+
 	return m, cmd
 }
 
@@ -167,7 +196,7 @@ func (m *ModelGithubRepository) View() string {
 
 	//return lipgloss.JoinVertical(lipgloss.Top, doc.String(), options.String())
 
-	return doc.String()
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.actualModelTabOptions.View())
 }
 
 func (m *ModelGithubRepository) ViewErrorOrOperation() string {
