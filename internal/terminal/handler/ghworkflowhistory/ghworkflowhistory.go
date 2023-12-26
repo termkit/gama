@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 )
 
@@ -24,8 +25,13 @@ type ModelGithubWorkflowHistory struct {
 	tableWorkflowHistory table.Model
 	modelError           hdlerror.ModelError
 
+	modelTabOptions       tea.Model
+	actualModelTabOptions *taboptions.Options
+
 	SelectedRepository *hdltypes.SelectedRepository
 	updateRound        int
+
+	isTableFocused bool
 
 	lastRepository string
 }
@@ -56,17 +62,26 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 		Bold(false)
 	tableWorkflowHistory.SetStyles(s)
 
+	tabOptions := taboptions.NewOptions()
+
 	return &ModelGithubWorkflowHistory{
-		Help:                 help.New(),
-		Keys:                 keys,
-		githubUseCase:        githubUseCase,
-		tableWorkflowHistory: tableWorkflowHistory,
-		modelError:           hdlerror.SetupModelError(),
-		SelectedRepository:   selectedRepository,
+		Help:                  help.New(),
+		Keys:                  keys,
+		githubUseCase:         githubUseCase,
+		tableWorkflowHistory:  tableWorkflowHistory,
+		modelError:            hdlerror.SetupModelError(),
+		SelectedRepository:    selectedRepository,
+		modelTabOptions:       tabOptions,
+		actualModelTabOptions: tabOptions,
 	}
 }
 
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
+	m.actualModelTabOptions.AddOption("Open in browser")
+	m.actualModelTabOptions.AddOption("Rerun failed jobs")
+	m.actualModelTabOptions.AddOption("Rerun workflow")
+	m.actualModelTabOptions.AddOption("Cancel workflow")
+
 	return nil
 }
 
@@ -75,27 +90,47 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		go m.updateWorkflowHistory()
 		m.lastRepository = m.SelectedRepository.RepositoryName
 	}
+	//var cmd tea.Cmd
+
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
-	//switch msg := msg.(type) {
-	//case tea.KeyMsg:
-	//	switch msg.String() {
-	//	case "q", "ctrl+c":
-	//		return m, tea.Quit
-	//	}
-	//}
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "tab":
+			if m.isTableFocused {
+				m.isTableFocused = false
+				m.tableWorkflowHistory.Blur()
+			} else {
+				m.isTableFocused = true
+				m.tableWorkflowHistory.Focus()
+
+			}
+		}
+	}
+
+	if !m.isTableFocused {
+		//m.modelTabOptions.Update(msg)
+		m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	//m.tableWorkflowHistory, cmd := m.tableWorkflowHistory.Update(msg)
 	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 }
 
 func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	m.modelError.SetProgressMessage(
-		fmt.Sprintf("[%s] Fetching workflow history...", m.SelectedRepository.RepositoryName))
+		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 
 	// delete all rows
 	m.tableWorkflowHistory.SetRows([]table.Row{})
 
 	workflowHistory, err := m.githubUseCase.GetWorkflowHistory(context.Background(), gu.GetWorkflowHistoryInput{
 		Repository: m.SelectedRepository.RepositoryName,
+		Branch:     m.SelectedRepository.BranchName,
 	})
 	if err != nil {
 		m.modelError.SetError(err)
@@ -103,7 +138,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	}
 
 	if len(workflowHistory.Workflows) == 0 {
-		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s] No workflows found.", m.SelectedRepository.RepositoryName))
+		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflows found.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 		return
 	}
 
@@ -120,7 +155,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	}
 
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
-	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s] Workflow history fetched.", m.SelectedRepository.RepositoryName))
+	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {
@@ -145,12 +180,12 @@ func (m *ModelGithubWorkflowHistory) View() string {
 		m.tableWorkflowHistory.SetColumns(newTableColumns)
 	}
 
-	m.tableWorkflowHistory.SetHeight(termHeight - 16)
+	m.tableWorkflowHistory.SetHeight(termHeight - 17)
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableWorkflowHistory.View()))
 
-	return doc.String()
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.actualModelTabOptions.View())
 }
 
 func (m *ModelGithubWorkflowHistory) ViewErrorOrOperation() string {

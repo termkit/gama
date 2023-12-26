@@ -24,6 +24,8 @@ type ModelGithubRepository struct {
 	tableGithubRepository table.Model
 	modelError            hdlerror.ModelError
 
+	githubRepositories []gu.GithubRepository
+
 	SelectedRepository *hdltypes.SelectedRepository
 }
 
@@ -79,23 +81,26 @@ func (m *ModelGithubRepository) syncRepositories() {
 
 	// delete all rows
 	m.tableGithubRepository.SetRows([]table.Row{})
+	m.githubRepositories = []gu.GithubRepository{}
 
-	workflows, err := m.githubUseCase.ListRepositories(context.Background(), gu.ListRepositoriesInput{})
+	repositories, err := m.githubUseCase.ListRepositories(context.Background(), gu.ListRepositoriesInput{})
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Repositories cannot be listed")
 		return
 	}
 
-	if len(workflows.Repositories) == 0 {
+	if len(repositories.Repositories) == 0 {
 		m.modelError.SetDefaultMessage("No repositories found")
 		return
 	}
 
 	var tableRowsGithubRepository []table.Row
-	for _, workflow := range workflows.Repositories {
+	for _, repository := range repositories.Repositories {
 		tableRowsGithubRepository = append(tableRowsGithubRepository,
-			table.Row{workflow.Name, strconv.Itoa(workflow.Stars), strconv.Itoa(len(workflow.TriggerableWorkflows))})
+			table.Row{repository.Name, repository.DefaultBranch, strconv.Itoa(repository.Stars), strconv.Itoa(len(repository.TriggerableWorkflows))})
+
+		m.githubRepositories = append(m.githubRepositories, repository)
 	}
 
 	m.tableGithubRepository.SetRows(tableRowsGithubRepository)
@@ -124,6 +129,7 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if len(m.tableGithubRepository.SelectedRow()) > 0 && m.tableGithubRepository.SelectedRow()[0] != "" {
 		if m.tableGithubRepository.SelectedRow()[0] != "" {
 			m.SelectedRepository.RepositoryName = m.tableGithubRepository.SelectedRow()[0]
+			m.SelectedRepository.BranchName = m.tableGithubRepository.SelectedRow()[1]
 		}
 	}
 	return m, cmd
@@ -141,13 +147,25 @@ func (m *ModelGithubRepository) View() string {
 	newTableColumns := tableColumnsGithubRepository
 	widthDiff := termWidth - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[0].Width += widthDiff - 13
+		newTableColumns[0].Width += widthDiff - 16
 		m.tableGithubRepository.SetColumns(newTableColumns)
-		m.tableGithubRepository.SetHeight(termHeight - 16)
+		m.tableGithubRepository.SetHeight(termHeight - 17)
 	}
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
+
+	//optionsStyle := lipgloss.NewStyle().
+	//	Foreground(lipgloss.Color("15")).
+	//	Align(lipgloss.Center).Border(lipgloss.RoundedBorder())
+	//
+	//options := strings.Builder{}
+	//
+	//o1 := optionsStyle.Render("Branch > master")
+	//
+	//options.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, o1))
+
+	//return lipgloss.JoinVertical(lipgloss.Top, doc.String(), options.String())
 
 	return doc.String()
 }

@@ -5,29 +5,29 @@ import (
 )
 
 type keyMap struct {
-	Sort        teakey.Binding
 	NextTab     teakey.Binding
 	PreviousTab teakey.Binding
 	Quit        teakey.Binding
+	Switch      teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.PreviousTab, k.NextTab, k.Sort, k.Quit}
+	return []teakey.Binding{k.PreviousTab, k.NextTab, k.Switch, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.PreviousTab},
 		{k.NextTab},
-		{k.Sort},
+		{k.Switch},
 		{k.Quit},
 	}
 }
 
 var keys = keyMap{
-	Sort: teakey.NewBinding(
-		teakey.WithKeys("s", "S"),
-		teakey.WithHelp("s/S", "Sort By Time"),
+	Switch: teakey.NewBinding(
+		teakey.WithKeys("enter"),
+		teakey.WithHelp("enter", "Launch the selected option"),
 	),
 	PreviousTab: teakey.NewBinding(
 		teakey.WithKeys("left"),

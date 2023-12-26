@@ -5,16 +5,14 @@ import (
 )
 
 var (
-	DocStyle             = lipgloss.NewStyle().Padding(1, 1, 1, 1)
-	HighlightColorCyan   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#00AAFF"}
-	HighlightColorOrange = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#FFAA00"}
-	WindowStyleCyan      = lipgloss.NewStyle().BorderForeground(HighlightColorCyan).Padding(0, 0).Align(lipgloss.Center).Border(lipgloss.NormalBorder())
-	WindowStyleOrange    = lipgloss.NewStyle().BorderForeground(HighlightColorOrange).Padding(0, 0).Border(lipgloss.RoundedBorder())
-	WindowStyleRed       = lipgloss.NewStyle().BorderForeground(lipgloss.Color("9")).Padding(0, 0).Border(lipgloss.RoundedBorder())
-	WindowStyleGreen     = lipgloss.NewStyle().BorderForeground(lipgloss.Color("10")).Padding(0, 0).Border(lipgloss.RoundedBorder())
-	WindowStyleGray      = lipgloss.NewStyle().BorderForeground(lipgloss.Color("240")).Padding(0, 0).Border(lipgloss.NormalBorder())
-	WindowStyleWhite     = lipgloss.NewStyle().BorderForeground(lipgloss.Color("255")).Padding(0, 0).Border(lipgloss.NormalBorder())
-	WindowStyleYellow    = lipgloss.NewStyle().BorderForeground(lipgloss.Color("11")).Padding(0, 0).Border(lipgloss.NormalBorder())
+	DocStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
+	WindowStyleCyan   = lipgloss.NewStyle().BorderForeground(lipgloss.Color("39")) //.Align(lipgloss.Center) //.Border(lipgloss.RoundedBorder())
+	WindowStyleOrange = lipgloss.NewStyle().BorderForeground(lipgloss.Color("#ffaf00")).Border(lipgloss.RoundedBorder())
+	WindowStyleRed    = lipgloss.NewStyle().BorderForeground(lipgloss.Color("9")).Border(lipgloss.RoundedBorder())
+	WindowStyleGreen  = lipgloss.NewStyle().BorderForeground(lipgloss.Color("10")).Border(lipgloss.RoundedBorder())
+	WindowStyleGray   = lipgloss.NewStyle().BorderForeground(lipgloss.Color("240")).Border(lipgloss.NormalBorder())
+	WindowStyleWhite  = lipgloss.NewStyle().BorderForeground(lipgloss.Color("255")).Border(lipgloss.NormalBorder())
+	WindowStyleYellow = lipgloss.NewStyle().BorderForeground(lipgloss.Color("11")).Border(lipgloss.NormalBorder())
 
 	WindowStyleHelp     = WindowStyleGray.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
 	WindowStyleError    = WindowStyleRed.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)

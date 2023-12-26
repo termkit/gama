@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/timer"
@@ -82,7 +83,11 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(tea.EnterAltScreen, m.timer.Init(), m.modelInfo.Init(), m.modelGithubRepository.Init())
+	return tea.Batch(tea.EnterAltScreen,
+		m.timer.Init(),
+		m.modelInfo.Init(),
+		m.modelGithubRepository.Init(),
+		m.modelWorkflowHistory.Init())
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -122,8 +127,10 @@ func (m *model) View() string {
 	if !m.terminalSizeReady {
 		return "Setting up..."
 	}
-	if m.viewport.Width < 80 || m.viewport.Height < 24 {
-		return "Terminal window is too small. Please resize to at least 80x24."
+	var maxTerminalWidth = 102
+	var maxTerminalHeight = 24
+	if m.viewport.Width < maxTerminalWidth || m.viewport.Height < maxTerminalHeight {
+		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", maxTerminalWidth, maxTerminalHeight)
 	}
 
 	var mainDoc strings.Builder
@@ -224,7 +231,7 @@ func (m *model) headerView(titles ...string) string {
 	for _, t := range titles {
 		renderedTitles += t
 	}
-	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(renderedTitles)))
+	line := strings.Repeat("─", max(0, m.viewport.Width-79))
 	titles = append(titles, line)
 	return lipgloss.JoinHorizontal(lipgloss.Center, titles...)
 }
