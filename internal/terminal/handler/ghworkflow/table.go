@@ -5,6 +5,6 @@ import (
 )
 
 var tableColumnsWorkflow = []table.Column{
-	{Title: "Workflow", Width: 24},
-	{Title: "File", Width: 32},
+	{Title: "Workflow", Width: 32},
+	{Title: "File", Width: 48},
 }
