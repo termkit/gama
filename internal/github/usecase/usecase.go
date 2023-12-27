@@ -173,7 +173,7 @@ func (u useCase) TriggerWorkflow(ctx context.Context, input TriggerWorkflowInput
 }
 
 func (u useCase) timeToString(t time.Time) string {
-	return t.Format("2006-01-02 15:04:05")
+	return t.In(time.Local).Format("2006-01-02 15:04:05")
 }
 
 func (u useCase) getDuration(startTime time.Time, endTime time.Time, status string) string {
@@ -181,7 +181,11 @@ func (u useCase) getDuration(startTime time.Time, endTime time.Time, status stri
 		return "running"
 	}
 
-	diff := endTime.Sub(startTime)
+	// Convert UTC times to local timezone
+	localStartTime := startTime.In(time.Local)
+	localEndTime := endTime.In(time.Local)
+
+	diff := localEndTime.Sub(localStartTime)
 
 	if diff.Seconds() < 60 {
 		return fmt.Sprintf("%ds", int(diff.Seconds()))
