@@ -1,7 +1,5 @@
 package taboptions
 
-// TODO : set Idle to Wait if options isn't ready to use
-
 import (
 	"fmt"
 	"time"
@@ -30,8 +28,14 @@ type Options struct {
 type OptionStatus string
 
 const (
-	Idle OptionStatus = "Idle"
-	Wait OptionStatus = "Wait"
+	// OptionIdle is for when the options are ready to use
+	OptionIdle OptionStatus = "Idle"
+
+	// OptionWait is for when the options are not ready to use
+	OptionWait OptionStatus = "Wait"
+
+	// OptionNone is for when the options are not usable
+	OptionNone OptionStatus = "None"
 )
 
 func (o OptionStatus) String() string {
@@ -49,10 +53,10 @@ func NewOptions() *Options {
 		Border(b)
 
 	var initalOptions = []string{
-		Wait.String(),
+		OptionWait.String(),
 	}
 	var initalOptionsAction = []string{
-		Wait.String(),
+		OptionWait.String(),
 	}
 
 	optionsWithFunc := make(map[int]func())
@@ -63,7 +67,7 @@ func NewOptions() *Options {
 		options:         initalOptions,
 		optionsAction:   initalOptionsAction,
 		optionsWithFunc: optionsWithFunc,
-		status:          Wait,
+		status:          OptionWait,
 	}
 }
 
@@ -103,7 +107,7 @@ func (o *Options) resetOptionsWithOriginal() {
 		time.Sleep(1 * time.Second)
 		o.timer--
 	}
-	o.optionsAction[0] = string(Idle)
+	o.optionsAction[0] = string(OptionIdle)
 	o.cursor = 0
 	o.isTabSelected = false
 }
@@ -111,7 +115,7 @@ func (o *Options) resetOptionsWithOriginal() {
 func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	if o.status == Wait {
+	if o.status == OptionWait || o.status == OptionNone {
 		return o, cmd
 	}
 
@@ -144,11 +148,16 @@ func (o *Options) View() string {
 	for i, option := range o.optionsAction {
 		var style lipgloss.Style
 		isActive := i == o.cursor
-		if o.status == Wait {
+		if o.status == OptionWait {
 			// orange
 			style = o.Style.Copy().
 				Foreground(lipgloss.Color("15")).
 				BorderForeground(lipgloss.Color("208"))
+		} else if o.status == OptionNone {
+			// gray
+			style = o.Style.Copy().
+				Foreground(lipgloss.Color("15")).
+				BorderForeground(lipgloss.Color("240"))
 		} else {
 			if isActive {
 				style = o.Style.Copy().

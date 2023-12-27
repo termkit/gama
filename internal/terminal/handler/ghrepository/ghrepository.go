@@ -100,7 +100,7 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 
 func (m *ModelGithubRepository) syncRepositories() {
 	m.modelError.ResetError() // reset previous errors
-	m.actualModelTabOptions.SetStatus(taboptions.Wait)
+	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
 
 	m.modelError.SetProgressMessage("Fetching repositories...")
 
@@ -116,6 +116,7 @@ func (m *ModelGithubRepository) syncRepositories() {
 	}
 
 	if len(repositories.Repositories) == 0 {
+		m.actualModelTabOptions.SetStatus(taboptions.OptionNone)
 		m.modelError.SetDefaultMessage("No repositories found")
 		return
 	}
@@ -134,7 +135,7 @@ func (m *ModelGithubRepository) syncRepositories() {
 	m.tableGithubRepository.SetCursor(0)
 
 	m.modelError.SetSuccessMessage("Repositories fetched")
-	m.actualModelTabOptions.SetStatus(taboptions.Idle)
+	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.Update(m) // update model
 }
 
@@ -176,25 +177,13 @@ func (m *ModelGithubRepository) View() string {
 	newTableColumns := tableColumnsGithubRepository
 	widthDiff := termWidth - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[0].Width += widthDiff - 16
+		newTableColumns[0].Width += widthDiff - 15
 		m.tableGithubRepository.SetColumns(newTableColumns)
 		m.tableGithubRepository.SetHeight(termHeight - 17)
 	}
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
-
-	//optionsStyle := lipgloss.NewStyle().
-	//	Foreground(lipgloss.Color("15")).
-	//	Align(lipgloss.Center).Border(lipgloss.RoundedBorder())
-	//
-	//options := strings.Builder{}
-	//
-	//o1 := optionsStyle.Render("Branch > master")
-	//
-	//options.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, o1))
-
-	//return lipgloss.JoinVertical(lipgloss.Top, doc.String(), options.String())
 
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.actualModelTabOptions.View())
 }

@@ -125,7 +125,6 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
 	cmds = append(cmds, cmd)
 
-	//m.tableWorkflowHistory, cmd := m.tableWorkflowHistory.Update(msg)
 	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
@@ -134,7 +133,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-	m.actualModelTabOptions.SetStatus(taboptions.Wait)
+	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
 
 	// delete all rows
 	m.tableWorkflowHistory.SetRows([]table.Row{})
@@ -149,6 +148,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	}
 
 	if len(workflowHistory.Workflows) == 0 {
+		m.actualModelTabOptions.SetStatus(taboptions.OptionNone)
 		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflows found.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 		return
 	}
@@ -166,7 +166,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 	}
 
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
-	m.actualModelTabOptions.SetStatus(taboptions.Idle)
+	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 
