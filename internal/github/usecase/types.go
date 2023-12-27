@@ -17,7 +17,7 @@ type GithubRepository struct {
 	DefaultBranch string
 	Stars         int
 
-	TriggerableWorkflows []Workflow
+	Workflows []Workflow
 	// We can add more fields here
 }
 
@@ -78,4 +78,21 @@ type TriggerWorkflowInput struct {
 type TriggerWorkflowOutput struct {
 	// Return workflow information
 	// Like status url etc.
+}
+
+// ------------------------------------------------------------
+
+type GetTriggerableWorkflowsInput struct {
+	Repository string
+	Branch     string
+}
+
+type GetTriggerableWorkflowsOutput struct {
+	TriggerableWorkflows []TriggerableWorkflow
+}
+
+type TriggerableWorkflow struct {
+	ID   int64
+	Name string
+	Path string
 }

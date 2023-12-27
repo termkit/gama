@@ -124,7 +124,7 @@ func (m *ModelGithubRepository) syncRepositories() {
 	var tableRowsGithubRepository []table.Row
 	for _, repository := range repositories.Repositories {
 		tableRowsGithubRepository = append(tableRowsGithubRepository,
-			table.Row{repository.Name, repository.DefaultBranch, strconv.Itoa(repository.Stars), strconv.Itoa(len(repository.TriggerableWorkflows))})
+			table.Row{repository.Name, repository.DefaultBranch, strconv.Itoa(repository.Stars), strconv.Itoa(len(repository.Workflows))})
 
 		m.githubRepositories = append(m.githubRepositories, repository)
 	}

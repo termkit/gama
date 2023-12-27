@@ -62,7 +62,7 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase)
 	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase, &selectedRepository)
 	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository)
-	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase)
+	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase, &selectedRepository)
 
 	m := model{TabsWithColor: tabsWithColor,
 		TabContent: tabContent,

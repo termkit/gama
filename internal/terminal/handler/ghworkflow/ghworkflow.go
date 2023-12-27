@@ -1,11 +1,15 @@
 package ghworkflow
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/taboptions"
+	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -15,33 +19,32 @@ import (
 )
 
 type ModelGithubWorkflow struct {
-	Help     help.Model
-	Keys     keyMap
-	Viewport *viewport.Model
-
 	githubUseCase gu.UseCase
 
-	list list.Model
+	Help                     help.Model
+	Keys                     keyMap
+	Viewport                 *viewport.Model
+	list                     list.Model
+	tableTriggerableWorkflow table.Model
+	modelError               hdlerror.ModelError
 
-	tableWorkflowHistory table.Model
+	modelTabOptions       tea.Model
+	actualModelTabOptions *taboptions.Options
 
-	modelError hdlerror.ModelError
+	lastRepository     string
+	SelectedRepository *hdltypes.SelectedRepository
 }
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubWorkflow(githubUseCase gu.UseCase) *ModelGithubWorkflow {
-	tableRowsWorkflowHistory := []table.Row{
-		{"Auto Deploy", ".github/workflow/auto-deploy.yaml"},
-		{"Run Tests", ".github/workflow/run-tests.yaml"},
-		{"Create Release", ".github/workflow/create-release.yaml"},
-	}
+func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflow {
+	var tableRowsTriggerableWorkflow []table.Row
 
-	tableWorkflowHistory := table.New(
+	tableTriggerableWorkflow := table.New(
 		table.WithColumns(tableColumnsWorkflow),
-		table.WithRows(tableRowsWorkflowHistory),
+		table.WithRows(tableRowsTriggerableWorkflow),
 		table.WithFocused(true),
 		table.WithHeight(7),
 	)
@@ -56,13 +59,18 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase) *ModelGithubWorkflow {
 		Foreground(lipgloss.Color("229")).
 		Background(lipgloss.Color("57")).
 		Bold(false)
-	tableWorkflowHistory.SetStyles(s)
+	tableTriggerableWorkflow.SetStyles(s)
+
+	tabOptions := taboptions.NewOptions()
 
 	return &ModelGithubWorkflow{
-		Help:                 help.New(),
-		Keys:                 keys,
-		githubUseCase:        githubUseCase,
-		tableWorkflowHistory: tableWorkflowHistory,
+		Help:                     help.New(),
+		Keys:                     keys,
+		githubUseCase:            githubUseCase,
+		tableTriggerableWorkflow: tableTriggerableWorkflow,
+		SelectedRepository:       selectedRepository,
+		modelTabOptions:          tabOptions,
+		actualModelTabOptions:    tabOptions,
 	}
 }
 
@@ -71,6 +79,11 @@ func (m *ModelGithubWorkflow) Init() tea.Cmd {
 }
 
 func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.lastRepository != m.SelectedRepository.RepositoryName {
+		go m.updateTriggerableWorkflows()
+		m.lastRepository = m.SelectedRepository.RepositoryName
+	}
+
 	var cmd tea.Cmd
 	//switch msg := msg.(type) {
 	//case tea.KeyMsg:
@@ -79,7 +92,7 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//		return m, tea.Quit
 	//	}
 	//}
-	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
+	m.tableTriggerableWorkflow, cmd = m.tableTriggerableWorkflow.Update(msg)
 	return m, cmd
 }
 
@@ -96,20 +109,52 @@ func (m *ModelGithubWorkflow) View() string {
 	widthDiff := termWidth - tableWidth
 	if widthDiff > 0 {
 		newTableColumns[1].Width += widthDiff - 11
-		m.tableWorkflowHistory.SetColumns(newTableColumns)
-		m.tableWorkflowHistory.SetHeight(termHeight - 17)
+		m.tableTriggerableWorkflow.SetColumns(newTableColumns)
+		m.tableTriggerableWorkflow.SetHeight(termHeight - 17)
 	}
 
 	doc := strings.Builder{}
-	doc.WriteString(baseStyle.Render(m.tableWorkflowHistory.View()))
+	doc.WriteString(baseStyle.Render(m.tableTriggerableWorkflow.View()))
 
 	return doc.String()
 }
 
-func (m *ModelGithubWorkflow) ViewErrorOrOperation() string {
-	return m.modelError.View()
+func (m *ModelGithubWorkflow) updateTriggerableWorkflows() {
+	m.modelError.SetProgressMessage(
+		fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
+
+	// delete all rows
+	m.tableTriggerableWorkflow.SetRows([]table.Row{})
+
+	triggerableWorkflows, err := m.githubUseCase.GetTriggerableWorkflows(context.Background(), gu.GetTriggerableWorkflowsInput{
+		Repository: m.SelectedRepository.RepositoryName,
+		Branch:     m.SelectedRepository.BranchName,
+	})
+	if err != nil {
+		m.modelError.SetError(err)
+		m.modelError.SetErrorMessage("Triggerable workflows cannot be listed")
+	}
+
+	if len(triggerableWorkflows.TriggerableWorkflows) == 0 {
+		m.actualModelTabOptions.SetStatus(taboptions.OptionNone)
+		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] No triggerable workflow found.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+		return
+	}
+
+	var tableRowsTriggerableWorkflow []table.Row
+	for _, workflow := range triggerableWorkflows.TriggerableWorkflows {
+		tableRowsTriggerableWorkflow = append(tableRowsTriggerableWorkflow, table.Row{
+			workflow.Name,
+			workflow.Path,
+		})
+	}
+
+	m.tableTriggerableWorkflow.SetRows(tableRowsTriggerableWorkflow)
+	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
+	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Triggerable workflows fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 
-func (m *ModelGithubWorkflow) IsError() bool {
-	return m.modelError.IsError()
+func (m *ModelGithubWorkflow) ViewErrorOrOperation() string {
+	return m.modelError.View()
 }

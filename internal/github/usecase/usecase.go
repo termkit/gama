@@ -61,25 +61,25 @@ func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInp
 
 func (u useCase) workerListRepositories(ctx context.Context, jobs <-chan gr.GithubRepository, results chan<- GithubRepository, errors chan<- error) {
 	for repository := range jobs {
-		triggerableWorkflows, err := u.githubRepository.GetTriggerableWorkflows(ctx, repository.FullName)
+		getWorkflows, err := u.githubRepository.GetWorkflows(ctx, repository.FullName)
 		if err != nil {
 			errors <- err
 			continue
 		}
 
 		var workflows []Workflow
-		for _, workflow := range triggerableWorkflows {
+		for _, workflow := range getWorkflows {
 			workflows = append(workflows, Workflow{
-				ID: workflow.Id,
+				ID: workflow.ID,
 			})
 		}
 
 		results <- GithubRepository{
-			Name:                 repository.FullName,
-			Stars:                repository.StargazersCount,
-			Private:              repository.Private,
-			DefaultBranch:        repository.DefaultBranch,
-			TriggerableWorkflows: workflows,
+			Name:          repository.FullName,
+			Stars:         repository.StargazersCount,
+			Private:       repository.Private,
+			DefaultBranch: repository.DefaultBranch,
+			Workflows:     workflows,
 		}
 	}
 }
@@ -119,9 +119,25 @@ func (u useCase) GetWorkflowHistory(ctx context.Context, input GetWorkflowHistor
 	}, nil
 }
 
-func (u useCase) ListWorkflowRuns(ctx context.Context, input ListWorkflowRunsInput) (*ListWorkflowRunsOutput, error) {
-	//TODO implement me
-	panic("implement me")
+func (u useCase) GetTriggerableWorkflows(ctx context.Context, input GetTriggerableWorkflowsInput) (*GetTriggerableWorkflowsOutput, error) {
+	// TODO: Add branch option
+	triggerableWorkflows, err := u.githubRepository.GetTriggerableWorkflows(ctx, input.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	var workflows []TriggerableWorkflow
+	for _, workflow := range triggerableWorkflows {
+		workflows = append(workflows, TriggerableWorkflow{
+			ID:   workflow.ID,
+			Name: workflow.Name,
+			Path: workflow.Path,
+		})
+	}
+
+	return &GetTriggerableWorkflowsOutput{
+		TriggerableWorkflows: workflows,
+	}, nil
 }
 
 func (u useCase) InspectWorkflow(ctx context.Context, input InspectWorkflowInput) (*InspectWorkflowOutput, error) {

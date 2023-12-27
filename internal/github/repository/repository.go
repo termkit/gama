@@ -133,6 +133,26 @@ func (r *Repo) TriggerWorkflow(ctx context.Context, repository string, branch st
 	return nil
 }
 
+func (r *Repo) GetWorkflows(ctx context.Context, repository string) ([]Workflow, error) {
+	// Get a workflow run for the given repository and runId
+	var githubWorkflow githubWorkflow
+	err := r.do(ctx, nil, &githubWorkflow, requestOptions{
+		method:      http.MethodGet,
+		path:        githubAPIURL + "/repos/" + repository + "/actions/workflows",
+		contentType: "application/json",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var workflows []Workflow
+	for _, workflow := range githubWorkflow.Workflows {
+		workflows = append(workflows, workflow)
+	}
+
+	return workflows, nil
+}
+
 func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) ([]Workflow, error) {
 	// Get a workflow run for the given repository and runId
 	var workflows githubWorkflow
