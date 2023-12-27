@@ -45,17 +45,6 @@ type Workflow struct {
 
 // ------------------------------------------------------------
 
-type ListWorkflowRunsInput struct {
-	Repository string
-	Branch     string
-}
-
-type ListWorkflowRunsOutput struct {
-	Workflows []Workflow
-}
-
-// ------------------------------------------------------------
-
 type InspectWorkflowInput struct {
 	Repository   string
 	Branch       string
@@ -63,16 +52,16 @@ type InspectWorkflowInput struct {
 }
 
 type InspectWorkflowOutput struct {
-	Workflow pw.Workflow
+	Workflow pw.Pretty
 }
 
 // ------------------------------------------------------------
 
 type TriggerWorkflowInput struct {
+	WorkflowFile string
 	Repository   string
 	Branch       string
-	WorkflowFile string
-	Content      pw.Workflow
+	Content      string // workflow content in json format
 }
 
 type TriggerWorkflowOutput struct {

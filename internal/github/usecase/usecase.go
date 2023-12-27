@@ -156,14 +156,20 @@ func (u useCase) InspectWorkflow(ctx context.Context, input InspectWorkflowInput
 		return nil, err
 	}
 
+	pretty := workflow.ToPretty()
+
 	return &InspectWorkflowOutput{
-		Workflow: *workflow,
+		Workflow: pretty,
 	}, nil
 }
 
 func (u useCase) TriggerWorkflow(ctx context.Context, input TriggerWorkflowInput) (*TriggerWorkflowOutput, error) {
-	//TODO implement me
-	panic("implement me")
+	err := u.githubRepository.TriggerWorkflow(ctx, input.Repository, input.Branch, input.WorkflowFile, input.Content)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TriggerWorkflowOutput{}, nil
 }
 
 func (u useCase) timeToString(t time.Time) string {

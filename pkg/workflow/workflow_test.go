@@ -53,5 +53,11 @@ on:
 	w, err := ParseWorkflow(workflow)
 	assert.NoError(t, err)
 
+	pretty := w.ToPretty()
+	_ = pretty
+
+	json, err := pretty.ToJson()
+	_ = json
+
 	t.Log(w)
 }

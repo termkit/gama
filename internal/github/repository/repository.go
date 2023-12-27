@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"time"
 
@@ -117,14 +119,13 @@ func (r *Repo) ListWorkflowRuns(ctx context.Context, repository string, branch s
 }
 
 func (r *Repo) TriggerWorkflow(ctx context.Context, repository string, branch string, workflowName string, workflow any) error {
+	var payload = fmt.Sprintf(`{"ref": "%s", "inputs": %s}`, branch, workflow)
+
 	// Trigger a workflow for the given repository and branch
-	err := r.do(ctx, workflow, nil, requestOptions{
-		method:      http.MethodPost,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/workflows/" + workflowName + "/dispatches",
-		contentType: "application/json",
-		queryParams: map[string]string{
-			"ref": branch,
-		},
+	err := r.do(ctx, payload, nil, requestOptions{
+		method: http.MethodPost,
+		path:   githubAPIURL + "/repos/" + repository + "/actions/workflows/" + path.Base(workflowName) + "/dispatches",
+		accept: "application/vnd.github+json",
 	})
 	if err != nil {
 		return err
@@ -255,12 +256,18 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	}
 	reqURL.RawQuery = query.Encode()
 
-	// Marshal the request body to JSON
 	var reqBody []byte
-	if requestBody != nil {
-		reqBody, err = json.Marshal(requestBody)
-		if err != nil {
-			return err
+	// Marshal the request body to JSON if accept/content type is JSON
+	if requestOptions.accept == "application/json" || requestOptions.contentType == "application/json" {
+		if requestBody != nil {
+			reqBody, err = json.Marshal(requestBody)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		if requestBody != nil {
+			reqBody = []byte(requestBody.(string))
 		}
 	}
 
@@ -269,7 +276,13 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", requestOptions.contentType)
+
+	if requestOptions.contentType == "" {
+		req.Header.Set("Content-Type", requestOptions.contentType)
+	}
+	if requestOptions.accept == "" {
+		req.Header.Set("Accept", requestOptions.accept)
+	}
 	req.Header.Set("Authorization", "Bearer "+r.githubToken)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	req = req.WithContext(ctx)
@@ -317,6 +330,7 @@ type requestOptions struct {
 	method      string
 	path        string
 	contentType string
+	accept      string
 	queryParams map[string]string
 }
 
