@@ -39,7 +39,7 @@ type Workflow struct {
 	TriggeredBy  string // who triggered this workflow
 	StartedAt    string // workflow's started at
 	Status       string // workflow's status, like success, failure, etc.
-	Conslusion   string // workflow's conclusion, like success, failure, etc.
+	Conclusion   string // workflow's conclusion, like success, failure, etc.
 	Duration     string // workflow's duration
 }
 

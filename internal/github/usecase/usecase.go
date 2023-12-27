@@ -109,7 +109,7 @@ func (u useCase) GetWorkflowHistory(ctx context.Context, input GetWorkflowHistor
 			TriggeredBy:  workflowRun.Actor.Login,
 			StartedAt:    u.timeToString(workflowRun.CreatedAt),
 			Status:       workflowRun.Status,
-			Conslusion:   workflowRun.Conclusion,
+			Conclusion:   workflowRun.Conclusion,
 			Duration:     u.getDuration(workflowRun.CreatedAt, workflowRun.UpdatedAt, workflowRun.Status),
 		})
 	}

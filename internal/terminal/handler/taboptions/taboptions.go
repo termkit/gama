@@ -52,10 +52,10 @@ func NewOptions() *Options {
 		Align(lipgloss.Center).Padding(0, 1, 0, 1).
 		Border(b)
 
-	var initalOptions = []string{
+	var initialOptions = []string{
 		OptionWait.String(),
 	}
-	var initalOptionsAction = []string{
+	var initialOptionsAction = []string{
 		OptionWait.String(),
 	}
 
@@ -64,8 +64,8 @@ func NewOptions() *Options {
 
 	return &Options{
 		Style:           OptionsStyle,
-		options:         initalOptions,
-		optionsAction:   initalOptionsAction,
+		options:         initialOptions,
+		optionsAction:   initialOptionsAction,
 		optionsWithFunc: optionsWithFunc,
 		status:          OptionWait,
 	}

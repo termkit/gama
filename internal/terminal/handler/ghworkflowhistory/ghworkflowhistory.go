@@ -44,7 +44,7 @@ var baseStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("240"))
 
 func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflowHistory {
-	tableRowsWorkflowHistory := []table.Row{}
+	var tableRowsWorkflowHistory []table.Row
 
 	tableWorkflowHistory := table.New(
 		table.WithColumns(tableColumnsWorkflowHistory),
@@ -160,7 +160,7 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 			workflowRun.ActionName,
 			workflowRun.TriggeredBy,
 			workflowRun.StartedAt,
-			workflowRun.Conslusion,
+			workflowRun.Conclusion,
 			workflowRun.Duration,
 		})
 	}
