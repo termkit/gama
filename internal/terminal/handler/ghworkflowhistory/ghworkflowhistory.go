@@ -155,7 +155,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
-		go m.updateWorkflowHistory()
+		go m.syncWorkflowHistory()
 		m.lastRepository = m.SelectedRepository.RepositoryName
 	}
 
@@ -165,13 +165,13 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
-	//switch msg := msg.(type) {
-	//case tea.KeyMsg:
-	//	switch msg.String() {
-	//	case "right":
-	//
-	//	}
-	//}
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "r", "R":
+			go m.syncWorkflowHistory()
+		}
+	}
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
 	cmds = append(cmds, cmd)
@@ -182,7 +182,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
+func (m *ModelGithubWorkflowHistory) syncWorkflowHistory() {
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
