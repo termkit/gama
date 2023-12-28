@@ -112,7 +112,25 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.optionValues = optionValues
 		} else {
 			m.optionValues = nil
-			m.optionCursor = 0
+			//m.optionCursor = 0
+		}
+	}
+
+	if m.workflowContent != nil {
+		for i, choice := range m.workflowContent.Choices {
+			if fmt.Sprintf("%d", choice.ID) == m.tableTrigger.SelectedRow()[0] {
+				//choice.SetValue(option)
+				m.workflowContent.Choices[i].SetValue(m.optionValues[m.optionCursor])
+
+				rows := m.tableTrigger.Rows()
+				for i, row := range rows {
+					if row[0] == m.tableTrigger.SelectedRow()[0] {
+						rows[i][4] = m.optionValues[m.optionCursor]
+					}
+				}
+
+				m.tableTrigger.SetRows(rows)
+			}
 		}
 	}
 
@@ -233,22 +251,6 @@ func (m *ModelGithubTrigger) optionSelector() string {
 	for i, option := range m.optionValues {
 		if i == m.optionCursor {
 			processedValues = append(processedValues, selectedOptionStyle.Render(option))
-
-			for i, choice := range m.workflowContent.Choices {
-				if fmt.Sprintf("%d", choice.ID) == m.tableTrigger.SelectedRow()[0] {
-					//choice.SetValue(option)
-					m.workflowContent.Choices[i].SetValue(option)
-
-					rows := m.tableTrigger.Rows()
-					for i, row := range rows {
-						if row[0] == m.tableTrigger.SelectedRow()[0] {
-							rows[i][4] = option
-						}
-					}
-
-					m.tableTrigger.SetRows(rows)
-				}
-			}
 		} else {
 			processedValues = append(processedValues, unselectedOptionStyle.Render(option))
 		}
