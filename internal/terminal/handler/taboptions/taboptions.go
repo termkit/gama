@@ -60,7 +60,7 @@ func NewOptions() *Options {
 	}
 
 	optionsWithFunc := make(map[int]func())
-	optionsWithFunc[0] = func() {}
+	optionsWithFunc[0] = func() {} // NO OPERATION
 
 	return &Options{
 		Style:           OptionsStyle,
@@ -124,23 +124,26 @@ func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "1":
-			o.cursor = 1
-			go o.resetOptionsWithOriginal()
+			o.updateCursor(1)
 		case "2":
-			o.cursor = 2
-			go o.resetOptionsWithOriginal()
+			o.updateCursor(2)
 		case "3":
-			o.cursor = 3
-			go o.resetOptionsWithOriginal()
+			o.updateCursor(3)
 		case "4":
-			o.cursor = 4
-			go o.resetOptionsWithOriginal()
+			o.updateCursor(4)
 		case "enter":
 			o.executeOption()
 		}
 	}
 
 	return o, cmd
+}
+
+func (o *Options) updateCursor(cursor int) {
+	if cursor < len(o.options) {
+		o.cursor = cursor
+		go o.resetOptionsWithOriginal()
+	}
 }
 
 func (o *Options) View() string {
