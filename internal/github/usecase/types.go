@@ -52,7 +52,7 @@ type InspectWorkflowInput struct {
 }
 
 type InspectWorkflowOutput struct {
-	Workflow pw.Pretty
+	Workflow *pw.Pretty
 }
 
 // ------------------------------------------------------------

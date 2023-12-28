@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlgithubrepo "github.com/termkit/gama/internal/terminal/handler/ghrepository"
+	hdltrigger "github.com/termkit/gama/internal/terminal/handler/ghtrigger"
 	hdlWorkflow "github.com/termkit/gama/internal/terminal/handler/ghworkflow"
 	hdlworkflowhistory "github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
 	hdlinfo "github.com/termkit/gama/internal/terminal/handler/information"
@@ -43,6 +44,9 @@ type model struct {
 
 	modelWorkflowHistory       tea.Model
 	directModelWorkflowHistory *hdlworkflowhistory.ModelGithubWorkflowHistory
+
+	modelTrigger       tea.Model
+	actualModelTrigger *hdltrigger.ModelGithubTrigger
 }
 
 func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
@@ -63,21 +67,24 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase, &selectedRepository)
 	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository)
 	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase, &selectedRepository)
+	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(githubUseCase, &selectedRepository)
 
 	m := model{TabsWithColor: tabsWithColor,
 		TabContent: tabContent,
 		timer:      timer.New(1<<63 - 1),
 		modelInfo:  hdlModelInfo, actualModelInfo: hdlModelInfo,
+		SelectedRepository:    &selectedRepository,
 		modelGithubRepository: hdlModelGithubRepository, actualModelGithubRepository: hdlModelGithubRepository,
 		modelWorkflowHistory: hdlModelWorkflowHistory, directModelWorkflowHistory: hdlModelWorkflowHistory,
 		modelWorkflow: hdlModelWorkflow, directModelWorkflow: hdlModelWorkflow,
-		SelectedRepository: &selectedRepository,
+		modelTrigger: hdlModelTrigger, actualModelTrigger: hdlModelTrigger,
 	}
 
 	hdlModelInfo.Viewport = &m.viewport
 	hdlModelGithubRepository.Viewport = &m.viewport
 	hdlModelWorkflowHistory.Viewport = &m.viewport
 	hdlModelWorkflow.Viewport = &m.viewport
+	hdlModelTrigger.Viewport = &m.viewport
 
 	return &m
 }
@@ -87,7 +94,9 @@ func (m *model) Init() tea.Cmd {
 		m.timer.Init(),
 		m.modelInfo.Init(),
 		m.modelGithubRepository.Init(),
-		m.modelWorkflowHistory.Init())
+		m.modelWorkflowHistory.Init(),
+		m.modelWorkflow.Init(),
+		m.modelTrigger.Init())
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -179,7 +188,9 @@ func (m *model) View() string {
 		operationDoc = operationWindowStyle.Render(m.directModelWorkflow.ViewErrorOrOperation())
 		helpDoc = helpWindowStyle.Render(m.directModelWorkflow.ViewHelp())
 	case 4:
-		mainDoc.WriteString(dynamicWindowStyle.Render("Trigger Page\n"))
+		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelTrigger.View()))
+		operationDoc = operationWindowStyle.Render(m.actualModelTrigger.ViewErrorOrOperation())
+		helpDoc = helpWindowStyle.Render(m.actualModelTrigger.ViewHelp())
 	}
 
 	mainDocContent := ts.DocStyle.Render(mainDoc.String())
@@ -222,6 +233,8 @@ func (m *model) handleTabContent(cmd tea.Cmd, msg tea.Msg) tea.Cmd {
 		m.modelWorkflowHistory, cmd = m.modelWorkflowHistory.Update(msg)
 	case 3:
 		m.modelWorkflow, cmd = m.modelWorkflow.Update(msg)
+	case 4:
+		m.modelTrigger, cmd = m.modelTrigger.Update(msg)
 	}
 	return cmd
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/ghtrigger"
 	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 
@@ -30,6 +31,9 @@ type ModelGithubWorkflow struct {
 
 	modelTabOptions       tea.Model
 	actualModelTabOptions *taboptions.Options
+
+	modelGithubTrigger       tea.Model
+	actualModelGithubTrigger *ghtrigger.ModelGithubTrigger
 
 	lastRepository     string
 	SelectedRepository *hdltypes.SelectedRepository
@@ -151,6 +155,11 @@ func (m *ModelGithubWorkflow) updateTriggerableWorkflows() {
 	}
 
 	m.tableTriggerableWorkflow.SetRows(tableRowsTriggerableWorkflow)
+
+	if len(m.tableTriggerableWorkflow.Rows()) > 0 {
+		m.SelectedRepository.WorkflowName = m.tableTriggerableWorkflow.SelectedRow()[1]
+	}
+
 	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Triggerable workflows fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }

@@ -13,12 +13,14 @@ var (
 	WindowStyleGray   = lipgloss.NewStyle().BorderForeground(lipgloss.Color("240")).Border(lipgloss.NormalBorder())
 	WindowStyleWhite  = lipgloss.NewStyle().BorderForeground(lipgloss.Color("255")).Border(lipgloss.NormalBorder())
 	WindowStyleYellow = lipgloss.NewStyle().BorderForeground(lipgloss.Color("11")).Border(lipgloss.NormalBorder())
+	WindowStylePink   = lipgloss.NewStyle().BorderForeground(lipgloss.Color("205")).Border(lipgloss.RoundedBorder())
 
-	WindowStyleHelp     = WindowStyleGray.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
-	WindowStyleError    = WindowStyleRed.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
-	WindowStyleProgress = WindowStyleOrange.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
-	WindowStyleSuccess  = WindowStyleGreen.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
-	WindowStyleDefault  = WindowStyleWhite.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
+	WindowStyleHelp           = WindowStyleGray.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
+	WindowStyleError          = WindowStyleRed.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
+	WindowStyleProgress       = WindowStyleOrange.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
+	WindowStyleSuccess        = WindowStyleGreen.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
+	WindowStyleDefault        = WindowStyleWhite.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
+	WindowStyleOptionSelector = WindowStylePink.Copy().Margin(0, 0, 0, 1).Padding(0, 2, 0, 2)
 )
 
 var (

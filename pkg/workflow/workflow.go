@@ -69,6 +69,9 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 		}
 
 		if value.Type == "choice" {
+			if value.Default == nil {
+				value.Default = value.Options[0]
+			}
 			w.Content[key] = Content{
 				Description: value.Description,
 				Type:        "choice",
@@ -82,12 +85,19 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 		}
 
 		if value.Type == "string" || value.Type == "boolean" || value.Type == "number" || value.Type == "" {
+			defaultValue := ""
+			if value.Default == nil {
+				_, ok := value.Default.(string)
+				if ok {
+					defaultValue = value.Default.(string)
+				}
+			}
 			w.Content[key] = Content{
 				Description: value.Description,
 				Type:        "input",
 				Required:    value.Required,
 				Value: &Value{
-					Default: value.Default,
+					Default: defaultValue,
 					Value:   "",
 				},
 			}
@@ -97,7 +107,7 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 	return w, nil
 }
 
-func (w *Workflow) ToPretty() Pretty {
+func (w *Workflow) ToPretty() *Pretty {
 	var pretty Pretty
 	var id int
 	for parent, data := range w.Content {
@@ -124,17 +134,24 @@ func (w *Workflow) ToPretty() Pretty {
 			id++
 		}
 		if data.Value != nil {
+			var defaultValue string
+			if data.Value.Default != nil {
+				_, ok := data.Value.Default.(string)
+				if ok {
+					defaultValue = data.Value.Default.(string)
+				}
+			}
 			pretty.Inputs = append(pretty.Inputs, PrettyInput{
 				ID:      id,
 				Key:     parent,
 				Value:   "",
-				Default: data.Value.Default,
+				Default: defaultValue,
 			})
 			id++
 		}
 	}
 
-	return pretty
+	return &pretty
 }
 
 func (p *Pretty) ToJson() (string, error) {
@@ -181,23 +198,23 @@ type Pretty struct {
 type PrettyChoice struct {
 	ID      int
 	Key     string
-	Value   any
+	Value   string
 	Values  []string
 	Default string
 }
 
-func (c *PrettyChoice) SetValue(value any) {
+func (c *PrettyChoice) SetValue(value string) {
 	c.Value = value
 }
 
 type PrettyInput struct {
 	ID      int
 	Key     string
-	Value   any
-	Default any
+	Value   string
+	Default string
 }
 
-func (i *PrettyInput) SetValue(value any) {
+func (i *PrettyInput) SetValue(value string) {
 	i.Value = value
 }
 
@@ -205,11 +222,11 @@ type PrettyKeyValue struct {
 	ID      int
 	Parent  *string
 	Key     string
-	Value   any
-	Default any
+	Value   string
+	Default string
 }
 
-func (kv *PrettyKeyValue) SetValue(value any) {
+func (kv *PrettyKeyValue) SetValue(value string) {
 	kv.Value = value
 }
 
