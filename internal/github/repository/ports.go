@@ -16,4 +16,7 @@ type Repository interface {
 	GetTriggerableWorkflows(ctx context.Context, repository string) ([]Workflow, error)
 	InspectWorkflowContent(ctx context.Context, repository string, workflowFile string) ([]byte, error)
 	GetWorkflowRunLogs(ctx context.Context, repository string, runId int64) (GithubWorkflowRunLogs, error)
+	ReRunFailedJobs(ctx context.Context, repository string, runId int64) error
+	ReRunWorkflow(ctx context.Context, repository string, runId int64) error
+	CancelWorkflow(ctx context.Context, repository string, runId int64) error
 }

@@ -3,9 +3,7 @@ package ghworkflowhistory
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
@@ -33,6 +31,9 @@ type ModelGithubWorkflowHistory struct {
 
 	SelectedRepository *hdltypes.SelectedRepository
 	updateRound        int
+
+	Workflows          []gu.Workflow
+	selectedWorkflowID int64
 
 	isTableFocused bool
 
@@ -83,7 +84,9 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	openInBrowser := func() {
 		m.modelError.SetProgressMessage(fmt.Sprintf("Opening in browser..."))
 
-		err := browser.OpenInBrowser(fmt.Sprintf("https://github.com"))
+		var selectedWorkflow = fmt.Sprintf("https://github.com/%s/actions/runs/%d", m.SelectedRepository.RepositoryName, m.selectedWorkflowID)
+
+		err := browser.OpenInBrowser(selectedWorkflow)
 		if err != nil {
 			m.modelError.SetError(err)
 			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to open in browser"))
@@ -92,24 +95,72 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 		m.modelError.SetSuccessMessage(fmt.Sprintf("Opened in browser"))
 	}
 
-	x := func() {
-		m.modelError.SetProgressMessage(fmt.Sprintf("Executing..."))
-		time.Sleep(2 * time.Second)
-		m.modelError.SetSuccessMessage(fmt.Sprintf("%d", rand.Intn(100)))
+	reRunFailedJobs := func() {
+		m.modelError.SetProgressMessage(fmt.Sprintf("Re-running failed jobs..."))
+
+		_, err := m.githubUseCase.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
+			Repository: m.SelectedRepository.RepositoryName,
+			WorkflowID: m.selectedWorkflowID,
+		})
+
+		if err != nil {
+			m.modelError.SetError(err)
+			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to re-run failed jobs"))
+			return
+		}
+
+		m.modelError.SetSuccessMessage(fmt.Sprintf("Re-ran failed jobs"))
 	}
 
-	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
-	m.actualModelTabOptions.AddOption("Rerun failed jobs", x)
-	m.actualModelTabOptions.AddOption("Rerun workflow", x)
-	m.actualModelTabOptions.AddOption("Cancel workflow", x)
-	return m.modelTabOptions.Init()
+	reRunWorkflow := func() {
+		m.modelError.SetProgressMessage(fmt.Sprintf("Re-running workflow..."))
 
+		_, err := m.githubUseCase.ReRunWorkflow(context.Background(), gu.ReRunWorkflowInput{
+			Repository: m.SelectedRepository.RepositoryName,
+			WorkflowID: m.selectedWorkflowID,
+		})
+
+		if err != nil {
+			m.modelError.SetError(err)
+			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to re-run workflow"))
+			return
+		}
+
+		m.modelError.SetSuccessMessage(fmt.Sprintf("Re-ran workflow"))
+	}
+
+	cancelWorkflow := func() {
+		m.modelError.SetProgressMessage(fmt.Sprintf("Canceling workflow..."))
+
+		_, err := m.githubUseCase.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
+			Repository: m.SelectedRepository.RepositoryName,
+			WorkflowID: m.selectedWorkflowID,
+		})
+
+		if err != nil {
+			m.modelError.SetError(err)
+			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to cancel workflow"))
+			return
+		}
+
+		m.modelError.SetSuccessMessage(fmt.Sprintf("Canceled workflow"))
+	}
+	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
+	m.actualModelTabOptions.AddOption("Rerun failed jobs", reRunFailedJobs)
+	m.actualModelTabOptions.AddOption("Rerun workflow", reRunWorkflow)
+	m.actualModelTabOptions.AddOption("Cancel workflow", cancelWorkflow)
+
+	return m.modelTabOptions.Init()
 }
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
 		go m.updateWorkflowHistory()
 		m.lastRepository = m.SelectedRepository.RepositoryName
+	}
+
+	if m.Workflows != nil {
+		m.selectedWorkflowID = m.Workflows[m.tableWorkflowHistory.Cursor()].ID
 	}
 
 	var cmds []tea.Cmd
@@ -127,6 +178,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
 	cmds = append(cmds, cmd)
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -137,6 +189,9 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 
 	// delete all rows
 	m.tableWorkflowHistory.SetRows([]table.Row{})
+
+	// delete old workflows
+	m.Workflows = nil
 
 	workflowHistory, err := m.githubUseCase.GetWorkflowHistory(context.Background(), gu.GetWorkflowHistoryInput{
 		Repository: m.SelectedRepository.RepositoryName,
@@ -153,8 +208,10 @@ func (m *ModelGithubWorkflowHistory) updateWorkflowHistory() {
 		return
 	}
 
+	m.Workflows = workflowHistory.Workflows
+
 	var tableRowsWorkflowHistory []table.Row
-	for _, workflowRun := range workflowHistory.Workflows {
+	for _, workflowRun := range m.Workflows {
 		tableRowsWorkflowHistory = append(tableRowsWorkflowHistory, table.Row{
 			workflowRun.WorkflowName,
 			workflowRun.ActionName,

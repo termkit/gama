@@ -242,6 +242,48 @@ func (r *Repo) GetWorkflowRunLogs(ctx context.Context, repository string, runId 
 	return workflowRunLogs, nil
 }
 
+func (r *Repo) ReRunFailedJobs(ctx context.Context, repository string, runId int64) error {
+	// Re-run failed jobs for a given workflow run
+	err := r.do(ctx, nil, nil, requestOptions{
+		method:      http.MethodPost,
+		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10) + "/rerun-failed-jobs",
+		contentType: "application/json",
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repo) ReRunWorkflow(ctx context.Context, repository string, runId int64) error {
+	// Re-run a given workflow run
+	err := r.do(ctx, nil, nil, requestOptions{
+		method:      http.MethodPost,
+		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10) + "/rerun",
+		contentType: "application/json",
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repo) CancelWorkflow(ctx context.Context, repository string, runId int64) error {
+	// Cancel a given workflow run
+	err := r.do(ctx, nil, nil, requestOptions{
+		method:      http.MethodPost,
+		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10) + "/cancel",
+		contentType: "application/json",
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, requestOptions requestOptions) error {
 	// Construct the request URL
 	reqURL, err := url.Parse(requestOptions.path)

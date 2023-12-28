@@ -103,7 +103,7 @@ func (u useCase) GetWorkflowHistory(ctx context.Context, input GetWorkflowHistor
 	var workflows []Workflow
 	for _, workflowRun := range workflowRuns.WorkflowRuns {
 		workflows = append(workflows, Workflow{
-			ID:           workflowRun.WorkflowID,
+			ID:           workflowRun.ID,
 			WorkflowName: workflowRun.Name,
 			ActionName:   workflowRun.DisplayTitle,
 			TriggeredBy:  workflowRun.Actor.Login,
@@ -170,6 +170,27 @@ func (u useCase) TriggerWorkflow(ctx context.Context, input TriggerWorkflowInput
 	}
 
 	return &TriggerWorkflowOutput{}, nil
+}
+
+func (u useCase) ReRunFailedJobs(ctx context.Context, input ReRunFailedJobsInput) (*ReRunFailedJobsOutput, error) {
+	if err := u.githubRepository.ReRunFailedJobs(ctx, input.Repository, input.WorkflowID); err != nil {
+		return nil, err
+	}
+	return &ReRunFailedJobsOutput{}, nil
+}
+
+func (u useCase) ReRunWorkflow(ctx context.Context, input ReRunWorkflowInput) (*ReRunWorkflowOutput, error) {
+	if err := u.githubRepository.ReRunWorkflow(ctx, input.Repository, input.WorkflowID); err != nil {
+		return nil, err
+	}
+	return &ReRunWorkflowOutput{}, nil
+}
+
+func (u useCase) CancelWorkflow(ctx context.Context, input CancelWorkflowInput) (*CancelWorkflowOutput, error) {
+	if err := u.githubRepository.CancelWorkflow(ctx, input.Repository, input.WorkflowID); err != nil {
+		return nil, err
+	}
+	return &CancelWorkflowOutput{}, nil
 }
 
 func (u useCase) timeToString(t time.Time) string {

@@ -85,3 +85,33 @@ type TriggerableWorkflow struct {
 	Name string
 	Path string
 }
+
+// ------------------------------------------------------------
+
+type ReRunFailedJobsInput struct {
+	Repository string
+	WorkflowID int64
+}
+
+type ReRunFailedJobsOutput struct {
+}
+
+// ------------------------------------------------------------
+
+type ReRunWorkflowInput struct {
+	Repository string
+	WorkflowID int64
+}
+
+type ReRunWorkflowOutput struct {
+}
+
+// ------------------------------------------------------------
+
+type CancelWorkflowInput struct {
+	Repository string
+	WorkflowID int64
+}
+
+type CancelWorkflowOutput struct {
+}
