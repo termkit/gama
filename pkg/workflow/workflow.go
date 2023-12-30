@@ -86,7 +86,7 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 
 		if value.Type == "string" || value.Type == "boolean" || value.Type == "number" || value.Type == "" {
 			defaultValue := ""
-			if value.Default == nil {
+			if value.Default != nil {
 				_, ok := value.Default.(string)
 				if ok {
 					defaultValue = value.Default.(string)
