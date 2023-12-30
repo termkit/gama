@@ -91,9 +91,9 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+left":
+		case "left":
 			m.optionCursor = max(m.optionCursor-1, 0)
-		case "ctrl+right":
+		case "right":
 			m.optionCursor = min(m.optionCursor+1, len(m.optionValues)-1)
 		}
 	}
@@ -119,7 +119,6 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.workflowContent != nil {
 		for i, choice := range m.workflowContent.Choices {
 			if fmt.Sprintf("%d", choice.ID) == m.tableTrigger.SelectedRow()[0] {
-				//choice.SetValue(option)
 				m.workflowContent.Choices[i].SetValue(m.optionValues[m.optionCursor])
 
 				rows := m.tableTrigger.Rows()

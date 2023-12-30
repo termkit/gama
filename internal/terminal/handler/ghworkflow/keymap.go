@@ -5,35 +5,23 @@ import (
 )
 
 type keyMap struct {
-	NextTab     teakey.Binding
-	PreviousTab teakey.Binding
-	Quit        teakey.Binding
+	TabSwitch teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.PreviousTab, k.NextTab, k.Quit}
+	return []teakey.Binding{k.TabSwitch}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
-		{k.PreviousTab},
-		{k.NextTab},
-		{k.Quit},
+		{k.TabSwitch},
 	}
 }
 
 var keys = keyMap{
-	PreviousTab: teakey.NewBinding(
-		teakey.WithKeys("left"),
-		teakey.WithHelp("←", "previous tab"),
-	),
-	NextTab: teakey.NewBinding(
-		teakey.WithKeys("right"),
-		teakey.WithHelp("→", "trigger page"),
-	),
-	Quit: teakey.NewBinding(
-		teakey.WithKeys("q", "ctrl+c"),
-		teakey.WithHelp("q", "quit"),
+	TabSwitch: teakey.NewBinding(
+		teakey.WithKeys("ctrl+left", "ctrl+right"),
+		teakey.WithHelp("ctrl + (← | →)", "switch tab"),
 	),
 }
 

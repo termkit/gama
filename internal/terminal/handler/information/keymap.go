@@ -28,8 +28,8 @@ var keys = keyMap{
 		teakey.WithHelp("r/R", "Empty cache & reload"),
 	),
 	NextTab: teakey.NewBinding(
-		teakey.WithKeys("right"),
-		teakey.WithHelp("→", "next tab"),
+		teakey.WithKeys("ctrl+right"),
+		teakey.WithHelp("ctrl + →", "next tab"),
 	),
 	Quit: teakey.NewBinding(
 		teakey.WithKeys("q", "ctrl+c"),

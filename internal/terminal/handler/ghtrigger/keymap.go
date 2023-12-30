@@ -7,33 +7,27 @@ import (
 type keyMap struct {
 	PreviousTab teakey.Binding
 	Refresh     teakey.Binding
-	Quit        teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.PreviousTab, k.Refresh, k.Quit}
+	return []teakey.Binding{k.PreviousTab, k.Refresh}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.PreviousTab},
 		{k.Refresh},
-		{k.Quit},
 	}
 }
 
 var keys = keyMap{
 	PreviousTab: teakey.NewBinding(
-		teakey.WithKeys("left"),
-		teakey.WithHelp("←", "previous tab"),
+		teakey.WithKeys("ctrl+left"),
+		teakey.WithHelp("ctrl + ←", "previous tab"),
 	),
 	Refresh: teakey.NewBinding(
 		teakey.WithKeys("ctrl+r", "ctrl+R"),
 		teakey.WithHelp("ctrl+r", "Refresh workflow"),
-	),
-	Quit: teakey.NewBinding(
-		teakey.WithKeys("q", "ctrl+c"),
-		teakey.WithHelp("q", "quit"),
 	),
 }
 
