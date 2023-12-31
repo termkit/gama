@@ -80,7 +80,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SelectedRepository.RepositoryName != m.selectedRepositoryName {
 		m.selectedWorkflow = m.SelectedRepository.WorkflowName
 		m.selectedRepositoryName = m.SelectedRepository.RepositoryName
-		go m.syncWorkflowContent()
+		m.syncWorkflowContent()
 	}
 
 	var cmds []tea.Cmd
@@ -96,8 +96,8 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			m.triggerFocused = !m.triggerFocused
 			if m.triggerFocused {
-				m.showInformationIfAnyEmptyValue()
 				m.tableTrigger.Blur()
+				m.showInformationIfAnyEmptyValue()
 			} else {
 				m.tableTrigger.Focus()
 			}
@@ -113,6 +113,12 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.tableTrigger, cmd = m.tableTrigger.Update(msg)
 	cmds = append(cmds, cmd)
 
+	m.choiceSelector()
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m *ModelGithubTrigger) choiceSelector() {
 	if len(m.tableTrigger.Rows()) > 0 {
 		if m.tableTrigger.SelectedRow()[1] == "choice" {
 			var optionValues []string
@@ -144,8 +150,6 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-
-	return m, tea.Batch(cmds...)
 }
 
 func (m *ModelGithubTrigger) View() string {
@@ -243,19 +247,22 @@ func (m *ModelGithubTrigger) syncWorkflowContent() {
 	}
 
 	m.tableTrigger.SetRows(tableRowsTrigger)
+
 	m.tableTrigger.SetCursor(0)
+	m.optionCursor = 0
+	m.optionValues = nil
+	m.triggerFocused = false
+	m.tableTrigger.Focus()
 
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
 		m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 
 func (m *ModelGithubTrigger) showInformationIfAnyEmptyValue() {
-	if m.triggerFocused {
-		for _, row := range m.tableTrigger.Rows() {
-			if row[4] == "" {
-				m.modelError.SetDefaultMessage("Info: You have empty values. These values uses their default values.")
-				return
-			}
+	for _, row := range m.tableTrigger.Rows() {
+		if row[4] == "" {
+			m.modelError.SetDefaultMessage("Info: You have empty values. These values uses their default values.")
+			return
 		}
 	}
 }
@@ -277,7 +284,40 @@ func (m *ModelGithubTrigger) triggerButton() string {
 	return button.Render("Trigger")
 }
 
+func (m *ModelGithubTrigger) fillEmptyValuesWithDefault() {
+	rows := m.tableTrigger.Rows()
+	for i, row := range rows {
+		if row[4] == "" {
+			rows[i][4] = rows[i][3]
+		}
+	}
+	m.tableTrigger.SetRows(rows)
+
+	for i, choice := range m.workflowContent.Choices {
+		if choice.Value == "" {
+			m.workflowContent.Choices[i].SetValue(choice.Default)
+		}
+
+	}
+
+	for i, input := range m.workflowContent.Inputs {
+		if input.Value == "" {
+			m.workflowContent.Inputs[i].SetValue(input.Default)
+		}
+	}
+
+	for i, keyVal := range m.workflowContent.KeyVals {
+		if keyVal.Value == "" {
+			m.workflowContent.KeyVals[i].SetValue(keyVal.Default)
+		}
+	}
+}
+
 func (m *ModelGithubTrigger) triggerWorkflow() {
+	if m.triggerFocused {
+		m.fillEmptyValuesWithDefault()
+	}
+
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s]:[%s] Triggering workflow...",
 			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName, m.selectedWorkflow))
