@@ -96,6 +96,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			m.triggerFocused = !m.triggerFocused
 			if m.triggerFocused {
+				m.showInformationIfAnyEmptyValue()
 				m.tableTrigger.Blur()
 			} else {
 				m.tableTrigger.Focus()
@@ -248,6 +249,17 @@ func (m *ModelGithubTrigger) syncWorkflowContent() {
 		m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 
+func (m *ModelGithubTrigger) showInformationIfAnyEmptyValue() {
+	if m.triggerFocused {
+		for _, row := range m.tableTrigger.Rows() {
+			if row[4] == "" {
+				m.modelError.SetDefaultMessage("Info: You have empty values. These values uses their default values.")
+				return
+			}
+		}
+	}
+}
+
 func (m *ModelGithubTrigger) triggerButton() string {
 	button := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
@@ -257,7 +269,9 @@ func (m *ModelGithubTrigger) triggerButton() string {
 
 	if m.triggerFocused {
 		button = button.Copy().
-			BorderForeground(lipgloss.Color("120")).Foreground(lipgloss.Color("120"))
+			BorderForeground(lipgloss.Color("130")).
+			Foreground(lipgloss.Color("130")).
+			BorderStyle(lipgloss.DoubleBorder())
 	}
 
 	return button.Render("Trigger")
