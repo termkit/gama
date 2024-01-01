@@ -23,7 +23,7 @@ type model struct {
 	// Current Handler's properties
 	TabsWithColor     []string
 	TabContent        []string
-	currentTab        int
+	currentTab        *int
 	isTabActive       bool
 	viewport          viewport.Model
 	terminalSizeReady bool
@@ -50,6 +50,9 @@ type model struct {
 }
 
 func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
+	var currentTab = new(int)
+	var forceUpdateWorkflowHistory = new(bool)
+
 	tabsWithColor := []string{"Info", "Repository", "Workflow History", "Workflow", "Trigger"}
 
 	tabContent := []string{
@@ -65,14 +68,16 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 	// setup models
 	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase)
 	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase, &selectedRepository)
-	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository)
+	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository, forceUpdateWorkflowHistory)
 	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase, &selectedRepository)
-	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(githubUseCase, &selectedRepository)
+	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(githubUseCase, &selectedRepository, currentTab, forceUpdateWorkflowHistory)
 
-	m := model{TabsWithColor: tabsWithColor,
-		TabContent: tabContent,
-		timer:      timer.New(1<<63 - 1),
-		modelInfo:  hdlModelInfo, actualModelInfo: hdlModelInfo,
+	m := model{
+		currentTab:    currentTab,
+		TabsWithColor: tabsWithColor,
+		TabContent:    tabContent,
+		timer:         timer.New(1<<63 - 1),
+		modelInfo:     hdlModelInfo, actualModelInfo: hdlModelInfo,
 		SelectedRepository:    &selectedRepository,
 		modelGithubRepository: hdlModelGithubRepository, actualModelGithubRepository: hdlModelGithubRepository,
 		modelWorkflowHistory: hdlModelWorkflowHistory, directModelWorkflowHistory: hdlModelWorkflowHistory,
@@ -110,10 +115,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+left":
-			m.currentTab = max(m.currentTab-1, 0)
+			*m.currentTab = max(*m.currentTab-1, 0)
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
 		case "ctrl+right":
-			m.currentTab = min(m.currentTab+1, len(m.TabsWithColor)-1)
+			*m.currentTab = min(*m.currentTab+1, len(m.TabsWithColor)-1)
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
 		case "enter":
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
@@ -150,7 +155,7 @@ func (m *model) View() string {
 	var renderedTabs []string
 	for i, t := range m.TabsWithColor {
 		var style lipgloss.Style
-		isActive := i == m.currentTab
+		isActive := i == *m.currentTab
 		if isActive {
 			style = ts.TitleStyleActive.Copy()
 		} else {
@@ -170,7 +175,7 @@ func (m *model) View() string {
 	helpWindowStyle := ts.WindowStyleHelp.Width(width)
 	operationWindowStyle := lipgloss.NewStyle()
 
-	switch m.currentTab {
+	switch *m.currentTab {
 	case 0:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelInfo.View()))
 		operationDoc = operationWindowStyle.Render(m.actualModelInfo.ViewErrorOrOperation())
@@ -224,7 +229,7 @@ func (m *model) syncTerminal(msg tea.Msg) {
 }
 
 func (m *model) handleTabContent(cmd tea.Cmd, msg tea.Msg) tea.Cmd {
-	switch m.currentTab {
+	switch *m.currentTab {
 	case 0:
 		m.modelInfo, cmd = m.modelInfo.Update(msg)
 	case 1:

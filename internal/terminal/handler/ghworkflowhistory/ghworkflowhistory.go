@@ -38,13 +38,15 @@ type ModelGithubWorkflowHistory struct {
 	isTableFocused bool
 
 	lastRepository string
+
+	forceUpdate *bool
 }
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflowHistory {
+func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, forceUpdate *bool) *ModelGithubWorkflowHistory {
 	var tableRowsWorkflowHistory []table.Row
 
 	tableWorkflowHistory := table.New(
@@ -77,6 +79,7 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 		SelectedRepository:    selectedRepository,
 		modelTabOptions:       tabOptions,
 		actualModelTabOptions: tabOptions,
+		forceUpdate:           forceUpdate,
 	}
 }
 
@@ -149,6 +152,16 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	m.actualModelTabOptions.AddOption("Rerun failed jobs", reRunFailedJobs)
 	m.actualModelTabOptions.AddOption("Rerun workflow", reRunWorkflow)
 	m.actualModelTabOptions.AddOption("Cancel workflow", cancelWorkflow)
+
+	go func() {
+		// Make it works with to channels
+		for {
+			if *m.forceUpdate {
+				go m.syncWorkflowHistory()
+				*m.forceUpdate = false
+			}
+		}
+	}()
 
 	return m.modelTabOptions.Init()
 }

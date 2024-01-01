@@ -2,8 +2,10 @@ package ghtrigger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
@@ -26,6 +28,9 @@ type ModelGithubTrigger struct {
 
 	tableTrigger table.Model
 
+	currentTab                 *int
+	forceUpdateWorkflowHistory *bool
+
 	optionCursor  int
 	optionValues  []string
 	currentOption string
@@ -39,7 +44,7 @@ type ModelGithubTrigger struct {
 	SelectedRepository     *hdltypes.SelectedRepository
 }
 
-func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubTrigger {
+func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, currentTab *int, forceUpdateWorkflowHistory *bool) *ModelGithubTrigger {
 	var tableRowsTrigger []table.Row
 
 	tableTrigger := table.New(
@@ -62,12 +67,14 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 	tableTrigger.SetStyles(s)
 
 	return &ModelGithubTrigger{
-		Help:               help.New(),
-		Keys:               keys,
-		githubUseCase:      githubUseCase,
-		SelectedRepository: selectedRepository,
-		modelError:         hdlerror.SetupModelError(),
-		tableTrigger:       tableTrigger,
+		currentTab:                 currentTab,
+		forceUpdateWorkflowHistory: forceUpdateWorkflowHistory,
+		Help:                       help.New(),
+		Keys:                       keys,
+		githubUseCase:              githubUseCase,
+		SelectedRepository:         selectedRepository,
+		modelError:                 hdlerror.SetupModelError(),
+		tableTrigger:               tableTrigger,
 	}
 }
 
@@ -103,7 +110,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if m.triggerFocused {
-				m.triggerWorkflow()
+				go m.triggerWorkflow()
 				// switch tab to workflow history
 				// reset selected options
 			}
@@ -285,6 +292,12 @@ func (m *ModelGithubTrigger) triggerButton() string {
 }
 
 func (m *ModelGithubTrigger) fillEmptyValuesWithDefault() {
+	if m.workflowContent == nil {
+		m.modelError.SetError(errors.New("workflow contents cannot be empty"))
+		m.modelError.SetErrorMessage("You have no workflow contents")
+		return
+	}
+
 	rows := m.tableTrigger.Rows()
 	for i, row := range rows {
 		if row[4] == "" {
@@ -316,6 +329,7 @@ func (m *ModelGithubTrigger) fillEmptyValuesWithDefault() {
 func (m *ModelGithubTrigger) triggerWorkflow() {
 	if m.triggerFocused {
 		m.fillEmptyValuesWithDefault()
+		//return
 	}
 
 	m.modelError.SetProgressMessage(
@@ -348,6 +362,23 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s]:[%s] Workflow triggered.",
 		m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName, m.selectedWorkflow))
+
+	time.Sleep(1 * time.Second)
+	m.modelError.SetProgressMessage("Switching to workflow history tab...")
+	time.Sleep(1 * time.Second)
+
+	// move these operations under new function named "resetTabSettings"
+	m.workflowContent = nil       // reset workflow content
+	m.selectedWorkflow = ""       // reset selected workflow
+	m.currentOption = ""          // reset current option
+	m.optionValues = nil          // reset option values
+	m.selectedRepositoryName = "" // reset selected repository name
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		*m.forceUpdateWorkflowHistory = true // force update workflow history
+	}()
+	*m.currentTab = 2 // switch tab to workflow history
 }
 
 func (m *ModelGithubTrigger) optionSelector() string {
