@@ -286,6 +286,9 @@ func (m *ModelGithubTrigger) syncWorkflowContent() {
 		fmt.Sprintf("[%s@%s] Fetching workflow contents...",
 			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 
+	// reset table rows
+	m.tableTrigger.SetRows([]table.Row{})
+
 	workflowContent, err := m.githubUseCase.InspectWorkflow(context.Background(), gu.InspectWorkflowInput{
 		Repository:   m.SelectedRepository.RepositoryName,
 		Branch:       m.SelectedRepository.BranchName,
