@@ -53,6 +53,7 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 
 func (r *Repo) ListRepositories(ctx context.Context) ([]GithubRepository, error) {
 	// List repositories for the authenticated user
+	// set limit to 100
 	var repositories []GithubRepository
 	err := r.do(ctx, nil, &repositories, requestOptions{
 		method:      http.MethodGet,
@@ -60,6 +61,7 @@ func (r *Repo) ListRepositories(ctx context.Context) ([]GithubRepository, error)
 		contentType: "application/json",
 		queryParams: map[string]string{
 			"visibility": "private",
+			"per_page":   "100",
 		},
 	})
 	if err != nil {
