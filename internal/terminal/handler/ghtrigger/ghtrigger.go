@@ -281,6 +281,7 @@ func (m *ModelGithubTrigger) View() string {
 }
 
 func (m *ModelGithubTrigger) syncWorkflowContent() {
+	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow contents...",
 			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
@@ -293,6 +294,13 @@ func (m *ModelGithubTrigger) syncWorkflowContent() {
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Workflow contents cannot be fetched")
+		return
+	}
+
+	if workflowContent.Workflow == nil {
+		m.modelError.SetError(errors.New("workflow contents cannot be empty"))
+		m.modelError.SetErrorMessage("You have no workflow contents")
+		return
 	}
 
 	if len(workflowContent.Workflow.KeyVals) == 0 &&
