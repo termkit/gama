@@ -22,8 +22,8 @@ func (k keyMap) FullHelp() [][]teakey.Binding {
 
 var keys = keyMap{
 	NextTab: teakey.NewBinding(
-		teakey.WithKeys("ctrl+right"),
-		teakey.WithHelp("ctrl + →", "next tab"),
+		teakey.WithKeys("shift+right"),
+		teakey.WithHelp("shift + →", "next tab"),
 	),
 	Quit: teakey.NewBinding(
 		teakey.WithKeys("q", "ctrl+c"),

@@ -22,8 +22,8 @@ func (k keyMap) FullHelp() [][]teakey.Binding {
 
 var keys = keyMap{
 	PreviousTab: teakey.NewBinding(
-		teakey.WithKeys("ctrl+left"),
-		teakey.WithHelp("ctrl + ←", "previous tab"),
+		teakey.WithKeys("shift+left"),
+		teakey.WithHelp("shift + ←", "previous tab"),
 	),
 	Refresh: teakey.NewBinding(
 		teakey.WithKeys("ctrl+r", "ctrl+R"),

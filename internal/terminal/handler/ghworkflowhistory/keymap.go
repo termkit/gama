@@ -32,8 +32,8 @@ var keys = keyMap{
 		teakey.WithHelp("enter", "Launch the selected option"),
 	),
 	TabSwitch: teakey.NewBinding(
-		teakey.WithKeys("ctrl+left", "ctrl+right"),
-		teakey.WithHelp("ctrl + (← | →)", "switch tab"),
+		teakey.WithKeys("shift+left", "shift+right"),
+		teakey.WithHelp("shift + (← | →)", "switch tab"),
 	),
 }
 

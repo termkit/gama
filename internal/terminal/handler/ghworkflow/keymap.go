@@ -20,8 +20,8 @@ func (k keyMap) FullHelp() [][]teakey.Binding {
 
 var keys = keyMap{
 	TabSwitch: teakey.NewBinding(
-		teakey.WithKeys("ctrl+left", "ctrl+right"),
-		teakey.WithHelp("ctrl + (← | →)", "switch tab"),
+		teakey.WithKeys("shift+left", "shift+right"),
+		teakey.WithHelp("shift + (← | →)", "switch tab"),
 	),
 }
 
