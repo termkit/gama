@@ -2,17 +2,20 @@ package usecase
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/termkit/gama/internal/github/repository"
+	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
 func TestUseCase_ListRepositories(t *testing.T) {
 	ctx := context.Background()
+	cfg, err := pkgconfig.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	githubRepo := repository.New()
-	githubRepo.Initialize(ctx, repository.GithubConfig{Token: os.Getenv("GITHUB_TOKEN")})
+	githubRepo := repository.New(cfg)
 
 	githubUseCase := New(githubRepo)
 
@@ -25,9 +28,12 @@ func TestUseCase_ListRepositories(t *testing.T) {
 
 func TestUseCase_InspectWorkflow(t *testing.T) {
 	ctx := context.Background()
+	cfg, err := pkgconfig.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	githubRepo := repository.New()
-	githubRepo.Initialize(ctx, repository.GithubConfig{Token: os.Getenv("GITHUB_TOKEN")})
+	githubRepo := repository.New(cfg)
 
 	githubUseCase := New(githubRepo)
 
@@ -43,9 +49,12 @@ func TestUseCase_InspectWorkflow(t *testing.T) {
 
 func TestUseCase_TriggerWorkflow(t *testing.T) {
 	ctx := context.Background()
+	cfg, err := pkgconfig.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	githubRepo := repository.New()
-	githubRepo.Initialize(ctx, repository.GithubConfig{Token: os.Getenv("GITHUB_TOKEN")})
+	githubRepo := repository.New(cfg)
 
 	githubUseCase := New(githubRepo)
 

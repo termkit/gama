@@ -141,7 +141,7 @@ func (u useCase) GetTriggerableWorkflows(ctx context.Context, input GetTriggerab
 }
 
 func (u useCase) InspectWorkflow(ctx context.Context, input InspectWorkflowInput) (*InspectWorkflowOutput, error) {
-	workflowData, err := u.githubRepository.InspectWorkflowContent(ctx, input.Repository, input.WorkflowFile)
+	workflowData, err := u.githubRepository.InspectWorkflowContent(ctx, input.Repository, input.Branch, input.WorkflowFile)
 	if err != nil {
 		return nil, err
 	}

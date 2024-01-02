@@ -4,14 +4,18 @@ package repository
 
 import (
 	"context"
-	"os"
 	"testing"
+
+	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
 func newRepo(ctx context.Context) *Repo {
-	repo := New()
+	cfg, err := pkgconfig.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
 
-	repo.Initialize(ctx, GithubConfig{Token: os.Getenv("GITHUB_TOKEN")})
+	repo := New(cfg)
 	return repo
 }
 

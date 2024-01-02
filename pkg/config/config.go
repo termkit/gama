@@ -28,8 +28,8 @@ func LoadConfig() (*Config, error) {
 	}
 
 	viper.AddConfigPath(configPath)
-	viper.SetConfigName(".gama")
-	viper.SetConfigType("yaml")
+	viper.SetConfigName(configName)
+	viper.SetConfigType(configType)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(`.`, `_`))
 	viper.BindEnv("github.token", "GITHUB_TOKEN")
 	viper.AutomaticEnv()

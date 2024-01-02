@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	pkgconfig "github.com/termkit/gama/pkg/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,16 +24,13 @@ type Repo struct {
 
 var githubAPIURL = "https://api.github.com"
 
-func New() *Repo {
+func New(cfg *pkgconfig.Config) *Repo {
 	return &Repo{
 		Client: &http.Client{
 			Timeout: 20 * time.Second,
 		},
+		githubToken: cfg.Github.Token,
 	}
-}
-
-func (r *Repo) Initialize(ctx context.Context, config GithubConfig, opts ...InitializeOptions) {
-	r.githubToken = config.Token
 }
 
 func (r *Repo) TestConnection(ctx context.Context) error {
@@ -191,13 +189,16 @@ func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) (
 	return triggerableWorkflows, nil
 }
 
-func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, workflowFile string) ([]byte, error) {
+func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, branch string, workflowFile string) ([]byte, error) {
 	// Get the content of the workflow file
 	var githubFile githubFile
 	err := r.do(ctx, nil, &githubFile, requestOptions{
 		method:      http.MethodGet,
 		path:        githubAPIURL + "/repos/" + repository + "/contents/" + workflowFile,
 		contentType: "application/vnd.github.VERSION.raw",
+		queryParams: map[string]string{
+			"ref": branch,
+		},
 	})
 	if err != nil {
 		return nil, err

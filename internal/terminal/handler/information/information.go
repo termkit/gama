@@ -1,14 +1,13 @@
 package information
 
 import (
-	"math/rand"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
-	teakey "github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 )
@@ -18,17 +17,21 @@ type ModelInfo struct {
 	Keys     keyMap
 	Viewport *viewport.Model
 
-	githubUseCase     gu.UseCase
-	githubInformation githubInformation
+	githubUseCase gu.UseCase
 
 	modelError hdlerror.ModelError
 }
 
-type githubInformation struct {
-	Repositories int
-	Workflows    int
-	ActionRuns   int
-}
+const (
+	applicationName = `
+ ..|'''.|      |     '||    ||'     |     
+.|'     '     |||     |||  |||     |||    
+||    ....   |  ||    |'|..'||    |  ||   
+'|.    ||   .''''|.   | '|' ||   .''''|.  
+''|...'|  .|.  .||. .|. | .||. .|.  .||.
+`
+	applicatonDescription = "Github Actions Manager"
+)
 
 func SetupModelInfo(githubUseCase gu.UseCase) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
@@ -42,11 +45,6 @@ func SetupModelInfo(githubUseCase gu.UseCase) *ModelInfo {
 }
 
 func (m *ModelInfo) Init() tea.Cmd {
-	m.githubInformation = githubInformation{
-		Repositories: 100,
-		Workflows:    34,
-		ActionRuns:   12,
-	}
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
 
 	return nil
@@ -59,13 +57,8 @@ func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Help.Width = msg.Width
 	case tea.KeyMsg:
 		switch {
-		case teakey.Matches(msg, m.Keys.Refresh):
-			// Placeholder
-			m.githubInformation = githubInformation{
-				Repositories: rand.Intn(100),
-				Workflows:    rand.Intn(100),
-				ActionRuns:   rand.Intn(100),
-			}
+		case key.Matches(msg, m.Keys.Quit):
+			return m, tea.Quit
 		}
 	}
 
@@ -75,22 +68,18 @@ func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelInfo) View() string {
 	infoDoc := strings.Builder{}
 
-	repos := strconv.Itoa(m.githubInformation.Repositories)
-	workflows := strconv.Itoa(m.githubInformation.Workflows)
-	actionRuns := strconv.Itoa(m.githubInformation.ActionRuns)
+	ws := lipgloss.NewStyle().BorderForeground(lipgloss.Color("39")).Align(lipgloss.Center).Border(lipgloss.RoundedBorder()).Width(m.Viewport.Width - 7)
 
-	infoDoc.WriteString("Github Information\n")
-	infoDoc.WriteString("Repositories: " + repos + "\n")
-	infoDoc.WriteString("Workflows: " + workflows + "\n")
-	infoDoc.WriteString("Action Runs: " + actionRuns + "\n")
+	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicatonDescription))
 
-	return infoDoc.String()
+	docHeight := strings.Count(infoDoc.String(), "\n")
+	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 13
+
+	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
+
+	return ws.Render(infoDoc.String())
 }
 
 func (m *ModelInfo) ViewErrorOrOperation() string {
 	return m.modelError.View()
-}
-
-func (m *ModelInfo) IsError() bool {
-	return m.modelError.IsError()
 }

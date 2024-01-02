@@ -89,14 +89,13 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	//switch msg := msg.(type) {
-	//case tea.KeyMsg:
-	//	switch msg.String() {
-	//	case "q", "ctrl+c":
-	//		return m, tea.Quit
-	//	}
-	//}
+
 	m.tableTriggerableWorkflow, cmd = m.tableTriggerableWorkflow.Update(msg)
+
+	if len(m.tableTriggerableWorkflow.Rows()) > 0 {
+		m.SelectedRepository.WorkflowName = m.tableTriggerableWorkflow.SelectedRow()[1]
+	}
+
 	return m, cmd
 }
 
@@ -161,6 +160,7 @@ func (m *ModelGithubWorkflow) updateTriggerableWorkflows() {
 	}
 
 	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
+	go m.Update(m)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Triggerable workflows fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 

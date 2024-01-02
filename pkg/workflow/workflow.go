@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"encoding/json"
+	"reflect"
 
 	py "github.com/termkit/gama/pkg/yaml"
 )
@@ -183,12 +184,30 @@ func (p *Pretty) ToJson() (string, error) {
 		result[i.Key] = i.Value
 	}
 
-	// Marshal the aggregated data into JSON
-	jsonData, err := json.Marshal(result)
-	if err != nil {
-		return "", err // Return an empty string and the error
+	if err := convertJsonToString(result); err != nil {
+		return "", err
 	}
-	return string(jsonData), nil // Return the JSON string
+
+	modifiedJSON, err := json.Marshal(result)
+	if err != nil {
+		return "", err
+	}
+
+	return string(modifiedJSON), nil
+}
+
+func convertJsonToString(m map[string]interface{}) error {
+	for k, v := range m {
+		if reflect.TypeOf(v).Kind() == reflect.Map {
+			// Convert map to a JSON string
+			str, err := json.Marshal(v)
+			if err != nil {
+				return err
+			}
+			m[k] = string(str)
+		}
+	}
+	return nil
 }
 
 type Pretty struct {

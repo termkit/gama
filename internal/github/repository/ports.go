@@ -5,7 +5,6 @@ import (
 )
 
 type Repository interface {
-	Initialize(ctx context.Context, config GithubConfig, opts ...InitializeOptions)
 	TestConnection(ctx context.Context) error
 	ListRepositories(ctx context.Context) ([]GithubRepository, error)
 	GetRepository(ctx context.Context, repository string) (*GithubRepository, error)
@@ -14,7 +13,7 @@ type Repository interface {
 	TriggerWorkflow(ctx context.Context, repository string, branch string, workflowName string, workflow any) error
 	GetWorkflows(ctx context.Context, repository string) ([]Workflow, error)
 	GetTriggerableWorkflows(ctx context.Context, repository string) ([]Workflow, error)
-	InspectWorkflowContent(ctx context.Context, repository string, workflowFile string) ([]byte, error)
+	InspectWorkflowContent(ctx context.Context, repository string, branch string, workflowFile string) ([]byte, error)
 	GetWorkflowRunLogs(ctx context.Context, repository string, runId int64) (GithubWorkflowRunLogs, error)
 	ReRunFailedJobs(ctx context.Context, repository string, runId int64) error
 	ReRunWorkflow(ctx context.Context, repository string, runId int64) error

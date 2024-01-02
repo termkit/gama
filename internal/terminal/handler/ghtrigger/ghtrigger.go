@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -26,11 +27,13 @@ type ModelGithubTrigger struct {
 	Viewport   *viewport.Model
 	modelError hdlerror.ModelError
 
+	textInput    textinput.Model
 	tableTrigger table.Model
 
 	currentTab                 *int
 	forceUpdateWorkflowHistory *bool
 
+	optionInit    bool
 	optionCursor  int
 	optionValues  []string
 	currentOption string
@@ -66,6 +69,10 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 		Bold(false)
 	tableTrigger.SetStyles(s)
 
+	ti := textinput.New()
+	ti.Blur()
+	ti.CharLimit = 72
+
 	return &ModelGithubTrigger{
 		currentTab:                 currentTab,
 		forceUpdateWorkflowHistory: forceUpdateWorkflowHistory,
@@ -75,27 +82,48 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 		SelectedRepository:         selectedRepository,
 		modelError:                 hdlerror.SetupModelError(),
 		tableTrigger:               tableTrigger,
+		textInput:                  ti,
 	}
 }
 
 func (m *ModelGithubTrigger) Init() tea.Cmd {
-	return nil
+	return textinput.Blink
 }
 
 func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.SelectedRepository.WorkflowName != m.selectedWorkflow &&
+	if m.SelectedRepository.WorkflowName != m.selectedWorkflow ||
 		m.SelectedRepository.RepositoryName != m.selectedRepositoryName {
 		m.selectedWorkflow = m.SelectedRepository.WorkflowName
 		m.selectedRepositoryName = m.SelectedRepository.RepositoryName
-		m.syncWorkflowContent()
+		go m.syncWorkflowContent()
 	}
 
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
+	switch shadowMsg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch shadowMsg.String() {
+		case "up":
+			if len(m.tableTrigger.Rows()) > 0 {
+				m.tableTrigger.MoveUp(1)
+				m.switchBetweenInputAndTable()
+				// delete msg key to prevent moving cursor
+				msg = tea.KeyMsg{Type: tea.KeyNull}
+
+				m.optionInit = false
+			}
+		case "down":
+			if len(m.tableTrigger.Rows()) > 0 {
+				m.tableTrigger.MoveDown(1)
+				m.switchBetweenInputAndTable()
+				// delete msg key to prevent moving cursor
+				msg = tea.KeyMsg{Type: tea.KeyNull}
+
+				m.optionInit = false
+			}
+		case "ctrl+r", "ctrl+R":
+			go m.syncWorkflowContent()
 		case "left":
 			m.optionCursor = max(m.optionCursor-1, 0)
 		case "right":
@@ -111,8 +139,6 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.triggerFocused {
 				go m.triggerWorkflow()
-				// switch tab to workflow history
-				// reset selected options
 			}
 		}
 	}
@@ -120,14 +146,30 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.tableTrigger, cmd = m.tableTrigger.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.choiceSelector()
+	m.textInput, cmd = m.textInput.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.inputController()
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m *ModelGithubTrigger) choiceSelector() {
+func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
+	if m.tableTrigger.SelectedRow()[1] == "input" {
+		m.textInput.Focus()
+		m.tableTrigger.Blur()
+	} else {
+		m.textInput.Blur()
+		m.tableTrigger.Focus()
+	}
+	m.textInput.SetValue(m.tableTrigger.SelectedRow()[4])
+	m.textInput.SetCursor(len(m.textInput.Value()))
+}
+
+func (m *ModelGithubTrigger) inputController() {
 	if len(m.tableTrigger.Rows()) > 0 {
-		if m.tableTrigger.SelectedRow()[1] == "choice" {
+		var selectedRow = m.tableTrigger.SelectedRow()
+		if selectedRow[1] == "choice" {
 			var optionValues []string
 			for _, choice := range m.workflowContent.Choices {
 				if fmt.Sprintf("%d", choice.ID) == m.tableTrigger.SelectedRow()[0] {
@@ -135,6 +177,14 @@ func (m *ModelGithubTrigger) choiceSelector() {
 				}
 			}
 			m.optionValues = optionValues
+			if m.optionInit == false {
+				for i, option := range m.optionValues {
+					if option == selectedRow[4] {
+						m.optionCursor = i
+					}
+				}
+			}
+			m.optionInit = true
 		} else {
 			m.optionValues = nil
 			m.optionCursor = 0
@@ -154,6 +204,40 @@ func (m *ModelGithubTrigger) choiceSelector() {
 				}
 
 				m.tableTrigger.SetRows(rows)
+			}
+		}
+
+		if m.textInput.Focused() {
+			for i, input := range m.workflowContent.Inputs {
+				if fmt.Sprintf("%d", input.ID) == m.tableTrigger.SelectedRow()[0] {
+					m.textInput.Placeholder = input.Default
+					m.workflowContent.Inputs[i].SetValue(m.textInput.Value())
+
+					rows := m.tableTrigger.Rows()
+					for i, row := range rows {
+						if row[0] == m.tableTrigger.SelectedRow()[0] {
+							rows[i][4] = m.textInput.Value()
+						}
+					}
+
+					m.tableTrigger.SetRows(rows)
+				}
+			}
+
+			for i, keyVal := range m.workflowContent.KeyVals {
+				if fmt.Sprintf("%d", keyVal.ID) == m.tableTrigger.SelectedRow()[0] {
+					m.textInput.Placeholder = keyVal.Default
+					m.workflowContent.KeyVals[i].SetValue(m.textInput.Value())
+
+					rows := m.tableTrigger.Rows()
+					for i, row := range rows {
+						if row[0] == m.tableTrigger.SelectedRow()[0] {
+							rows[i][4] = m.textInput.Value()
+						}
+					}
+
+					m.tableTrigger.SetRows(rows)
+				}
 			}
 		}
 	}
@@ -183,18 +267,17 @@ func (m *ModelGithubTrigger) View() string {
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableTrigger.View()))
 
-	var json string
-	var err error
-	if m.workflowContent != nil {
-		json, err = m.workflowContent.ToJson()
-		if err != nil {
-			m.modelError.SetError(err)
-			m.modelError.SetErrorMessage("Workflow contents cannot converted to JSON")
+	var selector string
+	if len(m.tableTrigger.Rows()) > 0 {
+		if m.tableTrigger.SelectedRow()[1] == "input" {
+			selector = m.inputSelector()
+		} else {
+			selector = m.optionSelector()
 		}
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(),
-		lipgloss.JoinHorizontal(lipgloss.Top, m.optionSelector(), m.triggerButton()), json)
+		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()))
 }
 
 func (m *ModelGithubTrigger) syncWorkflowContent() {
@@ -329,7 +412,6 @@ func (m *ModelGithubTrigger) fillEmptyValuesWithDefault() {
 func (m *ModelGithubTrigger) triggerWorkflow() {
 	if m.triggerFocused {
 		m.fillEmptyValuesWithDefault()
-		//return
 	}
 
 	m.modelError.SetProgressMessage(
@@ -381,6 +463,23 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 	*m.currentTab = 2 // switch tab to workflow history
 }
 
+func (m *ModelGithubTrigger) inputSelector() string {
+	// Define window style
+	windowStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		Padding(0, 1).
+		Width(*hdltypes.ScreenWidth - 13)
+
+	// Build the options list
+	doc := strings.Builder{}
+
+	doc.WriteString(m.textInput.View())
+
+	return windowStyle.Render(doc.String())
+}
+
+// optionSelector renders the options list
+// TODO: Make this dynamic limited&sized.
 func (m *ModelGithubTrigger) optionSelector() string {
 	// Define window style
 	windowStyle := lipgloss.NewStyle().

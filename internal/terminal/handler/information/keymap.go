@@ -5,28 +5,22 @@ import (
 )
 
 type keyMap struct {
-	Refresh teakey.Binding
 	NextTab teakey.Binding
 	Quit    teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.NextTab, k.Refresh, k.Quit}
+	return []teakey.Binding{k.NextTab, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.NextTab},
-		{k.Refresh},
 		{k.Quit},
 	}
 }
 
 var keys = keyMap{
-	Refresh: teakey.NewBinding(
-		teakey.WithKeys("r", "R"),
-		teakey.WithHelp("r/R", "Empty cache & reload"),
-	),
 	NextTab: teakey.NewBinding(
 		teakey.WithKeys("ctrl+right"),
 		teakey.WithHelp("ctrl + →", "next tab"),
