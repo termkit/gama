@@ -20,36 +20,37 @@ import (
 )
 
 type ModelGithubTrigger struct {
-	syncWorkflowContext context.Context
-	cancelSyncWorkflow  context.CancelFunc
-	tableReady          bool
-	isTriggerable       bool
-
-	githubUseCase gu.UseCase
-
-	Help       help.Model
-	Keys       keyMap
-	Viewport   *viewport.Model
-	modelError hdlerror.ModelError
-
-	textInput    textinput.Model
-	tableTrigger table.Model
-
+	// current handler's properties
+	syncWorkflowContext        context.Context
+	cancelSyncWorkflow         context.CancelFunc
+	workflowContent            *workflow.Pretty
+	tableReady                 bool
+	isTriggerable              bool
 	currentTab                 *int
 	forceUpdateWorkflowHistory *bool
+	optionInit                 bool
+	optionCursor               int
+	optionValues               []string
+	currentOption              string
+	selectedWorkflow           string
+	selectedRepositoryName     string
+	triggerFocused             bool
 
-	optionInit    bool
-	optionCursor  int
-	optionValues  []string
-	currentOption string
+	// shared properties
+	SelectedRepository *hdltypes.SelectedRepository
 
-	triggerFocused bool
+	// use cases
+	githubUseCase gu.UseCase
 
-	workflowContent *workflow.Pretty
+	// keymap
+	Keys keyMap
 
-	selectedWorkflow       string
-	selectedRepositoryName string
-	SelectedRepository     *hdltypes.SelectedRepository
+	// models
+	Help         help.Model
+	Viewport     *viewport.Model
+	modelError   hdlerror.ModelError
+	textInput    textinput.Model
+	tableTrigger table.Model
 }
 
 func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, currentTab *int, forceUpdateWorkflowHistory *bool) *ModelGithubTrigger {
@@ -574,6 +575,6 @@ func (m *ModelGithubTrigger) optionSelector() string {
 	return windowStyle.Render(doc.String())
 }
 
-func (m *ModelGithubTrigger) ViewErrorOrOperation() string {
+func (m *ModelGithubTrigger) ViewStatus() string {
 	return m.modelError.View()
 }

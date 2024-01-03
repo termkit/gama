@@ -20,22 +20,28 @@ import (
 )
 
 type ModelGithubRepository struct {
+	// current handler's properties
 	syncRepositoriesContext context.Context
 	cancelSyncRepositories  context.CancelFunc
 	tableReady              bool
 
+	// shared properties
+	SelectedRepository *hdltypes.SelectedRepository
+
+	// use cases
 	githubUseCase gu.UseCase
 
+	// keymap
+	Keys keyMap
+
+	// models
 	Help                  help.Model
-	Keys                  keyMap
 	Viewport              *viewport.Model
 	tableGithubRepository table.Model
 	modelError            hdlerror.ModelError
 
 	modelTabOptions       tea.Model
 	actualModelTabOptions *taboptions.Options
-
-	SelectedRepository *hdltypes.SelectedRepository
 }
 
 var baseStyle = lipgloss.NewStyle().
@@ -204,6 +210,6 @@ func (m *ModelGithubRepository) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.actualModelTabOptions.View())
 }
 
-func (m *ModelGithubRepository) ViewErrorOrOperation() string {
+func (m *ModelGithubRepository) ViewStatus() string {
 	return m.modelError.View()
 }

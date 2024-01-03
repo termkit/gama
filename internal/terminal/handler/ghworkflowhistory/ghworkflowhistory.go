@@ -19,31 +19,34 @@ import (
 )
 
 type ModelGithubWorkflowHistory struct {
+	// current handler's properties
+	tableReady                 bool
+	updateRound                int
+	selectedWorkflowID         int64
+	isTableFocused             bool
+	lastRepository             string
+	forceUpdate                *bool
 	syncWorkflowHistoryContext context.Context
 	cancelSyncWorkflowHistory  context.CancelFunc
-	tableReady                 bool
-	githubUseCase              gu.UseCase
+	Workflows                  []gu.Workflow
 
+	// shared properties
+	SelectedRepository *hdltypes.SelectedRepository
+
+	// use cases
+	githubUseCase gu.UseCase
+
+	// keymap
+	Keys keyMap
+
+	// models
 	Help                 help.Model
-	Keys                 keyMap
 	Viewport             *viewport.Model
 	tableWorkflowHistory table.Model
 	modelError           hdlerror.ModelError
 
 	modelTabOptions       tea.Model
 	actualModelTabOptions *taboptions.Options
-
-	SelectedRepository *hdltypes.SelectedRepository
-	updateRound        int
-
-	Workflows          []gu.Workflow
-	selectedWorkflowID int64
-
-	isTableFocused bool
-
-	lastRepository string
-
-	forceUpdate *bool
 }
 
 var baseStyle = lipgloss.NewStyle().
@@ -288,6 +291,6 @@ func (m *ModelGithubWorkflowHistory) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.actualModelTabOptions.View())
 }
 
-func (m *ModelGithubWorkflowHistory) ViewErrorOrOperation() string {
+func (m *ModelGithubWorkflowHistory) ViewStatus() string {
 	return m.modelError.View()
 }

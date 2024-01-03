@@ -13,13 +13,16 @@ import (
 )
 
 type ModelInfo struct {
-	Help     help.Model
-	Keys     keyMap
-	Viewport *viewport.Model
-
+	// use cases
 	githubUseCase gu.UseCase
 
+	// models
+	Help       help.Model
+	Viewport   *viewport.Model
 	modelError hdlerror.ModelError
+
+	// keymap
+	Keys keyMap
 }
 
 const (

@@ -21,14 +21,23 @@ import (
 )
 
 type ModelGithubWorkflow struct {
+	// current handler's properties
 	syncTriggerableWorkflowsContext context.Context
 	cancelSyncTriggerableWorkflows  context.CancelFunc
 	tableReady                      bool
+	lastRepository                  string
 
+	// shared properties
+	SelectedRepository *hdltypes.SelectedRepository
+
+	// use cases
 	githubUseCase gu.UseCase
 
+	// keymap
+	Keys keyMap
+
+	// models
 	Help                     help.Model
-	Keys                     keyMap
 	Viewport                 *viewport.Model
 	list                     list.Model
 	tableTriggerableWorkflow table.Model
@@ -39,9 +48,6 @@ type ModelGithubWorkflow struct {
 
 	modelGithubTrigger       tea.Model
 	actualModelGithubTrigger *ghtrigger.ModelGithubTrigger
-
-	lastRepository     string
-	SelectedRepository *hdltypes.SelectedRepository
 }
 
 var baseStyle = lipgloss.NewStyle().
@@ -190,6 +196,6 @@ func (m *ModelGithubWorkflow) handleTableInputs(ctx context.Context) {
 	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 }
 
-func (m *ModelGithubWorkflow) ViewErrorOrOperation() string {
+func (m *ModelGithubWorkflow) ViewStatus() string {
 	return m.modelError.View()
 }

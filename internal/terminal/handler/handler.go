@@ -20,19 +20,19 @@ import (
 )
 
 type model struct {
-	// Current Handler's properties
+	// current handler's properties
 	TabsWithColor     []string
-	TabContent        []string
 	currentTab        *int
 	isTabActive       bool
-	viewport          viewport.Model
 	terminalSizeReady bool
-	timer             timer.Model
 
 	// Shared properties
 	SelectedRepository *hdltypes.SelectedRepository
 
 	// models
+	viewport viewport.Model
+	timer    timer.Model
+
 	modelInfo       tea.Model
 	actualModelInfo *hdlinfo.ModelInfo
 
@@ -55,14 +55,6 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 
 	tabsWithColor := []string{"Info", "Repository", "Workflow History", "Workflow", "Trigger"}
 
-	tabContent := []string{
-		"Information Page",
-		"Repository Page",
-		"Workflow History Page",
-		"Workflow Page",
-		"Trigger Page",
-	}
-
 	selectedRepository := hdltypes.SelectedRepository{}
 
 	// setup models
@@ -75,7 +67,6 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 	m := model{
 		currentTab:    currentTab,
 		TabsWithColor: tabsWithColor,
-		TabContent:    tabContent,
 		timer:         timer.New(1<<63 - 1),
 		modelInfo:     hdlModelInfo, actualModelInfo: hdlModelInfo,
 		SelectedRepository:    &selectedRepository,
@@ -182,19 +173,19 @@ func (m *model) View() string {
 		helpDoc = helpWindowStyle.Render(m.actualModelInfo.ViewHelp())
 	case 1:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelGithubRepository.View()))
-		operationDoc = operationWindowStyle.Render(m.actualModelGithubRepository.ViewErrorOrOperation())
+		operationDoc = operationWindowStyle.Render(m.actualModelGithubRepository.ViewStatus())
 		helpDoc = helpWindowStyle.Render(m.actualModelGithubRepository.ViewHelp())
 	case 2:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelWorkflowHistory.View()))
-		operationDoc = operationWindowStyle.Render(m.directModelWorkflowHistory.ViewErrorOrOperation())
+		operationDoc = operationWindowStyle.Render(m.directModelWorkflowHistory.ViewStatus())
 		helpDoc = helpWindowStyle.Render(m.directModelWorkflowHistory.ViewHelp())
 	case 3:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelWorkflow.View()))
-		operationDoc = operationWindowStyle.Render(m.directModelWorkflow.ViewErrorOrOperation())
+		operationDoc = operationWindowStyle.Render(m.directModelWorkflow.ViewStatus())
 		helpDoc = helpWindowStyle.Render(m.directModelWorkflow.ViewHelp())
 	case 4:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelTrigger.View()))
-		operationDoc = operationWindowStyle.Render(m.actualModelTrigger.ViewErrorOrOperation())
+		operationDoc = operationWindowStyle.Render(m.actualModelTrigger.ViewStatus())
 		helpDoc = helpWindowStyle.Render(m.actualModelTrigger.ViewHelp())
 	}
 
