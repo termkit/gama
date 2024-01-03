@@ -2,6 +2,7 @@ package ghworkflowhistory
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,7 +19,10 @@ import (
 )
 
 type ModelGithubWorkflowHistory struct {
-	githubUseCase gu.UseCase
+	syncWorkflowHistoryContext context.Context
+	cancelSyncWorkflowHistory  context.CancelFunc
+	tableReady                 bool
+	githubUseCase              gu.UseCase
 
 	Help                 help.Model
 	Keys                 keyMap
@@ -71,15 +75,17 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 	tabOptions := taboptions.NewOptions()
 
 	return &ModelGithubWorkflowHistory{
-		Help:                  help.New(),
-		Keys:                  keys,
-		githubUseCase:         githubUseCase,
-		tableWorkflowHistory:  tableWorkflowHistory,
-		modelError:            hdlerror.SetupModelError(),
-		SelectedRepository:    selectedRepository,
-		modelTabOptions:       tabOptions,
-		actualModelTabOptions: tabOptions,
-		forceUpdate:           forceUpdate,
+		Help:                       help.New(),
+		Keys:                       keys,
+		githubUseCase:              githubUseCase,
+		tableWorkflowHistory:       tableWorkflowHistory,
+		modelError:                 hdlerror.SetupModelError(),
+		SelectedRepository:         selectedRepository,
+		modelTabOptions:            tabOptions,
+		actualModelTabOptions:      tabOptions,
+		forceUpdate:                forceUpdate,
+		syncWorkflowHistoryContext: context.Background(),
+		cancelSyncWorkflowHistory:  func() {},
 	}
 }
 
@@ -157,7 +163,8 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 		// Make it works with to channels
 		for {
 			if *m.forceUpdate {
-				go m.syncWorkflowHistory()
+				m.tableReady = false
+				go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 				*m.forceUpdate = false
 			}
 		}
@@ -168,8 +175,13 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
-		go m.syncWorkflowHistory()
+		m.tableReady = false
+		m.cancelSyncWorkflowHistory() // cancel previous sync
+
 		m.lastRepository = m.SelectedRepository.RepositoryName
+
+		m.syncWorkflowHistoryContext, m.cancelSyncWorkflowHistory = context.WithCancel(context.Background())
+		go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 	}
 
 	if m.Workflows != nil {
@@ -182,7 +194,8 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "r", "R":
-			go m.syncWorkflowHistory()
+			m.tableReady = false
+			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 		}
 	}
 
@@ -195,7 +208,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *ModelGithubWorkflowHistory) syncWorkflowHistory() {
+func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
@@ -206,13 +219,16 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory() {
 	// delete old workflows
 	m.Workflows = nil
 
-	workflowHistory, err := m.githubUseCase.GetWorkflowHistory(context.Background(), gu.GetWorkflowHistoryInput{
+	workflowHistory, err := m.githubUseCase.GetWorkflowHistory(ctx, gu.GetWorkflowHistoryInput{
 		Repository: m.SelectedRepository.RepositoryName,
 		Branch:     m.SelectedRepository.BranchName,
 	})
-	if err != nil {
+	if errors.Is(err, context.Canceled) {
+		return
+	} else if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Workflow history cannot be listed")
+		return
 	}
 
 	if len(workflowHistory.Workflows) == 0 {
@@ -235,9 +251,11 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory() {
 		})
 	}
 
+	m.tableReady = true
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
 	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+	go m.Update(m) // update model
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {
@@ -272,8 +290,4 @@ func (m *ModelGithubWorkflowHistory) View() string {
 
 func (m *ModelGithubWorkflowHistory) ViewErrorOrOperation() string {
 	return m.modelError.View()
-}
-
-func (m *ModelGithubWorkflowHistory) IsError() bool {
-	return m.modelError.IsError()
 }

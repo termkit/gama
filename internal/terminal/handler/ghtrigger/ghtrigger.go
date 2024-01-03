@@ -20,6 +20,11 @@ import (
 )
 
 type ModelGithubTrigger struct {
+	syncWorkflowContext context.Context
+	cancelSyncWorkflow  context.CancelFunc
+	tableReady          bool
+	isTriggerable       bool
+
 	githubUseCase gu.UseCase
 
 	Help       help.Model
@@ -83,6 +88,8 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 		modelError:                 hdlerror.SetupModelError(),
 		tableTrigger:               tableTrigger,
 		textInput:                  ti,
+		syncWorkflowContext:        context.Background(),
+		cancelSyncWorkflow:         func() {},
 	}
 }
 
@@ -93,9 +100,17 @@ func (m *ModelGithubTrigger) Init() tea.Cmd {
 func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.SelectedRepository.WorkflowName != m.selectedWorkflow ||
 		m.SelectedRepository.RepositoryName != m.selectedRepositoryName {
+		m.tableReady = false
+		m.isTriggerable = false
+		m.triggerFocused = false
+
+		m.cancelSyncWorkflow() // cancel previous sync workflow
+
 		m.selectedWorkflow = m.SelectedRepository.WorkflowName
 		m.selectedRepositoryName = m.SelectedRepository.RepositoryName
-		go m.syncWorkflowContent()
+		m.syncWorkflowContext, m.cancelSyncWorkflow = context.WithCancel(context.Background())
+
+		go m.syncWorkflowContent(m.syncWorkflowContext)
 	}
 
 	var cmds []tea.Cmd
@@ -123,21 +138,23 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.optionInit = false
 			}
 		case "ctrl+r", "ctrl+R":
-			go m.syncWorkflowContent()
+			go m.syncWorkflowContent(m.syncWorkflowContext)
 		case "left":
 			m.optionCursor = max(m.optionCursor-1, 0)
 		case "right":
 			m.optionCursor = min(m.optionCursor+1, len(m.optionValues)-1)
 		case "tab":
-			m.triggerFocused = !m.triggerFocused
-			if m.triggerFocused {
-				m.tableTrigger.Blur()
-				m.showInformationIfAnyEmptyValue()
-			} else {
-				m.tableTrigger.Focus()
+			if m.isTriggerable {
+				m.triggerFocused = !m.triggerFocused
+				if m.triggerFocused {
+					m.tableTrigger.Blur()
+					m.showInformationIfAnyEmptyValue()
+				} else {
+					m.tableTrigger.Focus()
+				}
 			}
 		case "enter":
-			if m.triggerFocused {
+			if m.triggerFocused && m.isTriggerable {
 				go m.triggerWorkflow()
 			}
 		}
@@ -149,7 +166,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.textInput, cmd = m.textInput.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.inputController()
+	m.inputController(m.syncWorkflowContext)
 
 	return m, tea.Batch(cmds...)
 }
@@ -166,13 +183,16 @@ func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
 	m.textInput.SetCursor(len(m.textInput.Value()))
 }
 
-func (m *ModelGithubTrigger) inputController() {
+func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 	if len(m.tableTrigger.Rows()) > 0 {
 		var selectedRow = m.tableTrigger.SelectedRow()
+		if len(selectedRow) == 0 {
+			return
+		}
 		if selectedRow[1] == "choice" {
 			var optionValues []string
 			for _, choice := range m.workflowContent.Choices {
-				if fmt.Sprintf("%d", choice.ID) == m.tableTrigger.SelectedRow()[0] {
+				if fmt.Sprintf("%d", choice.ID) == selectedRow[0] {
 					optionValues = append(optionValues, choice.Values...)
 				}
 			}
@@ -188,17 +208,22 @@ func (m *ModelGithubTrigger) inputController() {
 		} else {
 			m.optionValues = nil
 			m.optionCursor = 0
+			m.textInput.Focus()
 		}
 	}
 
 	if m.workflowContent != nil {
 		for i, choice := range m.workflowContent.Choices {
-			if fmt.Sprintf("%d", choice.ID) == m.tableTrigger.SelectedRow()[0] {
+			var selectedRow = m.tableTrigger.SelectedRow()
+			if len(selectedRow) == 0 {
+				return
+			}
+			if fmt.Sprintf("%d", choice.ID) == selectedRow[0] {
 				m.workflowContent.Choices[i].SetValue(m.optionValues[m.optionCursor])
 
 				rows := m.tableTrigger.Rows()
 				for i, row := range rows {
-					if row[0] == m.tableTrigger.SelectedRow()[0] {
+					if row[0] == selectedRow[0] {
 						rows[i][4] = m.optionValues[m.optionCursor]
 					}
 				}
@@ -208,14 +233,18 @@ func (m *ModelGithubTrigger) inputController() {
 		}
 
 		if m.textInput.Focused() {
+			var selectedRow = m.tableTrigger.SelectedRow()
+			if len(selectedRow) == 0 {
+				return
+			}
 			for i, input := range m.workflowContent.Inputs {
-				if fmt.Sprintf("%d", input.ID) == m.tableTrigger.SelectedRow()[0] {
+				if fmt.Sprintf("%d", input.ID) == selectedRow[0] {
 					m.textInput.Placeholder = input.Default
 					m.workflowContent.Inputs[i].SetValue(m.textInput.Value())
 
 					rows := m.tableTrigger.Rows()
 					for i, row := range rows {
-						if row[0] == m.tableTrigger.SelectedRow()[0] {
+						if row[0] == selectedRow[0] {
 							rows[i][4] = m.textInput.Value()
 						}
 					}
@@ -225,13 +254,13 @@ func (m *ModelGithubTrigger) inputController() {
 			}
 
 			for i, keyVal := range m.workflowContent.KeyVals {
-				if fmt.Sprintf("%d", keyVal.ID) == m.tableTrigger.SelectedRow()[0] {
+				if fmt.Sprintf("%d", keyVal.ID) == selectedRow[0] {
 					m.textInput.Placeholder = keyVal.Default
 					m.workflowContent.KeyVals[i].SetValue(m.textInput.Value())
 
 					rows := m.tableTrigger.Rows()
 					for i, row := range rows {
-						if row[0] == m.tableTrigger.SelectedRow()[0] {
+						if row[0] == selectedRow[0] {
 							rows[i][4] = m.textInput.Value()
 						}
 					}
@@ -267,7 +296,7 @@ func (m *ModelGithubTrigger) View() string {
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableTrigger.View()))
 
-	var selector string
+	var selector = m.emptySelector()
 	if len(m.tableTrigger.Rows()) > 0 {
 		if m.tableTrigger.SelectedRow()[1] == "input" {
 			selector = m.inputSelector()
@@ -280,7 +309,7 @@ func (m *ModelGithubTrigger) View() string {
 		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()))
 }
 
-func (m *ModelGithubTrigger) syncWorkflowContent() {
+func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow contents...",
@@ -289,12 +318,14 @@ func (m *ModelGithubTrigger) syncWorkflowContent() {
 	// reset table rows
 	m.tableTrigger.SetRows([]table.Row{})
 
-	workflowContent, err := m.githubUseCase.InspectWorkflow(context.Background(), gu.InspectWorkflowInput{
+	workflowContent, err := m.githubUseCase.InspectWorkflow(ctx, gu.InspectWorkflowInput{
 		Repository:   m.SelectedRepository.RepositoryName,
 		Branch:       m.SelectedRepository.BranchName,
 		WorkflowFile: m.selectedWorkflow,
 	})
-	if err != nil {
+	if errors.Is(err, context.Canceled) {
+		return
+	} else if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Workflow contents cannot be fetched")
 		return
@@ -355,8 +386,16 @@ func (m *ModelGithubTrigger) syncWorkflowContent() {
 	m.triggerFocused = false
 	m.tableTrigger.Focus()
 
+	// reset input value
+	m.textInput.SetCursor(0)
+	m.textInput.SetValue("")
+	m.textInput.Placeholder = ""
+
+	m.tableReady = true
+	m.isTriggerable = true
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
 		m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+	go m.Update(m) // update model
 }
 
 func (m *ModelGithubTrigger) showInformationIfAnyEmptyValue() {
@@ -472,6 +511,19 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 		*m.forceUpdateWorkflowHistory = true // force update workflow history
 	}()
 	*m.currentTab = 2 // switch tab to workflow history
+}
+
+func (m *ModelGithubTrigger) emptySelector() string {
+	// Define window style
+	windowStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		Padding(0, 1).
+		Width(*hdltypes.ScreenWidth - 13)
+
+	// Build the options list
+	doc := strings.Builder{}
+
+	return windowStyle.Render(doc.String())
 }
 
 func (m *ModelGithubTrigger) inputSelector() string {

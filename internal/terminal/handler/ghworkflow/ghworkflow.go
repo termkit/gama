@@ -2,6 +2,7 @@ package ghworkflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -20,6 +21,10 @@ import (
 )
 
 type ModelGithubWorkflow struct {
+	syncTriggerableWorkflowsContext context.Context
+	cancelSyncTriggerableWorkflows  context.CancelFunc
+	tableReady                      bool
+
 	githubUseCase gu.UseCase
 
 	Help                     help.Model
@@ -68,13 +73,15 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdlt
 	tabOptions := taboptions.NewOptions()
 
 	return &ModelGithubWorkflow{
-		Help:                     help.New(),
-		Keys:                     keys,
-		githubUseCase:            githubUseCase,
-		tableTriggerableWorkflow: tableTriggerableWorkflow,
-		SelectedRepository:       selectedRepository,
-		modelTabOptions:          tabOptions,
-		actualModelTabOptions:    tabOptions,
+		Help:                            help.New(),
+		Keys:                            keys,
+		githubUseCase:                   githubUseCase,
+		tableTriggerableWorkflow:        tableTriggerableWorkflow,
+		SelectedRepository:              selectedRepository,
+		modelTabOptions:                 tabOptions,
+		actualModelTabOptions:           tabOptions,
+		syncTriggerableWorkflowsContext: context.Background(),
+		cancelSyncTriggerableWorkflows:  func() {},
 	}
 }
 
@@ -83,18 +90,21 @@ func (m *ModelGithubWorkflow) Init() tea.Cmd {
 }
 
 func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.lastRepository != m.SelectedRepository.RepositoryName {
-		go m.updateTriggerableWorkflows()
-		m.lastRepository = m.SelectedRepository.RepositoryName
-	}
-
 	var cmd tea.Cmd
+
+	if m.lastRepository != m.SelectedRepository.RepositoryName {
+		m.tableReady = false               // reset table ready status
+		m.cancelSyncTriggerableWorkflows() // cancel previous sync
+		m.syncTriggerableWorkflowsContext, m.cancelSyncTriggerableWorkflows = context.WithCancel(context.Background())
+
+		m.lastRepository = m.SelectedRepository.RepositoryName
+
+		go m.syncTriggerableWorkflows(m.syncTriggerableWorkflowsContext)
+	}
 
 	m.tableTriggerableWorkflow, cmd = m.tableTriggerableWorkflow.Update(msg)
 
-	if len(m.tableTriggerableWorkflow.Rows()) > 0 {
-		m.SelectedRepository.WorkflowName = m.tableTriggerableWorkflow.SelectedRow()[1]
-	}
+	m.handleTableInputs(m.syncTriggerableWorkflowsContext) // update table operations
 
 	return m, cmd
 }
@@ -122,7 +132,7 @@ func (m *ModelGithubWorkflow) View() string {
 	return doc.String()
 }
 
-func (m *ModelGithubWorkflow) updateTriggerableWorkflows() {
+func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
@@ -130,13 +140,16 @@ func (m *ModelGithubWorkflow) updateTriggerableWorkflows() {
 	// delete all rows
 	m.tableTriggerableWorkflow.SetRows([]table.Row{})
 
-	triggerableWorkflows, err := m.githubUseCase.GetTriggerableWorkflows(context.Background(), gu.GetTriggerableWorkflowsInput{
+	triggerableWorkflows, err := m.githubUseCase.GetTriggerableWorkflows(ctx, gu.GetTriggerableWorkflowsInput{
 		Repository: m.SelectedRepository.RepositoryName,
 		Branch:     m.SelectedRepository.BranchName,
 	})
-	if err != nil {
+	if errors.Is(err, context.Canceled) {
+		return
+	} else if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Triggerable workflows cannot be listed")
+		return
 	}
 
 	if len(triggerableWorkflows.TriggerableWorkflows) == 0 {
@@ -155,13 +168,26 @@ func (m *ModelGithubWorkflow) updateTriggerableWorkflows() {
 
 	m.tableTriggerableWorkflow.SetRows(tableRowsTriggerableWorkflow)
 
-	if len(m.tableTriggerableWorkflow.Rows()) > 0 {
-		m.SelectedRepository.WorkflowName = m.tableTriggerableWorkflow.SelectedRow()[1]
+	m.tableReady = true
+	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Triggerable workflows fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+
+	go m.Update(m) // update model
+}
+
+func (m *ModelGithubWorkflow) handleTableInputs(ctx context.Context) {
+	if !m.tableReady {
+		return
+	}
+
+	// To avoid go routine leak
+	rows := m.tableTriggerableWorkflow.Rows()
+	selectedRow := m.tableTriggerableWorkflow.SelectedRow()
+
+	if len(rows) > 0 && len(selectedRow) > 0 {
+		m.SelectedRepository.WorkflowName = selectedRow[1]
 	}
 
 	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
-	go m.Update(m)
-	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Triggerable workflows fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 }
 
 func (m *ModelGithubWorkflow) ViewErrorOrOperation() string {
