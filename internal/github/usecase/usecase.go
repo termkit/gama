@@ -21,7 +21,7 @@ func New(githubRepository gr.Repository) UseCase {
 }
 
 func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInput) (*ListRepositoriesOutput, error) {
-	repositories, err := u.githubRepository.ListRepositories(ctx)
+	repositories, err := u.githubRepository.ListRepositories(ctx, input.Limit)
 	if err != nil {
 		return nil, err
 	}

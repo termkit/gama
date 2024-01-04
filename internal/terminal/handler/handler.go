@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/timer"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -15,7 +16,6 @@ import (
 	hdlworkflowhistory "github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
 	hdlinfo "github.com/termkit/gama/internal/terminal/handler/information"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
-
 	ts "github.com/termkit/gama/internal/terminal/style"
 )
 
@@ -28,6 +28,7 @@ type model struct {
 
 	// Shared properties
 	SelectedRepository *hdltypes.SelectedRepository
+	lockTabs           *bool // lockTabs will be set true if test connection fails
 
 	// models
 	viewport viewport.Model
@@ -52,22 +53,26 @@ type model struct {
 func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 	var currentTab = new(int)
 	var forceUpdateWorkflowHistory = new(bool)
+	var lockTabs = new(bool)
+
+	*lockTabs = true // by default lock tabs
 
 	tabsWithColor := []string{"Info", "Repository", "Workflow History", "Workflow", "Trigger"}
 
 	selectedRepository := hdltypes.SelectedRepository{}
 
 	// setup models
-	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase)
+	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase, lockTabs)
 	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase, &selectedRepository)
 	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository, forceUpdateWorkflowHistory)
 	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase, &selectedRepository)
 	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(githubUseCase, &selectedRepository, currentTab, forceUpdateWorkflowHistory)
 
 	m := model{
+		lockTabs:      lockTabs,
 		currentTab:    currentTab,
 		TabsWithColor: tabsWithColor,
-		timer:         timer.New(1<<63 - 1),
+		timer:         timer.NewWithInterval(1<<63-1, time.Millisecond*200),
 		modelInfo:     hdlModelInfo, actualModelInfo: hdlModelInfo,
 		SelectedRepository:    &selectedRepository,
 		modelGithubRepository: hdlModelGithubRepository, actualModelGithubRepository: hdlModelGithubRepository,
@@ -99,17 +104,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Sync terminal size
 	m.syncTerminal(msg)
 
+	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "shift+left":
-			*m.currentTab = max(*m.currentTab-1, 0)
+			if !*m.lockTabs {
+				*m.currentTab = max(*m.currentTab-1, 0)
+			}
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
 		case "shift+right":
-			*m.currentTab = min(*m.currentTab+1, len(m.TabsWithColor)-1)
+			if !*m.lockTabs {
+				*m.currentTab = min(*m.currentTab+1, len(m.TabsWithColor)-1)
+			}
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
 		case "enter":
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
@@ -150,7 +159,11 @@ func (m *model) View() string {
 		if isActive {
 			style = ts.TitleStyleActive.Copy()
 		} else {
-			style = ts.TitleStyleDisable.Copy()
+			if *m.lockTabs {
+				style = ts.TitleStyleDisabled.Copy()
+			} else {
+				style = ts.TitleStyleInactive.Copy()
+			}
 		}
 		renderedTabs = append(renderedTabs, style.Render(t))
 	}
@@ -169,7 +182,7 @@ func (m *model) View() string {
 	switch *m.currentTab {
 	case 0:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelInfo.View()))
-		operationDoc = operationWindowStyle.Render(m.actualModelInfo.ViewErrorOrOperation())
+		operationDoc = operationWindowStyle.Render(m.actualModelInfo.ViewStatus())
 		helpDoc = helpWindowStyle.Render(m.actualModelInfo.ViewHelp())
 	case 1:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelGithubRepository.View()))

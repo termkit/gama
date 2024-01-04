@@ -5,6 +5,7 @@ import (
 )
 
 type ListRepositoriesInput struct {
+	Limit int
 }
 
 type ListRepositoriesOutput struct {

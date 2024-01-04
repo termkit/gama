@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -51,9 +52,11 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-func (r *Repo) ListRepositories(ctx context.Context) ([]GithubRepository, error) {
-	// List repositories for the authenticated user
-	// set limit to 100
+func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubRepository, error) {
+	if limit == 0 {
+		limit = 200
+	}
+
 	var repositories []GithubRepository
 	err := r.do(ctx, nil, &repositories, requestOptions{
 		method:      http.MethodGet,
@@ -61,7 +64,7 @@ func (r *Repo) ListRepositories(ctx context.Context) ([]GithubRepository, error)
 		contentType: "application/json",
 		queryParams: map[string]string{
 			"visibility": "private",
-			"per_page":   "100",
+			"per_page":   strconv.Itoa(limit),
 		},
 	})
 	if err != nil {
@@ -230,6 +233,27 @@ func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, br
 //	return workflowRun, nil
 //}
 
+func (r *Repo) getWorkflowFile(ctx context.Context, repository string, path string) (string, error) {
+	// Get the content of the workflow file
+	var githubFile githubFile
+	err := r.do(ctx, nil, &githubFile, requestOptions{
+		method:      http.MethodGet,
+		path:        githubAPIURL + "/repos/" + repository + "/contents/" + path,
+		contentType: "application/vnd.github.VERSION.raw",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// The content is Base64 encoded, so it needs to be decoded
+	decodedContent, err := base64.StdEncoding.DecodeString(githubFile.Content)
+	if err != nil {
+		return "", err
+	}
+
+	return string(decodedContent), nil
+}
+
 func (r *Repo) GetWorkflowRunLogs(ctx context.Context, repository string, runId int64) (GithubWorkflowRunLogs, error) {
 	// Get the logs for a given workflow run
 	var workflowRunLogs GithubWorkflowRunLogs
@@ -339,6 +363,19 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	}
 	defer resp.Body.Close()
 
+	var errorResponse struct {
+		Message string `json:"message"`
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		// Decode the error response body
+		err = json.NewDecoder(resp.Body).Decode(&errorResponse)
+		if err != nil {
+			return err
+		}
+
+		return errors.New(errorResponse.Message)
+	}
+
 	// Decode the response body
 	if responseBody != nil {
 		err = json.NewDecoder(resp.Body).Decode(responseBody)
@@ -348,27 +385,6 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	}
 
 	return nil
-}
-
-func (r *Repo) getWorkflowFile(ctx context.Context, repository string, path string) (string, error) {
-	// Get the content of the workflow file
-	var githubFile githubFile
-	err := r.do(ctx, nil, &githubFile, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/contents/" + path,
-		contentType: "application/vnd.github.VERSION.raw",
-	})
-	if err != nil {
-		return "", err
-	}
-
-	// The content is Base64 encoded, so it needs to be decoded
-	decodedContent, err := base64.StdEncoding.DecodeString(githubFile.Content)
-	if err != nil {
-		return "", err
-	}
-
-	return string(decodedContent), nil
 }
 
 type requestOptions struct {

@@ -35,7 +35,7 @@ func TestRepo_ListRepositories(t *testing.T) {
 
 	repo := newRepo(ctx)
 
-	repositories, err := repo.ListRepositories(ctx)
+	repositories, err := repo.ListRepositories(ctx, 10)
 	if err != nil {
 		t.Error(err)
 	}
