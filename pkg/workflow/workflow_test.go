@@ -24,7 +24,7 @@ on:
           "event-logger-ref": "main",
           "network-api-ref": "main",
           "analytics-service-ref": "main"
-          }'           
+        }'
       deployment_zone:
         description: 'Deployment Zone'
         type: choice
@@ -35,13 +35,23 @@ on:
           - 'gamma'
           - 'delta'
           - 'epsilon'
-          - 'trial'
+          - 'zeta'
         default: 'trial'
       industry_category:
         description: 'Industry Category'
         type: string
         required: true
         default: 'general'
+      boolean_flag:
+        description: 'Boolean Flag'
+        type: boolean
+        required: true
+        default: true
+      number:
+        description: 'Number'
+        type: number
+        required: true
+        default: 1
     secrets: inherit
 `)
 

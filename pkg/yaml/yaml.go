@@ -31,13 +31,22 @@ func (i *WorkflowInput) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	// Attempt to unmarshal JSON content if the default value is a string
-	if defaultStr, ok := i.Default.(string); ok {
+	// Process the default value based on its actual type
+	switch def := i.Default.(type) {
+	case string:
+		// Attempt to unmarshal JSON content if the default value is a string
 		tempMap := make(map[string]string)
-		if err := json.Unmarshal([]byte(defaultStr), &tempMap); err == nil {
+		if err := json.Unmarshal([]byte(def), &tempMap); err == nil {
 			i.JSONContent = tempMap
 		}
+	case bool:
+		// Handle boolean values
+		i.Default = def
+	case float64:
+		// Handle number values (YAML unmarshals numbers to float64 by default)
+		i.Default = def
 	}
+
 	return nil
 }
 

@@ -3,6 +3,7 @@ package workflow
 import (
 	"encoding/json"
 	"reflect"
+	"strconv"
 
 	py "github.com/termkit/gama/pkg/yaml"
 )
@@ -25,6 +26,9 @@ type Content struct {
 
 	// Value is a map of string and value designed for string
 	Value *Value
+
+	// Boolean is a map of string and value designed for boolean
+	Boolean *Value
 }
 
 type KeyValue struct {
@@ -87,7 +91,7 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 			}
 		}
 
-		if value.Type == "string" || value.Type == "boolean" || value.Type == "number" || value.Type == "" {
+		if value.Type == "string" || value.Type == "number" || value.Type == "" {
 			defaultValue := ""
 			if value.Default != nil {
 				_, ok := value.Default.(string)
@@ -100,6 +104,26 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 				Type:        "input",
 				Required:    value.Required,
 				Value: &Value{
+					Default: defaultValue,
+					Value:   "",
+				},
+			}
+		}
+
+		if value.Type == "boolean" {
+			defaultValue := "false"
+			if value.Default != nil {
+				_, ok := value.Default.(bool)
+				if ok {
+					strBool := strconv.FormatBool(value.Default.(bool))
+					defaultValue = strBool
+				}
+			}
+			w.Content[key] = Content{
+				Description: value.Description,
+				Type:        "boolean",
+				Required:    value.Required,
+				Boolean: &Value{
 					Default: defaultValue,
 					Value:   "",
 				},
@@ -152,6 +176,22 @@ func (w *Workflow) ToPretty() *Pretty {
 			})
 			id++
 		}
+		if data.Boolean != nil {
+			var defaultValue string
+			if data.Boolean.Default != nil {
+				_, ok := data.Boolean.Default.(string)
+				if ok {
+					defaultValue = data.Boolean.Default.(string)
+				}
+			}
+			pretty.Boolean = append(pretty.Boolean, PrettyInput{
+				ID:      id,
+				Key:     parent,
+				Value:   "",
+				Default: defaultValue,
+			})
+			id++
+		}
 	}
 
 	return &pretty
@@ -184,6 +224,11 @@ func (p *Pretty) ToJson() (string, error) {
 		result[i.Key] = i.Value
 	}
 
+	// Process Boolean
+	for _, b := range p.Boolean {
+		result[b.Key] = b.Value
+	}
+
 	if err := convertJsonToString(result); err != nil {
 		return "", err
 	}
@@ -213,6 +258,7 @@ func convertJsonToString(m map[string]interface{}) error {
 type Pretty struct {
 	Choices []PrettyChoice
 	Inputs  []PrettyInput
+	Boolean []PrettyInput
 	KeyVals []PrettyKeyValue
 }
 

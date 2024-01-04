@@ -184,7 +184,9 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
-	if m.tableTrigger.SelectedRow()[1] == "input" {
+	var selectedRow = m.tableTrigger.SelectedRow()
+
+	if selectedRow[1] == "input" || selectedRow[1] == "bool" {
 		m.textInput.Focus()
 		m.tableTrigger.Blur()
 	} else {
@@ -287,6 +289,22 @@ func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 					m.tableTrigger.SetRows(rows)
 				}
 			}
+
+			for i, boolean := range m.workflowContent.Boolean {
+				if fmt.Sprintf("%d", boolean.ID) == selectedRow[0] {
+					m.textInput.Placeholder = boolean.Default
+					m.workflowContent.Boolean[i].SetValue(m.textInput.Value())
+
+					rows := m.tableTrigger.Rows()
+					for i, row := range rows {
+						if row[0] == selectedRow[0] {
+							rows[i][4] = m.textInput.Value()
+						}
+					}
+
+					m.tableTrigger.SetRows(rows)
+				}
+			}
 		}
 	}
 }
@@ -315,9 +333,10 @@ func (m *ModelGithubTrigger) View() string {
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableTrigger.View()))
 
+	var selectedRow = m.tableTrigger.SelectedRow()
 	var selector = m.emptySelector()
 	if len(m.tableTrigger.Rows()) > 0 {
-		if m.tableTrigger.SelectedRow()[1] == "input" {
+		if selectedRow[1] == "input" || selectedRow[1] == "bool" {
 			selector = m.inputSelector()
 		} else {
 			selector = m.optionSelector()
@@ -394,6 +413,16 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 			input.Key,
 			input.Default,
 			input.Value,
+		})
+	}
+
+	for _, boolean := range m.workflowContent.Boolean {
+		tableRowsTrigger = append(tableRowsTrigger, table.Row{
+			fmt.Sprintf("%d", boolean.ID),
+			"bool",
+			boolean.Key,
+			boolean.Default,
+			boolean.Value,
 		})
 	}
 
@@ -474,6 +503,12 @@ func (m *ModelGithubTrigger) fillEmptyValuesWithDefault() {
 	for i, keyVal := range m.workflowContent.KeyVals {
 		if keyVal.Value == "" {
 			m.workflowContent.KeyVals[i].SetValue(keyVal.Default)
+		}
+	}
+
+	for i, boolean := range m.workflowContent.Boolean {
+		if boolean.Value == "" {
+			m.workflowContent.Boolean[i].SetValue(boolean.Default)
 		}
 	}
 }
