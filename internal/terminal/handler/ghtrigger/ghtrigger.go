@@ -126,7 +126,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch shadowMsg.String() {
 		case "up":
-			if len(m.tableTrigger.Rows()) > 0 {
+			if len(m.tableTrigger.Rows()) > 0 && !m.triggerFocused {
 				m.tableTrigger.MoveUp(1)
 				m.switchBetweenInputAndTable()
 				// delete msg key to prevent moving cursor
@@ -135,7 +135,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.optionInit = false
 			}
 		case "down":
-			if len(m.tableTrigger.Rows()) > 0 {
+			if len(m.tableTrigger.Rows()) > 0 && !m.triggerFocused {
 				m.tableTrigger.MoveDown(1)
 				m.switchBetweenInputAndTable()
 				// delete msg key to prevent moving cursor
@@ -146,17 +146,23 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+r", "ctrl+R":
 			go m.syncWorkflowContent(m.syncWorkflowContext)
 		case "left":
-			m.optionCursor = max(m.optionCursor-1, 0)
+			if !m.triggerFocused {
+				m.optionCursor = max(m.optionCursor-1, 0)
+			}
 		case "right":
-			m.optionCursor = min(m.optionCursor+1, len(m.optionValues)-1)
+			if !m.triggerFocused {
+				m.optionCursor = min(m.optionCursor+1, len(m.optionValues)-1)
+			}
 		case "tab":
 			if m.isTriggerable {
 				m.triggerFocused = !m.triggerFocused
 				if m.triggerFocused {
 					m.tableTrigger.Blur()
+					m.textInput.Blur()
 					m.showInformationIfAnyEmptyValue()
 				} else {
 					m.tableTrigger.Focus()
+					m.textInput.Focus()
 				}
 			}
 		case "enter":
@@ -214,7 +220,10 @@ func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 		} else {
 			m.optionValues = nil
 			m.optionCursor = 0
-			m.textInput.Focus()
+
+			if !m.triggerFocused {
+				m.textInput.Focus()
+			}
 		}
 	}
 
