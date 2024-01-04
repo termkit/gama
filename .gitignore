@@ -22,3 +22,7 @@ go.work
 
 # ide data
 .idea
+
+# binary
+main
+gama
