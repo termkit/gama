@@ -19,12 +19,16 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Get the latest tag
+        id: get_latest_tag
+        run: echo "LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)" >> $GITHUB_ENV
+
       - name: Build for Linux, Windows, macOS
         run: |
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o release/gama-linux-amd64 cmd/main.go
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o release/gama-windows-amd64.exe cmd/main.go
-          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o release/gama-macos-amd64 cmd/main.go
-          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o release/gama-macos-arm64 cmd/main.go
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-linux-amd64 cmd/main.go
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-windows-amd64.exe cmd/main.go
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-macos-amd64 cmd/main.go
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-macos-arm64 cmd/main.go
 
       - name: Create Release
         uses: ncipollo/release-action@v1

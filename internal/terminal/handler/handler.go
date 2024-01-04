@@ -17,6 +17,7 @@ import (
 	hdlinfo "github.com/termkit/gama/internal/terminal/handler/information"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
+	vu "github.com/termkit/gama/internal/version/usecase"
 )
 
 type model struct {
@@ -50,7 +51,7 @@ type model struct {
 	actualModelTrigger *hdltrigger.ModelGithubTrigger
 }
 
-func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
+func SetupTerminal(githubUseCase gu.UseCase, versionUseCase vu.UseCase) tea.Model {
 	var currentTab = new(int)
 	var forceUpdateWorkflowHistory = new(bool)
 	var lockTabs = new(bool)
@@ -62,7 +63,7 @@ func SetupTerminal(githubUseCase gu.UseCase) tea.Model {
 	selectedRepository := hdltypes.SelectedRepository{}
 
 	// setup models
-	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase, lockTabs)
+	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase, versionUseCase, lockTabs)
 	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase, &selectedRepository)
 	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository, forceUpdateWorkflowHistory)
 	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase, &selectedRepository)

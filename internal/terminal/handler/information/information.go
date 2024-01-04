@@ -14,11 +14,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	vu "github.com/termkit/gama/internal/version/usecase"
 )
 
 type ModelInfo struct {
 	// use cases
-	githubUseCase gu.UseCase
+	githubUseCase  gu.UseCase
+	versionUseCase vu.UseCase
 
 	// lockTabs will be set true if test connection fails
 	lockTabs *bool
@@ -34,6 +36,8 @@ type ModelInfo struct {
 }
 
 const (
+	releaseURL = "https://github.com/termkit/gama/releases"
+
 	applicationName = `
  ..|'''.|      |     '||    ||'     |     
 .|'     '     |||     |||  |||     |||    
@@ -44,11 +48,12 @@ const (
 )
 
 var (
-	GamaVersion            = "under development" // will be set by build flag
-	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", GamaVersion)
+	gamaVersion            string
+	newVersionAvailableMsg string
+	applicationDescription string
 )
 
-func SetupModelInfo(githubUseCase gu.UseCase, lockTabs *bool) *ModelInfo {
+func SetupModelInfo(githubUseCase gu.UseCase, versionUseCase vu.UseCase, lockTabs *bool) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
 
 	s := spinner.New()
@@ -56,19 +61,39 @@ func SetupModelInfo(githubUseCase gu.UseCase, lockTabs *bool) *ModelInfo {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
-		Help:          help.New(),
-		Keys:          keys,
-		githubUseCase: githubUseCase,
-		modelError:    modelError,
-		lockTabs:      lockTabs,
-		spinner:       s,
+		githubUseCase:  githubUseCase,
+		versionUseCase: versionUseCase,
+		Help:           help.New(),
+		Keys:           keys,
+		modelError:     modelError,
+		lockTabs:       lockTabs,
+		spinner:        s,
 	}
 }
 
 func (m *ModelInfo) Init() tea.Cmd {
-	go m.testConnection(context.Background())
+	gamaVersion = m.versionUseCase.CurrentVersion()
+	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", gamaVersion)
 
+	go m.testConnection(context.Background())
+	go m.checkUpdates(context.Background())
 	return nil
+}
+
+func (m *ModelInfo) checkUpdates(ctx context.Context) {
+	isUpdateAvailable, version, err := m.versionUseCase.IsUpdateAvailable()
+	if err != nil {
+		m.modelError.SetError(err)
+		m.modelError.SetErrorMessage("failed to check updates")
+		newVersionAvailableMsg = fmt.Sprintf("failed to check updates: %v\nPlease visit: %s", err, releaseURL)
+		return
+	}
+
+	if isUpdateAvailable {
+		newVersionAvailableMsg = fmt.Sprintf("New version available: %s\nPlease visit: %s", version, releaseURL)
+	}
+
+	go m.Update(m)
 }
 
 func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -89,9 +114,13 @@ func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelInfo) View() string {
 	infoDoc := strings.Builder{}
 
-	ws := lipgloss.NewStyle().BorderForeground(lipgloss.Color("39")).Align(lipgloss.Center).Border(lipgloss.RoundedBorder()).Width(m.Viewport.Width - 7)
+	ws := lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("39")).
+		Align(lipgloss.Center).
+		Border(lipgloss.RoundedBorder()).
+		Width(m.Viewport.Width - 7)
 
-	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription))
+	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
 
 	docHeight := strings.Count(infoDoc.String(), "\n")
 	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 13
