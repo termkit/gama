@@ -6,17 +6,21 @@ import (
 
 type keyMap struct {
 	PreviousTab teakey.Binding
+	SwitchTab   teakey.Binding
+	Trigger     teakey.Binding
 	Refresh     teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.PreviousTab, k.Refresh}
+	return []teakey.Binding{k.PreviousTab, k.Refresh, k.SwitchTab, k.Trigger}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.PreviousTab},
 		{k.Refresh},
+		{k.SwitchTab},
+		{k.Trigger},
 	}
 }
 
@@ -28,6 +32,14 @@ var keys = keyMap{
 	Refresh: teakey.NewBinding(
 		teakey.WithKeys("ctrl+r", "ctrl+R"),
 		teakey.WithHelp("ctrl+r", "Refresh workflow"),
+	),
+	SwitchTab: teakey.NewBinding(
+		teakey.WithKeys("tab"),
+		teakey.WithHelp("tab", "switch between tabs"),
+	),
+	Trigger: teakey.NewBinding(
+		teakey.WithKeys("enter"),
+		teakey.WithHelp("enter", "trigger workflow"),
 	),
 }
 
