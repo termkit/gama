@@ -239,6 +239,10 @@ func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 		}
 
 		if m.textInput.Focused() {
+			if strings.HasPrefix(m.textInput.Value(), " ") {
+				m.textInput.SetValue("")
+			}
+
 			var selectedRow = m.tableTrigger.SelectedRow()
 			if len(selectedRow) == 0 {
 				return
