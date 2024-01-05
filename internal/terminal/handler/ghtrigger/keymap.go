@@ -31,11 +31,11 @@ var keys = keyMap{
 	),
 	Refresh: teakey.NewBinding(
 		teakey.WithKeys("ctrl+r", "ctrl+R"),
-		teakey.WithHelp("ctrl+r", "Refresh workflow"),
+		teakey.WithHelp("ctrl+r", "Refresh content"),
 	),
 	SwitchTab: teakey.NewBinding(
 		teakey.WithKeys("tab"),
-		teakey.WithHelp("tab", "switch between tabs"),
+		teakey.WithHelp("tab", "switch button"),
 	),
 	Trigger: teakey.NewBinding(
 		teakey.WithKeys("enter"),
