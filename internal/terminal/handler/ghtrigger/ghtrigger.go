@@ -375,14 +375,6 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 		return
 	}
 
-	if len(workflowContent.Workflow.KeyVals) == 0 &&
-		len(workflowContent.Workflow.Choices) == 0 &&
-		len(workflowContent.Workflow.Inputs) == 0 {
-		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflow contents found.",
-			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-		return
-	}
-
 	m.workflowContent = workflowContent.Workflow
 
 	var tableRowsTrigger []table.Row
@@ -441,8 +433,17 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 
 	m.tableReady = true
 	m.isTriggerable = true
-	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
-		m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+
+	if len(workflowContent.Workflow.KeyVals) == 0 &&
+		len(workflowContent.Workflow.Choices) == 0 &&
+		len(workflowContent.Workflow.Inputs) == 0 {
+		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] Workflow doesn't contain options but still triggerable",
+			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+	} else {
+		m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
+			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+	}
+
 	go m.Update(m) // update model
 }
 
