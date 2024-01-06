@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -26,61 +27,52 @@ func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInp
 		return nil, err
 	}
 
-	// Create a buffered channel for jobs, results and errors
-	jobs := make(chan gr.GithubRepository, len(repositories))
+	// Create a buffered channel for results and errors
 	results := make(chan GithubRepository, len(repositories))
-	errors := make(chan error, len(repositories))
-
-	// Start a number of workers
-	for w := 1; w <= len(repositories); w++ {
-		go u.workerListRepositories(ctx, jobs, results, errors)
-	}
+	errs := make(chan error, len(repositories))
 
 	// Send jobs to the workers
 	for _, repository := range repositories {
-		jobs <- repository
+		go u.workerListRepositories(ctx, repository, results, errs)
 	}
-	close(jobs)
 
 	// Collect the results and errors
 	var result []GithubRepository
-	var resultErr error
+	var resultErrs []error
 	for range repositories {
 		select {
 		case res := <-results:
 			result = append(result, res)
-		case err := <-errors:
-			resultErr = err
+		case err := <-errs:
+			resultErrs = append(resultErrs, err)
 		}
 	}
 
 	return &ListRepositoriesOutput{
 		Repositories: result,
-	}, resultErr
+	}, errors.Join(resultErrs...)
 }
 
-func (u useCase) workerListRepositories(ctx context.Context, jobs <-chan gr.GithubRepository, results chan<- GithubRepository, errors chan<- error) {
-	for repository := range jobs {
-		getWorkflows, err := u.githubRepository.GetWorkflows(ctx, repository.FullName)
-		if err != nil {
-			errors <- err
-			continue
-		}
+func (u useCase) workerListRepositories(ctx context.Context, repository gr.GithubRepository, results chan<- GithubRepository, errs chan<- error) {
+	getWorkflows, err := u.githubRepository.GetWorkflows(ctx, repository.FullName)
+	if err != nil {
+		errs <- err
+		return
+	}
 
-		var workflows []Workflow
-		for _, workflow := range getWorkflows {
-			workflows = append(workflows, Workflow{
-				ID: workflow.ID,
-			})
-		}
+	var workflows []Workflow
+	for _, workflow := range getWorkflows {
+		workflows = append(workflows, Workflow{
+			ID: workflow.ID,
+		})
+	}
 
-		results <- GithubRepository{
-			Name:          repository.FullName,
-			Stars:         repository.StargazersCount,
-			Private:       repository.Private,
-			DefaultBranch: repository.DefaultBranch,
-			Workflows:     workflows,
-		}
+	results <- GithubRepository{
+		Name:          repository.FullName,
+		Stars:         repository.StargazersCount,
+		Private:       repository.Private,
+		DefaultBranch: repository.DefaultBranch,
+		Workflows:     workflows,
 	}
 }
 

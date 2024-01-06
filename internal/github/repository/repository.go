@@ -149,12 +149,7 @@ func (r *Repo) GetWorkflows(ctx context.Context, repository string) ([]Workflow,
 		return nil, err
 	}
 
-	var workflows []Workflow
-	for _, workflow := range githubWorkflow.Workflows {
-		workflows = append(workflows, workflow)
-	}
-
-	return workflows, nil
+	return githubWorkflow.Workflows, nil
 }
 
 func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) ([]Workflow, error) {
@@ -169,29 +164,57 @@ func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) (
 		return nil, err
 	}
 
+	// Create a buffered channel for results and errors
+	results := make(chan *Workflow, len(workflows.Workflows))
+	errs := make(chan error, len(workflows.Workflows))
+
 	// Filter workflows to only include those that are dispatchable and manually triggerable
-	var triggerableWorkflows []Workflow
 	for _, workflow := range workflows.Workflows {
-		// Get the workflow file content
-		fileContent, err := r.getWorkflowFile(ctx, repository, workflow.Path)
-		if err != nil {
-			return nil, err
-		}
+		go r.workerGetTriggerableWorkflows(ctx, repository, workflow, results, errs)
+	}
 
-		// Parse the workflow file content as YAML
-		var wfFile workflowFile
-		err = yaml.Unmarshal([]byte(fileContent), &wfFile)
-		if err != nil {
-			return nil, err
-		}
-
-		// Check if the workflow file content has a "workflow_dispatch" key
-		if _, ok := wfFile.On["workflow_dispatch"]; ok {
-			triggerableWorkflows = append(triggerableWorkflows, workflow)
+	// Collect the results and errors
+	var result []Workflow
+	var resultErrs []error
+	for range workflows.Workflows {
+		select {
+		case res := <-results:
+			// append only triggerable (dispatch) workflows
+			if res != nil {
+				result = append(result, *res)
+			}
+		case err := <-errs:
+			resultErrs = append(resultErrs, err)
 		}
 	}
 
-	return triggerableWorkflows, nil
+	return result, errors.Join(resultErrs...)
+}
+
+func (r *Repo) workerGetTriggerableWorkflows(ctx context.Context, repository string, workflow Workflow, results chan<- *Workflow, errs chan<- error) {
+	// Get the workflow file content
+	fileContent, err := r.getWorkflowFile(ctx, repository, workflow.Path)
+	if err != nil {
+		errs <- err
+		return
+	}
+
+	// Parse the workflow file content as YAML
+	var wfFile workflowFile
+	err = yaml.Unmarshal([]byte(fileContent), &wfFile)
+	if err != nil {
+		errs <- err
+		return
+	}
+
+	var dispatchWorkflow *Workflow
+
+	// Check if the workflow file content has a "workflow_dispatch" key
+	if _, ok := wfFile.On["workflow_dispatch"]; ok {
+		dispatchWorkflow = &workflow
+	}
+
+	results <- dispatchWorkflow
 }
 
 func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, branch string, workflowFile string) ([]byte, error) {
