@@ -256,6 +256,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 
 	m.tableReady = true
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
+	m.tableWorkflowHistory.SetCursor(0)
 	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	go m.Update(m) // update model
