@@ -25,10 +25,10 @@ jobs:
 
       - name: Build for Linux, Windows, macOS
         run: |
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-linux-amd64 cmd/main.go
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-windows-amd64.exe cmd/main.go
-          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-macos-amd64 cmd/main.go
-          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-macos-arm64 cmd/main.go
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-linux-amd64 main.go
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-windows-amd64.exe main.go
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-macos-amd64 main.go
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${{ env.LATEST_TAG }}" -o release/gama-macos-arm64 main.go
 
       - name: Create Release
         uses: ncipollo/release-action@v1
