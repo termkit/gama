@@ -35,14 +35,6 @@ GITHUB_TOKEN="<your github token>" gama
 
 ## Installation
 
-### Using Go Get
-
-Install GAMA using Go:
-
-```bash
-go install github.com/termkit/gama@latest
-```
-
 ### Using Docker
 
 Run GAMA in a Docker container:
