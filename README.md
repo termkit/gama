@@ -1,17 +1,70 @@
 # GitHub Actions Manager (GAMA)
 
-GAMA is a terminal-ui tool designed to simplify the management of your GitHub Actions workflows. It provides functionality to list and trigger workflows directly from your terminal.
+GAMA is a powerful terminal-based user interface tool designed to streamline the management of GitHub Actions workflows. It allows developers to list, trigger, and manage workflows with ease directly from the terminal.
 
-## Features
+<img alt="gama demo" src="docs/gama.gif" width="600"/>
 
-- You can use more than 10 workflow inputs.
-- List all workflows in a repository.
-- Trigger specific workflows using their ID.
+## Key Features
+
+- **Extended Workflow Inputs**: Supports more than 10 workflow inputs using JSON format.
+- **Workflow History**: Conveniently list all historical runs of workflows in a repository.
+- **Discoverability**: Easily list all triggerable (dispatchable) workflows in a repository.
+- **Workflow Management**: Trigger specific workflows with custom inputs.
+
+## Getting Started
+
+### Prerequisites
+Before using GAMA, you need to generate a GitHub token. Follow these [instructions](docs/generate_github_token/README.md) to create your token.
+
+### Configuration
+
+#### YAML Configuration
+Place a `.gama.yaml` file in your home directory with the following content:
+
+```yaml
+github:
+  token: <your github token>
+```
+
+#### Environment Variable Configuration
+Alternatively, you can use an environment variable:
+
+```bash
+GITHUB_TOKEN="<your github token>" gama
+```
 
 ## Installation
 
-GAMA can be installed using the `go get` command:
+### Using Go Get
+
+Install GAMA using Go:
 
 ```bash
-go get github.com/termkit/gama@v1.0.0
+go install github.com/termkit/gama@latest
 ```
+
+### Using Docker
+
+Run GAMA in a Docker container:
+
+```bash
+docker run --rm -it --env GITHUB_TOKEN="<your github token>" termkit/gama:latest
+```
+
+### Download Binary
+
+Download the latest binary from the [releases page](https://github.com/termkit/gama/releases).
+
+---
+
+## Contributing
+
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+## License
+
+Distributed under the GNU GENERAL PUBLIC LICENSE Version 3. See `LICENSE` for more information.
+
+## Contact&Author
+
+[Engin Açıkgöz](https://github.com/canack)
