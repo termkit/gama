@@ -139,6 +139,7 @@ func (m *ModelGithubWorkflow) View() string {
 }
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
+	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)

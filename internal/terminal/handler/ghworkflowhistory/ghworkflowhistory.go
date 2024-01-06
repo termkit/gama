@@ -212,6 +212,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
+	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
