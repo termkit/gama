@@ -149,12 +149,7 @@ func (r *Repo) GetWorkflows(ctx context.Context, repository string) ([]Workflow,
 		return nil, err
 	}
 
-	var workflows []Workflow
-	for _, workflow := range githubWorkflow.Workflows {
-		workflows = append(workflows, workflow)
-	}
-
-	return workflows, nil
+	return githubWorkflow.Workflows, nil
 }
 
 func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) ([]Workflow, error) {
