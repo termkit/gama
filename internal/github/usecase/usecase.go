@@ -53,10 +53,10 @@ func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInp
 	}, errors.Join(resultErrs...)
 }
 
-func (u useCase) workerListRepositories(ctx context.Context, repository gr.GithubRepository, results chan<- GithubRepository, errors chan<- error) {
+func (u useCase) workerListRepositories(ctx context.Context, repository gr.GithubRepository, results chan<- GithubRepository, errs chan<- error) {
 	getWorkflows, err := u.githubRepository.GetWorkflows(ctx, repository.FullName)
 	if err != nil {
-		errors <- err
+		errs <- err
 		return
 	}
 
