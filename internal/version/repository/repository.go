@@ -26,7 +26,7 @@ const (
 func New(currentVersion string) *Repo {
 	return &Repo{
 		Client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 20 * time.Second,
 		},
 		currentVersion: currentVersion,
 	}
@@ -46,8 +46,10 @@ func (r *Repo) LatestVersion() (string, error) {
 		path:   fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo),
 		accept: "application/vnd.github+json",
 	})
-
-	if err != nil {
+	// client time out error
+	if errors.As(err, &context.DeadlineExceeded) {
+		return "", errors.New("request timed out")
+	} else if err != nil {
 		return "", err
 	}
 
