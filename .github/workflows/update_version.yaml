@@ -11,6 +11,9 @@ jobs:
   update_version:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: Update Version in main.go
         run: |
           sed -i "s/var.*Version.*/var Version = \"${{ inputs.version }}\" \/\/ will be set by build flag/g" main.go
