@@ -18,6 +18,6 @@ var keys = keyMap{
 		teakey.WithKeys("shift+left"),
 	),
 	Quit: teakey.NewBinding(
-		teakey.WithKeys("ctrl+q"),
+		teakey.WithKeys("ctrl+c"),
 	),
 }
