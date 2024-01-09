@@ -31,7 +31,10 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add main.go
           git commit -m "Update version to ${{ env.LATEST_TAG }}"
-          git push
+          git fetch
+          git branch -f main HEAD
+          git checkout main
+          git push origin main
 
       - name: Build for Linux, Windows, macOS using Makefile
         run: make all
