@@ -33,7 +33,7 @@ Alternatively, you can use an environment variable:
 GITHUB_TOKEN="<your github token>" gama
 ```
 
-## Installation
+## Build & Installation
 
 ### Using Docker
 
@@ -46,6 +46,12 @@ docker run --rm -it --env GITHUB_TOKEN="<your github token>" termkit/gama:latest
 ### Download Binary
 
 Download the latest binary from the [releases page](https://github.com/termkit/gama/releases).
+
+### Build from Source
+```bash
+make build
+# output: ./release/gama
+```
 
 ---
 

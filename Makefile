@@ -17,7 +17,7 @@ macos_arm64: get_latest_tag
 	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=$(LATEST_TAG)" -o release/gama-macos-arm64 main.go
 
 build: get_latest_tag # build for current OS
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=$(LATEST_TAG)" -o release/gama-$(GOOS)-$(GOARCH) main.go
+	CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=$(LATEST_TAG)" -o release/gama main.go
 
 get_latest_tag:
 	@echo "Getting latest Git tag..."
