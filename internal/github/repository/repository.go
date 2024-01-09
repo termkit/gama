@@ -54,7 +54,7 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 
 func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubRepository, error) {
 	if limit == 0 {
-		limit = 200
+		limit = 2000
 	}
 
 	var repositories []GithubRepository
