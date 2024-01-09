@@ -139,14 +139,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+const (
+	minTerminalWidth  = 102
+	minTerminalHeight = 24
+)
+
 func (m *model) View() string {
 	if !m.terminalSizeReady {
 		return "Setting up..."
 	}
-	var maxTerminalWidth = 102
-	var maxTerminalHeight = 24
-	if m.viewport.Width < maxTerminalWidth || m.viewport.Height < maxTerminalHeight {
-		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", maxTerminalWidth, maxTerminalHeight)
+
+	if m.viewport.Width < minTerminalWidth || m.viewport.Height < minTerminalHeight {
+		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", minTerminalWidth, minTerminalHeight)
 	}
 
 	var mainDoc strings.Builder
