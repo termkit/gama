@@ -23,6 +23,8 @@ go.work
 # ide data
 .idea
 
+.vscode
+
 # release
 release/
 

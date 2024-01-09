@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/timer"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -49,6 +50,9 @@ type model struct {
 
 	modelTrigger       tea.Model
 	actualModelTrigger *hdltrigger.ModelGithubTrigger
+
+	// keymap
+	keys keyMap
 }
 
 func SetupTerminal(githubUseCase gu.UseCase, versionUseCase vu.UseCase) tea.Model {
@@ -80,6 +84,7 @@ func SetupTerminal(githubUseCase gu.UseCase, versionUseCase vu.UseCase) tea.Mode
 		modelWorkflowHistory: hdlModelWorkflowHistory, directModelWorkflowHistory: hdlModelWorkflowHistory,
 		modelWorkflow: hdlModelWorkflow, directModelWorkflow: hdlModelWorkflow,
 		modelTrigger: hdlModelTrigger, actualModelTrigger: hdlModelTrigger,
+		keys: keys,
 	}
 
 	hdlModelInfo.Viewport = &m.viewport
@@ -110,22 +115,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch keypress := msg.String(); keypress {
-		case "shift+left":
+		switch {
+		case key.Matches(msg, m.keys.SwitchTabLeft):
 			if !*m.lockTabs {
 				*m.currentTab = max(*m.currentTab-1, 0)
 			}
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
-		case "shift+right":
+		case key.Matches(msg, m.keys.SwitchTabRight):
 			if !*m.lockTabs {
 				*m.currentTab = min(*m.currentTab+1, len(m.TabsWithColor)-1)
 			}
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
-		case "enter":
-			cmds = append(cmds, m.handleTabContent(cmd, msg))
-		case "esc", "z":
-			cmds = append(cmds, m.handleTabContent(cmd, msg))
-		case "ctrl+c":
+		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
 		default:
 			cmds = append(cmds, m.handleTabContent(cmd, msg))
