@@ -61,7 +61,7 @@ Contributions are what make the open source community such an amazing place to l
 
 ## License
 
-Distributed under the GNU GENERAL PUBLIC LICENSE Version 3. See `LICENSE` for more information.
+Distributed under the GNU GENERAL PUBLIC LICENSE Version 3 or later. See `LICENSE` for more information.
 
 ## Contact&Author
 
