@@ -23,19 +23,6 @@ jobs:
         id: get_latest_tag
         run: echo "LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)" >> $GITHUB_ENV
 
-      - name: Update Version in main.go
-        run: |
-          sed -i "s/var.*Version.*/var Version = \"${{ env.LATEST_TAG }}\" \/\/ will be set by build flag/g" main.go
-          go fmt main.go
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add main.go
-          git commit -m "Update version to ${{ env.LATEST_TAG }}"
-          git fetch
-          git branch -f main HEAD
-          git checkout main
-          git push origin main
-
       - name: Build for Linux, Windows, macOS using Makefile
         run: make all
 
