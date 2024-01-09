@@ -22,7 +22,7 @@ func (k keyMap) FullHelp() [][]teakey.Binding {
 
 var keys = keyMap{
 	NextTab: teakey.NewBinding(
-		teakey.WithKeys("shift+right"),
+		teakey.WithKeys(""), // help-only binding
 		teakey.WithHelp("shift + →", "next tab"),
 	),
 	Quit: teakey.NewBinding(

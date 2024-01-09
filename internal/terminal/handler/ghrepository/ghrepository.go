@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -166,11 +167,12 @@ func (m *ModelGithubRepository) handleTableInputs(ctx context.Context) {
 }
 
 func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "r", "R":
+		switch {
+		case key.Matches(msg, m.Keys.Refresh):
 			m.tableReady = false       // reset table ready status
 			m.cancelSyncRepositories() // cancel previous sync
 			m.syncRepositoriesContext, m.cancelSyncRepositories = context.WithCancel(context.Background())
@@ -179,12 +181,14 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.tableGithubRepository, cmd = m.tableGithubRepository.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.handleTableInputs(m.syncRepositoriesContext)
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m *ModelGithubRepository) View() string {
