@@ -54,7 +54,7 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 
 func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubRepository, error) {
 	if limit == 0 {
-		limit = 2000
+		limit = 100
 	}
 
 	var repositories []GithubRepository
@@ -63,7 +63,7 @@ func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubReposit
 		path:        githubAPIURL + "/user/repos",
 		contentType: "application/json",
 		queryParams: map[string]string{
-			"visibility": "private",
+			"visibility": "all", // default
 			"per_page":   strconv.Itoa(limit),
 		},
 	})

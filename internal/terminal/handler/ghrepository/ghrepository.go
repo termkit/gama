@@ -133,7 +133,7 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 		return
 	}
 
-	var tableRowsGithubRepository []table.Row
+	tableRowsGithubRepository := make([]table.Row, 0, len(repositories.Repositories))
 	for _, repository := range repositories.Repositories {
 		tableRowsGithubRepository = append(tableRowsGithubRepository,
 			table.Row{repository.Name, repository.DefaultBranch, strconv.Itoa(repository.Stars), strconv.Itoa(len(repository.Workflows))})
