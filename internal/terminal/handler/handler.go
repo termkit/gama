@@ -97,7 +97,9 @@ func SetupTerminal(githubUseCase gu.UseCase, versionUseCase vu.UseCase) tea.Mode
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(tea.EnterAltScreen,
+	return tea.Batch(
+		tea.EnterAltScreen,
+		tea.SetWindowTitle("GitHub Actions Manager (GAMA)"),
 		m.timer.Init(),
 		m.modelInfo.Init(),
 		m.modelGithubRepository.Init(),
