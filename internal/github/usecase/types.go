@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"time"
+
 	pw "github.com/termkit/gama/pkg/workflow"
 )
 
@@ -17,6 +19,7 @@ type GithubRepository struct {
 	Private       bool
 	DefaultBranch string
 	Stars         int
+	LastUpdated   time.Time
 
 	Workflows []Workflow
 	// We can add more fields here
