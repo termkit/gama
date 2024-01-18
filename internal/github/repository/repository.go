@@ -65,6 +65,8 @@ func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubReposit
 		queryParams: map[string]string{
 			"visibility": "all", // default
 			"per_page":   strconv.Itoa(limit),
+			"sort":       "updated",
+			"direction":  "desc", //default
 		},
 	})
 	if err != nil {
