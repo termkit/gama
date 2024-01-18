@@ -1,4 +1,4 @@
-.PHONY: all linux_amd64 windows macos_amd64 macos_arm64 build get_latest_tag
+.PHONY: all linux_amd64 linux_arm64 windows macos_amd64 macos_arm64 build get_latest_tag
 
 LATEST_TAG ?= $(shell git describe --tags `git rev-list --tags --max-count=1`)
 
