@@ -53,27 +53,56 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 }
 
 func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubRepository, error) {
-	if limit == 0 {
+	if limit <= 0 || limit > 100 {
 		limit = 100
 	}
 
+	resultsChan := make(chan []GithubRepository)
+	errChan := make(chan error)
+
+	for page := 1; page <= 5; page++ {
+		go r.workerListRepositories(ctx, limit, page, resultsChan, errChan)
+	}
+
+	var repositories []GithubRepository
+	var repoErr error
+
+	for range make([]int, 5) {
+		select {
+		case err := <-errChan:
+			repoErr = errors.Join(err)
+		case res := <-resultsChan:
+			repositories = append(repositories, res...)
+		}
+	}
+
+	if repoErr != nil {
+		return nil, repoErr
+	}
+
+	return repositories, nil
+}
+
+func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, results chan<- []GithubRepository, errs chan<- error) {
 	var repositories []GithubRepository
 	err := r.do(ctx, nil, &repositories, requestOptions{
 		method:      http.MethodGet,
 		path:        githubAPIURL + "/user/repos",
 		contentType: "application/json",
 		queryParams: map[string]string{
-			"visibility": "all", // default
+			"visibility": "all",
 			"per_page":   strconv.Itoa(limit),
+			"page":       strconv.Itoa(page),
 			"sort":       "updated",
-			"direction":  "desc", //default
+			"direction":  "desc",
 		},
 	})
 	if err != nil {
-		return nil, err
+		errs <- err
+		return
 	}
 
-	return repositories, nil
+	results <- repositories
 }
 
 func (r *Repo) ListBranches(ctx context.Context, repository string) ([]GithubBranch, error) {
