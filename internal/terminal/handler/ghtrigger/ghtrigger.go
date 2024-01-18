@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -419,7 +420,7 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 	}
 
 	m.tableTrigger.SetRows(tableRowsTrigger)
-
+	m.sortTableItemsByName()
 	m.tableTrigger.SetCursor(0)
 	m.optionCursor = 0
 	m.optionValues = nil
@@ -627,6 +628,14 @@ func (m *ModelGithubTrigger) optionSelector() string {
 
 	// Apply window style to the entire list
 	return windowStyle.Render(doc.String())
+}
+
+func (m *ModelGithubTrigger) sortTableItemsByName() {
+	rows := m.tableTrigger.Rows()
+	slices.SortFunc(rows, func(a, b table.Row) int {
+		return strings.Compare(a[2], b[2])
+	})
+	m.tableTrigger.SetRows(rows)
 }
 
 func (m *ModelGithubTrigger) ViewStatus() string {
