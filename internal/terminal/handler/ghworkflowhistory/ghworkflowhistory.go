@@ -44,7 +44,7 @@ type ModelGithubWorkflowHistory struct {
 	Help                 help.Model
 	Viewport             *viewport.Model
 	tableWorkflowHistory table.Model
-	modelError           hdlerror.ModelError
+	modelError           *hdlerror.ModelError
 
 	modelTabOptions       tea.Model
 	actualModelTabOptions *taboptions.Options
@@ -76,14 +76,15 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 		Bold(false)
 	tableWorkflowHistory.SetStyles(s)
 
-	tabOptions := taboptions.NewOptions()
+	modelError := hdlerror.SetupModelError()
+	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubWorkflowHistory{
 		Help:                       help.New(),
 		Keys:                       keys,
 		githubUseCase:              githubUseCase,
 		tableWorkflowHistory:       tableWorkflowHistory,
-		modelError:                 hdlerror.SetupModelError(),
+		modelError:                 &modelError,
 		SelectedRepository:         selectedRepository,
 		modelTabOptions:            tabOptions,
 		actualModelTabOptions:      tabOptions,
