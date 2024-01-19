@@ -8,6 +8,7 @@ import (
 
 type ListRepositoriesInput struct {
 	Limit int
+	Sort  string
 }
 
 type ListRepositoriesOutput struct {

@@ -18,6 +18,7 @@ import (
 	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	"github.com/termkit/gama/pkg/browser"
+	"github.com/termkit/gama/pkg/pagination"
 )
 
 type ModelGithubRepository struct {
@@ -118,7 +119,7 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	// delete all rows
 	m.tableGithubRepository.SetRows([]table.Row{})
 
-	repositories, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{})
+	repositories, err := m.githubUseCase.ListRepositories(ctx, pagination.FindOpts{})
 	if errors.Is(err, context.Canceled) {
 		return
 	} else if err != nil {

@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+
+	"github.com/termkit/gama/pkg/pagination"
 )
 
 type Repository interface {
 	TestConnection(ctx context.Context) error
-	ListRepositories(ctx context.Context, limit int) ([]GithubRepository, error)
+	ListRepositories(ctx context.Context, input pagination.FindOpts) ([]GithubRepository, error)
 	GetRepository(ctx context.Context, repository string) (*GithubRepository, error)
 	ListBranches(ctx context.Context, repository string) ([]GithubBranch, error)
 	ListWorkflowRuns(ctx context.Context, repository string, branch string) (*WorkflowRuns, error)

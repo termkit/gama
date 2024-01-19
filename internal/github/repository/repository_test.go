@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	pkgconfig "github.com/termkit/gama/pkg/config"
+	"github.com/termkit/gama/pkg/pagination"
 )
 
 func newRepo(ctx context.Context) *Repo {
@@ -35,7 +36,11 @@ func TestRepo_ListRepositories(t *testing.T) {
 
 	repo := newRepo(ctx)
 
-	repositories, err := repo.ListRepositories(ctx, 10)
+	var input = pagination.FindOpts{
+		Limit: 10,
+		Sort:  "",
+	}
+	repositories, err := repo.ListRepositories(ctx, input)
 	if err != nil {
 		t.Error(err)
 	}
