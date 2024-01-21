@@ -326,7 +326,13 @@ func (m *ModelGithubTrigger) View() string {
 	newTableColumns := tableColumnsTrigger
 	widthDiff := termWidth - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[4].Width += widthDiff - 17
+		keyWidth := &newTableColumns[2].Width
+		valueWidth := &newTableColumns[4].Width
+
+		*valueWidth += widthDiff - 17
+		if *valueWidth%2 == 0 {
+			*keyWidth = *valueWidth / 2
+		}
 		m.tableTrigger.SetColumns(newTableColumns)
 		m.tableTrigger.SetHeight(termHeight - 17)
 	}
