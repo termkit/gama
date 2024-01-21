@@ -5,20 +5,20 @@ import (
 )
 
 type keyMap struct {
-	Refresh   teakey.Binding
-	LaunchTab teakey.Binding
-	TabSwitch teakey.Binding
+	Refresh      teakey.Binding
+	LaunchOption teakey.Binding
+	TabSwitch    teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.TabSwitch, k.Refresh, k.LaunchTab}
+	return []teakey.Binding{k.TabSwitch, k.Refresh, k.LaunchOption}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.TabSwitch},
 		{k.Refresh},
-		{k.LaunchTab},
+		{k.LaunchOption},
 	}
 }
 
@@ -27,7 +27,7 @@ var keys = keyMap{
 		teakey.WithKeys("r", "R"),
 		teakey.WithHelp("r/R", "Refresh list"),
 	),
-	LaunchTab: teakey.NewBinding(
+	LaunchOption: teakey.NewBinding(
 		teakey.WithKeys("enter"),
 		teakey.WithHelp("enter", "Launch the selected option"),
 	),
