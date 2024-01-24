@@ -2,14 +2,20 @@ package taboptions
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 )
 
 type Options struct {
 	Style lipgloss.Style
+
+	modelError         *hdlerror.ModelError
+	previousModelError hdlerror.ModelError
+	modelLock          bool
 
 	status OptionStatus
 
@@ -42,7 +48,7 @@ func (o OptionStatus) String() string {
 	return string(o)
 }
 
-func NewOptions() *Options {
+func NewOptions(modelError *hdlerror.ModelError) *Options {
 	var b = lipgloss.RoundedBorder()
 	b.Right = "├"
 	b.Left = "┤"
@@ -68,6 +74,7 @@ func NewOptions() *Options {
 		optionsAction:   initialOptionsAction,
 		optionsWithFunc: optionsWithFunc,
 		status:          OptionWait,
+		modelError:      modelError,
 	}
 }
 
@@ -84,6 +91,28 @@ func (o *Options) AddOption(option string, action func()) {
 	o.options = append(o.options, optionWithNumber)
 	o.optionsAction = append(o.optionsAction, optionWithNumber)
 	o.optionsWithFunc[optionNumber] = action
+}
+
+func (o *Options) getOptionMessage() string {
+	option := o.options[o.cursor]
+	option = strings.TrimPrefix(option, fmt.Sprintf("%d) ", o.cursor))
+	return option
+}
+
+func (o *Options) showAreYouSure() {
+	if !o.modelLock {
+		o.previousModelError = *o.modelError
+		o.modelLock = true
+	}
+	o.modelError.Reset()
+	o.modelError.SetProgressMessage(fmt.Sprintf("Are you sure you want to %s?", o.getOptionMessage()))
+}
+
+func (o *Options) switchToPreviousError() {
+	if o.modelLock {
+		return
+	}
+	*o.modelError = o.previousModelError
 }
 
 func (o *Options) executeOption() {
@@ -107,6 +136,8 @@ func (o *Options) resetOptionsWithOriginal() {
 		time.Sleep(1 * time.Second)
 		o.timer--
 	}
+	o.modelLock = false
+	o.switchToPreviousError()
 	o.optionsAction[0] = string(OptionIdle)
 	o.cursor = 0
 	o.isTabSelected = false
@@ -142,6 +173,7 @@ func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (o *Options) updateCursor(cursor int) {
 	if cursor < len(o.options) {
 		o.cursor = cursor
+		o.showAreYouSure()
 		go o.resetOptionsWithOriginal()
 	}
 }

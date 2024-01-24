@@ -41,7 +41,7 @@ type ModelGithubWorkflow struct {
 	Viewport                 *viewport.Model
 	list                     list.Model
 	tableTriggerableWorkflow table.Model
-	modelError               hdlerror.ModelError
+	modelError               *hdlerror.ModelError
 
 	modelTabOptions       tea.Model
 	actualModelTabOptions *taboptions.Options
@@ -76,12 +76,14 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdlt
 		Bold(false)
 	tableTriggerableWorkflow.SetStyles(s)
 
-	tabOptions := taboptions.NewOptions()
+	modelError := hdlerror.SetupModelError()
+	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubWorkflow{
 		Help:                            help.New(),
 		Keys:                            keys,
 		githubUseCase:                   githubUseCase,
+		modelError:                      &modelError,
 		tableTriggerableWorkflow:        tableTriggerableWorkflow,
 		SelectedRepository:              selectedRepository,
 		modelTabOptions:                 tabOptions,

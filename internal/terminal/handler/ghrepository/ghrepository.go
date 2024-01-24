@@ -41,7 +41,7 @@ type ModelGithubRepository struct {
 	Viewport                    *viewport.Model
 	tableGithubRepository       table.Model
 	searchTableGithubRepository table.Model
-	modelError                  hdlerror.ModelError
+	modelError                  *hdlerror.ModelError
 
 	modelTabOptions       tea.Model
 	actualModelTabOptions *taboptions.Options
@@ -110,14 +110,14 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 
 	// setup models
 	modelError := hdlerror.SetupModelError()
-	tabOptions := taboptions.NewOptions()
+	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubRepository{
 		Help:                    help.New(),
 		Keys:                    keys,
 		githubUseCase:           githubUseCase,
 		tableGithubRepository:   tableGithubRepository,
-		modelError:              modelError,
+		modelError:              &modelError,
 		SelectedRepository:      selectedRepository,
 		modelTabOptions:         tabOptions,
 		actualModelTabOptions:   tabOptions,
