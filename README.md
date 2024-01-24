@@ -66,3 +66,6 @@ Distributed under the GNU GENERAL PUBLIC LICENSE Version 3 or later. See `LICENS
 ## Contact&Author
 
 [Engin Açıkgöz](https://github.com/canack)
+
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/termkit/gama.svg?variant=adaptive)](https://starchart.cc/termkit/gama)

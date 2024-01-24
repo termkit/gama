@@ -175,7 +175,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 		}
 	}()
 
-	return m.modelTabOptions.Init()
+	return tea.Batch(m.modelTabOptions.Init())
 }
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
