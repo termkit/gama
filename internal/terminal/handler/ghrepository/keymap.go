@@ -24,8 +24,8 @@ func (k keyMap) FullHelp() [][]teakey.Binding {
 
 var keys = keyMap{
 	Refresh: teakey.NewBinding(
-		teakey.WithKeys("r", "R"),
-		teakey.WithHelp("r/R", "Refresh list"),
+		teakey.WithKeys("ctrl+r", "ctrl+R"),
+		teakey.WithHelp("ctrl + (r | R)", "Refresh list"),
 	),
 	LaunchOption: teakey.NewBinding(
 		teakey.WithKeys("enter"),

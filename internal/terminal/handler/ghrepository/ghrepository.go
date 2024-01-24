@@ -105,7 +105,7 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 	ti := textinput.New()
 	ti.Blur()
 	ti.CharLimit = 72
-	ti.Placeholder = "Search repository"
+	ti.Placeholder = "Type to search repository"
 	ti.ShowSuggestions = false // disable suggestions, it will be enabled future.
 
 	// setup models
@@ -184,9 +184,10 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 
 	// set cursor to 0
 	m.tableGithubRepository.SetCursor(0)
+	m.searchTableGithubRepository.SetCursor(0)
 
 	m.tableReady = true
-	m.updateSearchBarSuggestions()
+	//m.updateSearchBarSuggestions()
 	m.textInput.Focus()
 	m.modelError.SetSuccessMessage("Repositories fetched")
 	go m.Update(m) // update model
@@ -224,6 +225,11 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			go m.syncRepositories(m.syncRepositoriesContext)
 		case msg.String() == " " || m.isNumber(msg.String()):
 			textInputMsg = tea.KeyMsg{}
+		case m.isCharAndSymbol(msg.Runes):
+			m.tableGithubRepository.GotoTop()
+			m.tableGithubRepository.SetCursor(0)
+			m.searchTableGithubRepository.GotoTop()
+			m.searchTableGithubRepository.SetCursor(0)
 		}
 	}
 
@@ -233,6 +239,9 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.updateTableRowsBySearchBar()
 
 	m.tableGithubRepository, cmd = m.tableGithubRepository.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.searchTableGithubRepository, cmd = m.searchTableGithubRepository.Update(msg)
 	cmds = append(cmds, cmd)
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
@@ -276,6 +285,10 @@ func (m *ModelGithubRepository) viewSearchBar() string {
 	// Build the options list
 	doc := strings.Builder{}
 
+	if len(m.textInput.Value()) > 0 {
+		windowStyle = windowStyle.BorderForeground(lipgloss.Color("39"))
+	}
+
 	doc.WriteString(m.textInput.View())
 
 	return windowStyle.Render(doc.String())
@@ -317,6 +330,17 @@ func (m *ModelGithubRepository) isNumber(s string) bool {
 	}
 
 	return true
+}
+
+func (m *ModelGithubRepository) isCharAndSymbol(r []rune) bool {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_./"
+	for _, c := range r {
+		if strings.ContainsRune(chars, c) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (m *ModelGithubRepository) ViewStatus() string {
