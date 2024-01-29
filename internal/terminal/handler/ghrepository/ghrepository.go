@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -37,13 +38,16 @@ type ModelGithubRepository struct {
 	Keys keyMap
 
 	// models
-	Help                  help.Model
-	Viewport              *viewport.Model
-	tableGithubRepository table.Model
-	modelError            hdlerror.ModelError
+	Help                        help.Model
+	Viewport                    *viewport.Model
+	tableGithubRepository       table.Model
+	searchTableGithubRepository table.Model
+	modelError                  *hdlerror.ModelError
 
 	modelTabOptions       tea.Model
 	actualModelTabOptions *taboptions.Options
+
+	textInput textinput.Model
 }
 
 var baseStyle = lipgloss.NewStyle().
@@ -72,19 +76,53 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 		Bold(false)
 	tableGithubRepository.SetStyles(s)
 
+	tableGithubRepository.KeyMap = table.KeyMap{
+		LineUp: key.NewBinding(
+			key.WithKeys("up"),
+			key.WithHelp("↑", "up"),
+		),
+		LineDown: key.NewBinding(
+			key.WithKeys("down"),
+			key.WithHelp("↓", "down"),
+		),
+		PageUp: key.NewBinding(
+			key.WithKeys("pgup"),
+			key.WithHelp("pgup", "page up"),
+		),
+		PageDown: key.NewBinding(
+			key.WithKeys("pgdown", " "),
+			key.WithHelp("pgdn", "page down"),
+		),
+		GotoTop: key.NewBinding(
+			key.WithKeys("home"),
+			key.WithHelp("home", "go to start"),
+		),
+		GotoBottom: key.NewBinding(
+			key.WithKeys("end"),
+			key.WithHelp("end", "go to end"),
+		),
+	}
+
+	ti := textinput.New()
+	ti.Blur()
+	ti.CharLimit = 72
+	ti.Placeholder = "Type to search repository"
+	ti.ShowSuggestions = false // disable suggestions, it will be enabled future.
+
 	// setup models
 	modelError := hdlerror.SetupModelError()
-	tabOptions := taboptions.NewOptions()
+	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubRepository{
 		Help:                    help.New(),
 		Keys:                    keys,
 		githubUseCase:           githubUseCase,
 		tableGithubRepository:   tableGithubRepository,
-		modelError:              modelError,
+		modelError:              &modelError,
 		SelectedRepository:      selectedRepository,
 		modelTabOptions:         tabOptions,
 		actualModelTabOptions:   tabOptions,
+		textInput:               ti,
 		syncRepositoriesContext: context.Background(),
 		cancelSyncRepositories:  func() {},
 	}
@@ -118,6 +156,7 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 
 	// delete all rows
 	m.tableGithubRepository.SetRows([]table.Row{})
+	m.searchTableGithubRepository.SetRows([]table.Row{})
 
 	repositories, err := m.githubUseCase.ListRepositories(ctx, pagination.FindOpts{})
 	if errors.Is(err, context.Canceled) {
@@ -131,6 +170,7 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	if len(repositories.Repositories) == 0 {
 		m.actualModelTabOptions.SetStatus(taboptions.OptionNone)
 		m.modelError.SetDefaultMessage("No repositories found")
+		m.textInput.Blur()
 		return
 	}
 
@@ -141,11 +181,15 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	}
 
 	m.tableGithubRepository.SetRows(tableRowsGithubRepository)
+	m.searchTableGithubRepository.SetRows(tableRowsGithubRepository)
 
 	// set cursor to 0
 	m.tableGithubRepository.SetCursor(0)
+	m.searchTableGithubRepository.SetCursor(0)
 
 	m.tableReady = true
+	//m.updateSearchBarSuggestions()
+	m.textInput.Focus()
 	m.modelError.SetSuccessMessage("Repositories fetched")
 	go m.Update(m) // update model
 }
@@ -170,6 +214,8 @@ func (m *ModelGithubRepository) handleTableInputs(ctx context.Context) {
 func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
+
+	var textInputMsg = msg
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -178,10 +224,25 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cancelSyncRepositories() // cancel previous sync
 			m.syncRepositoriesContext, m.cancelSyncRepositories = context.WithCancel(context.Background())
 			go m.syncRepositories(m.syncRepositoriesContext)
+		case msg.String() == " " || m.isNumber(msg.String()):
+			textInputMsg = tea.KeyMsg{}
+		case m.isCharAndSymbol(msg.Runes):
+			m.tableGithubRepository.GotoTop()
+			m.tableGithubRepository.SetCursor(0)
+			m.searchTableGithubRepository.GotoTop()
+			m.searchTableGithubRepository.SetCursor(0)
 		}
 	}
 
+	m.textInput, cmd = m.textInput.Update(textInputMsg)
+	cmds = append(cmds, cmd)
+
+	m.updateTableRowsBySearchBar()
+
 	m.tableGithubRepository, cmd = m.tableGithubRepository.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.searchTableGithubRepository, cmd = m.searchTableGithubRepository.Update(msg)
 	cmds = append(cmds, cmd)
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
@@ -206,13 +267,81 @@ func (m *ModelGithubRepository) View() string {
 	if widthDiff > 0 {
 		newTableColumns[0].Width += widthDiff - 15
 		m.tableGithubRepository.SetColumns(newTableColumns)
-		m.tableGithubRepository.SetHeight(termHeight - 17)
+		m.tableGithubRepository.SetHeight(termHeight - 20)
 	}
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.actualModelTabOptions.View())
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.actualModelTabOptions.View())
+}
+
+func (m *ModelGithubRepository) viewSearchBar() string {
+	// Define window style
+	windowStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		Padding(0, 1).
+		Width(*hdltypes.ScreenWidth - 2)
+
+	// Build the options list
+	doc := strings.Builder{}
+
+	if len(m.textInput.Value()) > 0 {
+		windowStyle = windowStyle.BorderForeground(lipgloss.Color("39"))
+	}
+
+	doc.WriteString(m.textInput.View())
+
+	return windowStyle.Render(doc.String())
+}
+
+func (m *ModelGithubRepository) updateSearchBarSuggestions() {
+	m.textInput.SetSuggestions([]string{})
+
+	var suggestions = make([]string, 0, len(m.tableGithubRepository.Rows()))
+	for _, r := range m.tableGithubRepository.Rows() {
+		suggestions = append(suggestions, r[0])
+	}
+
+	m.textInput.SetSuggestions(suggestions)
+}
+
+func (m *ModelGithubRepository) updateTableRowsBySearchBar() {
+	var tableRowsGithubRepository = make([]table.Row, 0, len(m.tableGithubRepository.Rows()))
+
+	for _, r := range m.searchTableGithubRepository.Rows() {
+		if strings.Contains(r[0], m.textInput.Value()) {
+			tableRowsGithubRepository = append(tableRowsGithubRepository, r)
+		}
+	}
+
+	if len(tableRowsGithubRepository) == 0 {
+		m.SelectedRepository.RepositoryName = ""
+		m.SelectedRepository.BranchName = ""
+		m.SelectedRepository.WorkflowName = ""
+	}
+
+	m.tableGithubRepository.SetRows(tableRowsGithubRepository)
+}
+
+func (m *ModelGithubRepository) isNumber(s string) bool {
+	_, err := strconv.Atoi(s)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (m *ModelGithubRepository) isCharAndSymbol(r []rune) bool {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_./"
+	for _, c := range r {
+		if strings.ContainsRune(chars, c) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (m *ModelGithubRepository) ViewStatus() string {
