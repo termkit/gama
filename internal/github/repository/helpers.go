@@ -11,8 +11,8 @@ var listRepoSortValues = []string{
 
 func prepareListRepoPagination(input pagination.FindOpts) pagination.FindOpts {
 	var limit = input.Limit
-	if input.Limit == 0 {
-		limit = 200
+	if input.Limit <= 0 || input.Limit >= 100 {
+		limit = 100
 	}
 
 	var page = uint(1)
@@ -21,6 +21,10 @@ func prepareListRepoPagination(input pagination.FindOpts) pagination.FindOpts {
 		if pageInt > 0 {
 			page = uint(pageInt)
 		}
+	}
+
+	if input.Sort == "" {
+		input.Sort = "updated"
 	}
 
 	return pagination.FindOpts{
