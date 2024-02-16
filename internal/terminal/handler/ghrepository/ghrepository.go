@@ -14,12 +14,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/termkit/gama/internal/github/domain"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	"github.com/termkit/gama/pkg/browser"
-	"github.com/termkit/gama/pkg/pagination"
 )
 
 type ModelGithubRepository struct {
@@ -158,7 +158,11 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	m.tableGithubRepository.SetRows([]table.Row{})
 	m.searchTableGithubRepository.SetRows([]table.Row{})
 
-	repositories, err := m.githubUseCase.ListRepositories(ctx, pagination.FindOpts{})
+	repositories, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{
+		Limit: 500,
+		Skip:  0,
+		Sort:  domain.SortByUpdated,
+	})
 	if errors.Is(err, context.Canceled) {
 		return
 	} else if err != nil {

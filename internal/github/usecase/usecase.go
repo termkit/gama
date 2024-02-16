@@ -7,7 +7,6 @@ import (
 	"time"
 
 	gr "github.com/termkit/gama/internal/github/repository"
-	"github.com/termkit/gama/pkg/pagination"
 	pw "github.com/termkit/gama/pkg/workflow"
 	py "github.com/termkit/gama/pkg/yaml"
 )
@@ -22,8 +21,10 @@ func New(githubRepository gr.Repository) UseCase {
 	}
 }
 
-func (u useCase) ListRepositories(ctx context.Context, input pagination.FindOpts) (*ListRepositoriesOutput, error) {
-	repositories, err := u.githubRepository.ListRepositories(ctx, input)
+func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInput) (*ListRepositoriesOutput, error) {
+	input.Prepare()
+
+	repositories, err := u.githubRepository.ListRepositories(ctx, input.Limit, input.Skip, input.Sort)
 	if err != nil {
 		return nil, err
 	}

@@ -15,7 +15,6 @@ import (
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	vu "github.com/termkit/gama/internal/version/usecase"
-	"github.com/termkit/gama/pkg/pagination"
 )
 
 type ModelInfo struct {
@@ -149,7 +148,9 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	}(ctxWithCancel)
 	defer cancel()
 
-	_, err := m.githubUseCase.ListRepositories(ctx, pagination.FindOpts{Limit: 1})
+	_, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{
+		Limit: 1,
+	})
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")

@@ -3,12 +3,12 @@ package repository
 import (
 	"context"
 
-	"github.com/termkit/gama/pkg/pagination"
+	"github.com/termkit/gama/internal/github/domain"
 )
 
 type Repository interface {
 	TestConnection(ctx context.Context) error
-	ListRepositories(ctx context.Context, input pagination.FindOpts) ([]GithubRepository, error)
+	ListRepositories(ctx context.Context, limit int, skip int, sort domain.SortBy) ([]GithubRepository, error)
 	GetRepository(ctx context.Context, repository string) (*GithubRepository, error)
 	ListBranches(ctx context.Context, repository string) ([]GithubBranch, error)
 	ListWorkflowRuns(ctx context.Context, repository string, branch string) (*WorkflowRuns, error)

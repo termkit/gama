@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/termkit/gama/internal/github/domain"
 	pkgconfig "github.com/termkit/gama/pkg/config"
-	"github.com/termkit/gama/pkg/pagination"
 
 	"gopkg.in/yaml.v3"
 )
@@ -54,14 +54,12 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-func (r *Repo) ListRepositories(ctx context.Context, input pagination.FindOpts) ([]GithubRepository, error) {
-	input = prepareListRepoPagination(input)
-
+func (r *Repo) ListRepositories(ctx context.Context, limit int, skip int, sort domain.SortBy) ([]GithubRepository, error) {
 	resultsChan := make(chan []GithubRepository)
 	errChan := make(chan error)
 
 	for page := 1; page <= 5; page++ {
-		go r.workerListRepositories(ctx, input, resultsChan, errChan)
+		go r.workerListRepositories(ctx, limit, skip, sort, resultsChan, errChan)
 	}
 
 	var repositories []GithubRepository
@@ -83,7 +81,7 @@ func (r *Repo) ListRepositories(ctx context.Context, input pagination.FindOpts) 
 	return repositories, nil
 }
 
-func (r *Repo) workerListRepositories(ctx context.Context, input pagination.FindOpts, results chan<- []GithubRepository, errs chan<- error) {
+func (r *Repo) workerListRepositories(ctx context.Context, limit int, skip int, sort domain.SortBy, results chan<- []GithubRepository, errs chan<- error) {
 	var repositories []GithubRepository
 	err := r.do(ctx, nil, &repositories, requestOptions{
 		method:      http.MethodGet,
@@ -91,9 +89,9 @@ func (r *Repo) workerListRepositories(ctx context.Context, input pagination.Find
 		contentType: "application/json",
 		queryParams: map[string]string{
 			"visibility": "all",
-			"per_page":   strconv.Itoa(input.Limit),
-			"page":       strconv.Itoa(input.Skip),
-			"sort":       input.Sort,
+			"per_page":   strconv.Itoa(limit),
+			"page":       strconv.Itoa(skip),
+			"sort":       sort.String(),
 			"direction":  "desc",
 		},
 	})

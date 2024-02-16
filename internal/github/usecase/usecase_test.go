@@ -6,7 +6,6 @@ import (
 
 	"github.com/termkit/gama/internal/github/repository"
 	pkgconfig "github.com/termkit/gama/pkg/config"
-	"github.com/termkit/gama/pkg/pagination"
 )
 
 func TestUseCase_ListRepositories(t *testing.T) {
@@ -20,7 +19,12 @@ func TestUseCase_ListRepositories(t *testing.T) {
 
 	githubUseCase := New(githubRepo)
 
-	repositories, err := githubUseCase.ListRepositories(ctx, pagination.FindOpts{})
+	repositories, err := githubUseCase.ListRepositories(ctx, ListRepositoriesInput{
+		Limit: 0,
+		Skip:  0,
+		Sort:  "",
+	})
+
 	if err != nil {
 		t.Error(err)
 	}
