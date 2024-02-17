@@ -388,7 +388,12 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 		}
 	} else {
 		if requestBody != nil {
-			reqBody = []byte(requestBody.(string))
+			reqStr, ok := requestBody.(string)
+			if !ok {
+				return fmt.Errorf("failed to convert request body to string: %v", requestBody)
+			}
+
+			reqBody = []byte(reqStr)
 		}
 	}
 
