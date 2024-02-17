@@ -24,7 +24,7 @@ func New(githubRepository gr.Repository) UseCase {
 func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInput) (*ListRepositoriesOutput, error) {
 	input.Prepare()
 
-	repositories, err := u.githubRepository.ListRepositories(ctx, input.Limit, input.Skip, input.Sort)
+	repositories, err := u.githubRepository.ListRepositories(ctx, input.Limit, input.Page, input.Sort)
 	if err != nil {
 		return nil, err
 	}

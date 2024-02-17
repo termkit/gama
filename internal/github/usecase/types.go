@@ -9,7 +9,7 @@ import (
 
 type ListRepositoriesInput struct {
 	Limit int
-	Skip  int
+	Page  int
 	Sort  domain.SortBy
 }
 
@@ -18,8 +18,8 @@ func (i *ListRepositoriesInput) Prepare() {
 		i.Limit = 500
 	}
 
-	if i.Skip < 0 {
-		i.Skip = 0
+	if i.Page < 0 {
+		i.Page = 0
 	}
 
 	if i.Sort == "" {

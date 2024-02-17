@@ -54,12 +54,13 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-func (r *Repo) ListRepositories(ctx context.Context, limit int, skip int, sort domain.SortBy) ([]GithubRepository, error) {
+
+func (r *Repo) ListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy) ([]GithubRepository, error) {
 	resultsChan := make(chan []GithubRepository)
 	errChan := make(chan error)
 
 	for page := 1; page <= 5; page++ {
-		go r.workerListRepositories(ctx, limit, skip, sort, resultsChan, errChan)
+		go r.workerListRepositories(ctx, limit, page, sort, resultsChan, errChan)
 	}
 
 	var repositories []GithubRepository
@@ -81,7 +82,7 @@ func (r *Repo) ListRepositories(ctx context.Context, limit int, skip int, sort d
 	return repositories, nil
 }
 
-func (r *Repo) workerListRepositories(ctx context.Context, limit int, skip int, sort domain.SortBy, results chan<- []GithubRepository, errs chan<- error) {
+func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy, results chan<- []GithubRepository, errs chan<- error) {
 	var repositories []GithubRepository
 	err := r.do(ctx, nil, &repositories, requestOptions{
 		method:      http.MethodGet,
@@ -90,7 +91,7 @@ func (r *Repo) workerListRepositories(ctx context.Context, limit int, skip int, 
 		queryParams: map[string]string{
 			"visibility": "all",
 			"per_page":   strconv.Itoa(limit),
-			"page":       strconv.Itoa(skip),
+			"page":       strconv.Itoa(page),
 			"sort":       sort.String(),
 			"direction":  "desc",
 		},

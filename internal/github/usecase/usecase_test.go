@@ -21,7 +21,7 @@ func TestUseCase_ListRepositories(t *testing.T) {
 
 	repositories, err := githubUseCase.ListRepositories(ctx, ListRepositoriesInput{
 		Limit: 0,
-		Skip:  0,
+		Page:  0,
 		Sort:  "",
 	})
 
