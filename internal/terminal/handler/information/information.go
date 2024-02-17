@@ -148,9 +148,7 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	}(ctxWithCancel)
 	defer cancel()
 
-	_, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{
-		Limit: 1,
-	})
+	_, err := m.githubUseCase.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")
