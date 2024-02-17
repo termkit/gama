@@ -54,7 +54,6 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-
 func (r *Repo) ListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy) ([]GithubRepository, error) {
 	resultsChan := make(chan []GithubRepository)
 	errChan := make(chan error)
@@ -399,10 +398,10 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 		return err
 	}
 
-	if requestOptions.contentType == "" {
+	if requestOptions.contentType != "" {
 		req.Header.Set("Content-Type", requestOptions.contentType)
 	}
-	if requestOptions.accept == "" {
+	if requestOptions.accept != "" {
 		req.Header.Set("Accept", requestOptions.accept)
 	}
 	req.Header.Set("Authorization", "Bearer "+r.githubToken)
