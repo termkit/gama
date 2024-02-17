@@ -377,24 +377,9 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	}
 	reqURL.RawQuery = query.Encode()
 
-	var reqBody []byte
-	// Marshal the request body to JSON if accept/content type is JSON
-	if requestOptions.accept == "application/json" || requestOptions.contentType == "application/json" {
-		if requestBody != nil {
-			reqBody, err = json.Marshal(requestBody)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		if requestBody != nil {
-			reqStr, ok := requestBody.(string)
-			if !ok {
-				return fmt.Errorf("failed to convert request body to string: %v", requestBody)
-			}
-
-			reqBody = []byte(reqStr)
-		}
+	reqBody, err := parseRequestBody(requestOptions, requestBody)
+	if err != nil {
+		return err
 	}
 
 	// Create the HTTP request
@@ -442,6 +427,33 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	}
 
 	return nil
+}
+
+func parseRequestBody(requestOptions requestOptions, requestBody any) ([]byte, error) {
+	var reqBody []byte
+
+	if requestBody == nil {
+		return reqBody, nil
+	}
+
+	// Marshal the request body to JSON if accept/content type is JSON
+	if requestOptions.accept == "application/json" || requestOptions.contentType == "application/json" {
+		reqBody, err := json.Marshal(requestBody)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse request body: %w", err)
+		}
+
+		return reqBody, nil
+	}
+
+	reqStr, ok := requestBody.(string)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert request body to string: %v", requestBody)
+	}
+
+	reqBody = []byte(reqStr)
+
+	return reqBody, nil
 }
 
 type requestOptions struct {
