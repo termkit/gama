@@ -21,6 +21,21 @@ func New(githubRepository gr.Repository) UseCase {
 	}
 }
 
+func (u useCase) GetAuthUser(ctx context.Context) (*GetAuthUserOutput, error) {
+	authUser, err := u.githubRepository.GetAuthUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &GetAuthUserOutput{
+		GithubUser: GithubUser{
+			Login: authUser.Login,
+			ID:    authUser.ID,
+			Email: authUser.Email,
+		},
+	}, nil
+}
+
 func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInput) (*ListRepositoriesOutput, error) {
 	input.Prepare()
 

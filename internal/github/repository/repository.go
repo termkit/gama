@@ -54,6 +54,19 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 	return nil
 }
 
+func (r *Repo) GetAuthUser(ctx context.Context) (*GithubUser, error) {
+	var githubUser = new(GithubUser)
+	err := r.do(ctx, nil, githubUser, requestOptions{
+		method:      http.MethodGet,
+		path:        githubAPIURL + "/user",
+		contentType: "application/json",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return githubUser, nil
+}
 
 func (r *Repo) ListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy) ([]GithubRepository, error) {
 	resultsChan := make(chan []GithubRepository)

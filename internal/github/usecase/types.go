@@ -44,6 +44,18 @@ type GithubRepository struct {
 
 // ------------------------------------------------------------
 
+type GetAuthUserOutput struct {
+	GithubUser
+}
+
+type GithubUser struct {
+	Login string `json:"login"` // username
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+}
+
+// ------------------------------------------------------------
+
 type GetWorkflowHistoryInput struct {
 	Repository string
 	Branch     string
