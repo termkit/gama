@@ -35,23 +35,6 @@ func New(cfg *pkgconfig.Config) *Repo {
 	}
 }
 
-func (r *Repo) TestConnection(ctx context.Context) error {
-	// List repositories for the authenticated user
-	var repositories []GithubRepository
-	err := r.do(ctx, nil, &repositories, requestOptions{
-		method: http.MethodGet,
-		paths:  []string{"user", "repos"},
-		queryParams: map[string]string{
-			"visibility": "all",
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (r *Repo) GetAuthUser(ctx context.Context) (*GithubUser, error) {
 	var githubUser = new(GithubUser)
 	err := r.do(ctx, nil, githubUser, requestOptions{
@@ -115,7 +98,7 @@ func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, 
 
 func (r *Repo) ListBranches(ctx context.Context, repository string) ([]GithubBranch, error) {
 	// List branches for the given repository
-	var branches any
+	var branches []GithubBranch
 	err := r.do(ctx, nil, &branches, requestOptions{
 		method: http.MethodGet,
 		paths:  []string{"repos", repository, "branches"},
@@ -124,7 +107,7 @@ func (r *Repo) ListBranches(ctx context.Context, repository string) ([]GithubBra
 		return nil, err
 	}
 
-	return []GithubBranch{}, nil
+	return branches, nil
 }
 
 func (r *Repo) GetRepository(ctx context.Context, repository string) (*GithubRepository, error) {

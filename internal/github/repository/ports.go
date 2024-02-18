@@ -7,7 +7,6 @@ import (
 )
 
 type Repository interface {
-	TestConnection(ctx context.Context) error
 	ListRepositories(ctx context.Context, limit int, skip int, sort domain.SortBy) ([]GithubRepository, error)
 	GetAuthUser(ctx context.Context) (*GithubUser, error)
 	GetRepository(ctx context.Context, repository string) (*GithubRepository, error)
