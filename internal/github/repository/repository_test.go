@@ -109,7 +109,6 @@ func TestRepo_GetAuthUser(t *testing.T) {
 }
 
 func TestRepo_ListBranches(t *testing.T) {
-
 	type args struct {
 		ctx        context.Context
 		repository string
