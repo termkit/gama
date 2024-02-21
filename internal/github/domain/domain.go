@@ -6,7 +6,7 @@ const (
 	SortByCreated  SortBy = "created"
 	SortByUpdated  SortBy = "updated"
 	SortByPushed   SortBy = "pushed"
-	SortByFullNmae SortBy = "full_name"
+	SortByFullName SortBy = "full_name"
 )
 
 func (s SortBy) String() string {

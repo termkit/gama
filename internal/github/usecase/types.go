@@ -18,12 +18,12 @@ func (i *ListRepositoriesInput) Prepare() {
 		i.Limit = 500
 	}
 
-	if i.Page < 0 {
-		i.Page = 0
+	if i.Page <= 0 {
+		i.Page = 1
 	}
 
 	if i.Sort == "" {
-		i.Sort = domain.SortByUpdated
+		i.Sort = domain.SortByPushed
 	}
 }
 

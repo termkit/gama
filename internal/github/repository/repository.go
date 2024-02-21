@@ -52,14 +52,14 @@ func (r *Repo) ListRepositories(ctx context.Context, limit int, page int, sort d
 	resultsChan := make(chan []GithubRepository)
 	errChan := make(chan error)
 
-	for page := 1; page <= 5; page++ {
-		go r.workerListRepositories(ctx, limit, page, sort, resultsChan, errChan)
+	for p := 1; p <= page; p++ {
+		go r.workerListRepositories(ctx, limit, p, sort, resultsChan, errChan)
 	}
 
 	var repositories []GithubRepository
 	var repoErr error
 
-	for range make([]int, 5) {
+	for range make([]int, page) {
 		select {
 		case err := <-errChan:
 			repoErr = errors.Join(err)

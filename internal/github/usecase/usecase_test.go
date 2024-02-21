@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/termkit/gama/internal/github/domain"
 	"github.com/termkit/gama/internal/github/repository"
 	pkgconfig "github.com/termkit/gama/pkg/config"
 )
@@ -20,9 +21,9 @@ func TestUseCase_ListRepositories(t *testing.T) {
 	githubUseCase := New(githubRepo)
 
 	repositories, err := githubUseCase.ListRepositories(ctx, ListRepositoriesInput{
-		Limit: 0,
+		Limit: 10,
 		Page:  0,
-		Sort:  "",
+		Sort:  domain.SortByCreated,
 	})
 
 	if err != nil {

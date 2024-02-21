@@ -24,11 +24,11 @@ func TestRepo_ListRepositories(t *testing.T) {
 
 	repo := newRepo(ctx)
 
-	limit := 10
-	skip := 0
+	limit := 30
+	page := 1
 	sort := domain.SortByUpdated
 
-	repositories, err := repo.ListRepositories(ctx, limit, skip, sort)
+	repositories, err := repo.ListRepositories(ctx, limit, page, sort)
 	if err != nil {
 		t.Error(err)
 	}

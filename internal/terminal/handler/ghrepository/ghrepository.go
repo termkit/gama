@@ -159,8 +159,8 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	m.searchTableGithubRepository.SetRows([]table.Row{})
 
 	repositories, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{
-		Limit: 30,
-		Page:  0,
+		Limit: 100, // limit to 100 repositories
+		Page:  5,   // page 1 to page 5, at summary we fetch 500 repositories
 		Sort:  domain.SortByUpdated,
 	})
 	if errors.Is(err, context.Canceled) {
