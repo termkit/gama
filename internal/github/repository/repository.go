@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/termkit/gama/internal/github/domain"
@@ -349,7 +351,7 @@ func (r *Repo) CancelWorkflow(ctx context.Context, repository string, runID int6
 
 func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, requestOptions requestOptions) error {
 	// Construct the request URL
-	reqURL, err := JoinPath(append([]string{githubAPIURL}, requestOptions.paths...)...)
+	reqURL, err := joinPath(append([]string{githubAPIURL}, requestOptions.paths...)...)
 	if err != nil {
 		return fmt.Errorf("failed to join path for api: %w", err)
 	}
@@ -442,6 +444,26 @@ func parseRequestBody(requestOptions requestOptions, requestBody any) ([]byte, e
 	reqBody = []byte(reqStr)
 
 	return reqBody, nil
+}
+
+// joinPath joins URL host and paths with by removing all leading slashes from paths and adds a trailing slash to end of paths except last one.
+func joinPath(paths ...string) (*url.URL, error) {
+	var uri = new(url.URL)
+	for i, p := range paths {
+		p = strings.TrimLeft(p, "/")
+		if i+1 != len(paths) && !strings.HasSuffix(p, "/") {
+			p = fmt.Sprintf("%s/", p)
+		}
+
+		u, err := url.Parse(p)
+		if err != nil {
+			return nil, err
+		}
+
+		uri = uri.ResolveReference(u)
+	}
+
+	return uri, nil
 }
 
 type requestOptions struct {
