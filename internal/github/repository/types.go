@@ -121,3 +121,9 @@ type GithubWorkflowRunLogs struct {
 	Url       string `json:"url"`
 	Download  string `json:"download_url"`
 }
+
+type GithubUser struct {
+	Login string `json:"login"` // username
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+}

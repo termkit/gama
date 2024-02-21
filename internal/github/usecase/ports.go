@@ -5,6 +5,7 @@ import (
 )
 
 type UseCase interface {
+	GetAuthUser(ctx context.Context) (*GetAuthUserOutput, error)
 	ListRepositories(ctx context.Context, input ListRepositoriesInput) (*ListRepositoriesOutput, error)
 	GetWorkflowHistory(ctx context.Context, input GetWorkflowHistoryInput) (*GetWorkflowHistoryOutput, error)
 	GetTriggerableWorkflows(ctx context.Context, input GetTriggerableWorkflowsInput) (*GetTriggerableWorkflowsOutput, error)

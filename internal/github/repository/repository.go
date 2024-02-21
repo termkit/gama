@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/termkit/gama/internal/github/domain"
@@ -36,22 +37,17 @@ func New(cfg *pkgconfig.Config) *Repo {
 	}
 }
 
-func (r *Repo) TestConnection(ctx context.Context) error {
-	// List repositories for the authenticated user
-	var repositories []GithubRepository
-	err := r.do(ctx, nil, &repositories, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/user/repos",
-		contentType: "application/json",
-		queryParams: map[string]string{
-			"visibility": "all",
-		},
+func (r *Repo) GetAuthUser(ctx context.Context) (*GithubUser, error) {
+	var githubUser = new(GithubUser)
+	err := r.do(ctx, nil, githubUser, requestOptions{
+		method: http.MethodGet,
+		paths:  []string{"user"},
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return githubUser, nil
 }
 
 func (r *Repo) ListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy) ([]GithubRepository, error) {
@@ -84,9 +80,8 @@ func (r *Repo) ListRepositories(ctx context.Context, limit int, page int, sort d
 func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy, results chan<- []GithubRepository, errs chan<- error) {
 	var repositories []GithubRepository
 	err := r.do(ctx, nil, &repositories, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/user/repos",
-		contentType: "application/json",
+		method: http.MethodGet,
+		paths:  []string{"user", "repos"},
 		queryParams: map[string]string{
 			"visibility": "all",
 			"per_page":   strconv.Itoa(limit),
@@ -105,25 +100,23 @@ func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, 
 
 func (r *Repo) ListBranches(ctx context.Context, repository string) ([]GithubBranch, error) {
 	// List branches for the given repository
-	var branches any
+	var branches []GithubBranch
 	err := r.do(ctx, nil, &branches, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/branches",
-		contentType: "application/json",
+		method: http.MethodGet,
+		paths:  []string{"repos", repository, "branches"},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return []GithubBranch{}, nil
+	return branches, nil
 }
 
 func (r *Repo) GetRepository(ctx context.Context, repository string) (*GithubRepository, error) {
 	var repo GithubRepository
 	err := r.do(ctx, nil, &repo, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository,
-		contentType: "application/json",
+		method: http.MethodGet,
+		paths:  []string{"repos", repository},
 	})
 	if err != nil {
 		return nil, err
@@ -136,9 +129,8 @@ func (r *Repo) ListWorkflowRuns(ctx context.Context, repository string, branch s
 	// List workflow runs for the given repository and branch
 	var workflowRuns WorkflowRuns
 	err := r.do(ctx, nil, &workflowRuns, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/runs",
-		contentType: "application/json",
+		method: http.MethodGet,
+		paths:  []string{"repos", repository, "actions", "runs"},
 		queryParams: map[string]string{
 			"branch": branch,
 		},
@@ -155,9 +147,10 @@ func (r *Repo) TriggerWorkflow(ctx context.Context, repository string, branch st
 
 	// Trigger a workflow for the given repository and branch
 	err := r.do(ctx, payload, nil, requestOptions{
-		method: http.MethodPost,
-		path:   githubAPIURL + "/repos/" + repository + "/actions/workflows/" + path.Base(workflowName) + "/dispatches",
-		accept: "application/vnd.github+json",
+		method:      http.MethodPost,
+		paths:       []string{"repos", repository, "actions", "workflows", path.Base(workflowName), "dispatches"},
+		accept:      "application/vnd.github+json",
+		contentType: "application/vnd.github+json",
 	})
 	if err != nil {
 		return err
@@ -167,12 +160,11 @@ func (r *Repo) TriggerWorkflow(ctx context.Context, repository string, branch st
 }
 
 func (r *Repo) GetWorkflows(ctx context.Context, repository string) ([]Workflow, error) {
-	// Get a workflow run for the given repository and runId
+	// Get a workflow run for the given repository and runID
 	var githubWorkflow githubWorkflow
 	err := r.do(ctx, nil, &githubWorkflow, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/workflows",
-		contentType: "application/json",
+		method: http.MethodGet,
+		paths:  []string{"repos", repository, "actions", "workflows"},
 	})
 	if err != nil {
 		return nil, err
@@ -182,12 +174,11 @@ func (r *Repo) GetWorkflows(ctx context.Context, repository string) ([]Workflow,
 }
 
 func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) ([]Workflow, error) {
-	// Get a workflow run for the given repository and runId
+	// Get a workflow run for the given repository and runID
 	var workflows githubWorkflow
 	err := r.do(ctx, nil, &workflows, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/workflows",
-		contentType: "application/json",
+		method: http.MethodGet,
+		paths:  []string{"repos", repository, "actions", "workflows"},
 	})
 	if err != nil {
 		return nil, err
@@ -251,7 +242,7 @@ func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, br
 	var githubFile githubFile
 	err := r.do(ctx, nil, &githubFile, requestOptions{
 		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/contents/" + workflowFile,
+		paths:       []string{"repos", repository, "contents", workflowFile},
 		contentType: "application/vnd.github.VERSION.raw",
 		queryParams: map[string]string{
 			"ref": branch,
@@ -270,13 +261,12 @@ func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, br
 	return decodedContent, nil
 }
 
-//func (r *Repo) GetWorkflowRun(ctx context.Context, repository string, runId int64) (GithubWorkflowRun, error) {
-//	// Get a workflow run for the given repository and runId
+//func (r *Repo) GetWorkflowRun(ctx context.Context, repository string, runID int64) (GithubWorkflowRun, error) {
+//	// Get a workflow run for the given repository and runID
 //	var workflowRun GithubWorkflowRun
 //	err := r.do(ctx, nil, &workflowRun, requestOptions{
 //		method:      http.MethodGet,
-//		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10),
-//		contentType: "application/json",
+//		path:        []string{"repos",repository,"actions","runs",strconv.FormatInt(runID, 10)},
 //	})
 //	if err != nil {
 //		return GithubWorkflowRun{}, err
@@ -290,7 +280,7 @@ func (r *Repo) getWorkflowFile(ctx context.Context, repository string, path stri
 	var githubFile githubFile
 	err := r.do(ctx, nil, &githubFile, requestOptions{
 		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/contents/" + path,
+		paths:       []string{"repos", repository, "contents", path},
 		contentType: "application/vnd.github.VERSION.raw",
 	})
 	if err != nil {
@@ -306,13 +296,12 @@ func (r *Repo) getWorkflowFile(ctx context.Context, repository string, path stri
 	return string(decodedContent), nil
 }
 
-func (r *Repo) GetWorkflowRunLogs(ctx context.Context, repository string, runId int64) (GithubWorkflowRunLogs, error) {
+func (r *Repo) GetWorkflowRunLogs(ctx context.Context, repository string, runID int64) (GithubWorkflowRunLogs, error) {
 	// Get the logs for a given workflow run
 	var workflowRunLogs GithubWorkflowRunLogs
 	err := r.do(ctx, nil, &workflowRunLogs, requestOptions{
-		method:      http.MethodGet,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10) + "/logs",
-		contentType: "application/json",
+		method: http.MethodGet,
+		paths:  []string{"repos", repository, "actions", "runs", strconv.FormatInt(runID, 10), "logs"},
 	})
 	if err != nil {
 		return GithubWorkflowRunLogs{}, err
@@ -321,12 +310,11 @@ func (r *Repo) GetWorkflowRunLogs(ctx context.Context, repository string, runId 
 	return workflowRunLogs, nil
 }
 
-func (r *Repo) ReRunFailedJobs(ctx context.Context, repository string, runId int64) error {
+func (r *Repo) ReRunFailedJobs(ctx context.Context, repository string, runID int64) error {
 	// Re-run failed jobs for a given workflow run
 	err := r.do(ctx, nil, nil, requestOptions{
-		method:      http.MethodPost,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10) + "/rerun-failed-jobs",
-		contentType: "application/json",
+		method: http.MethodPost,
+		paths:  []string{"repos", repository, "actions", "runs", strconv.FormatInt(runID, 10), "rerun-failed-jobs"},
 	})
 	if err != nil {
 		return err
@@ -335,12 +323,11 @@ func (r *Repo) ReRunFailedJobs(ctx context.Context, repository string, runId int
 	return nil
 }
 
-func (r *Repo) ReRunWorkflow(ctx context.Context, repository string, runId int64) error {
+func (r *Repo) ReRunWorkflow(ctx context.Context, repository string, runID int64) error {
 	// Re-run a given workflow run
 	err := r.do(ctx, nil, nil, requestOptions{
-		method:      http.MethodPost,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10) + "/rerun",
-		contentType: "application/json",
+		method: http.MethodPost,
+		paths:  []string{"repos", repository, "actions", "runs", strconv.FormatInt(runID, 10), "rerun"},
 	})
 	if err != nil {
 		return err
@@ -349,12 +336,11 @@ func (r *Repo) ReRunWorkflow(ctx context.Context, repository string, runId int64
 	return nil
 }
 
-func (r *Repo) CancelWorkflow(ctx context.Context, repository string, runId int64) error {
+func (r *Repo) CancelWorkflow(ctx context.Context, repository string, runID int64) error {
 	// Cancel a given workflow run
 	err := r.do(ctx, nil, nil, requestOptions{
-		method:      http.MethodPost,
-		path:        githubAPIURL + "/repos/" + repository + "/actions/runs/" + strconv.FormatInt(runId, 10) + "/cancel",
-		contentType: "application/json",
+		method: http.MethodPost,
+		paths:  []string{"repos", repository, "actions", "runs", strconv.FormatInt(runID, 10), "cancel"},
 	})
 	if err != nil {
 		return err
@@ -365,9 +351,9 @@ func (r *Repo) CancelWorkflow(ctx context.Context, repository string, runId int6
 
 func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, requestOptions requestOptions) error {
 	// Construct the request URL
-	reqURL, err := url.Parse(requestOptions.path)
+	reqURL, err := joinPath(append([]string{githubAPIURL}, requestOptions.paths...)...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to join path for api: %w", err)
 	}
 
 	// Add query parameters
@@ -376,6 +362,13 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 		query.Add(key, value)
 	}
 	reqURL.RawQuery = query.Encode()
+
+	if requestOptions.contentType == "" {
+		requestOptions.contentType = "application/json"
+	}
+	if requestOptions.accept == "" {
+		requestOptions.accept = "application/json"
+	}
 
 	reqBody, err := parseRequestBody(requestOptions, requestBody)
 	if err != nil {
@@ -388,12 +381,9 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 		return err
 	}
 
-	if requestOptions.contentType != "" {
-		req.Header.Set("Content-Type", requestOptions.contentType)
-	}
-	if requestOptions.accept != "" {
-		req.Header.Set("Accept", requestOptions.accept)
-	}
+	req.Header.Set("Content-Type", requestOptions.contentType)
+	req.Header.Set("Accept", requestOptions.accept)
+
 	req.Header.Set("Authorization", "Bearer "+r.githubToken)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	req = req.WithContext(ctx)
@@ -456,9 +446,29 @@ func parseRequestBody(requestOptions requestOptions, requestBody any) ([]byte, e
 	return reqBody, nil
 }
 
+// joinPath joins URL host and paths with by removing all leading slashes from paths and adds a trailing slash to end of paths except last one.
+func joinPath(paths ...string) (*url.URL, error) {
+	var uri = new(url.URL)
+	for i, p := range paths {
+		p = strings.TrimLeft(p, "/")
+		if i+1 != len(paths) && !strings.HasSuffix(p, "/") {
+			p = fmt.Sprintf("%s/", p)
+		}
+
+		u, err := url.Parse(p)
+		if err != nil {
+			return nil, err
+		}
+
+		uri = uri.ResolveReference(u)
+	}
+
+	return uri, nil
+}
+
 type requestOptions struct {
 	method      string
-	path        string
+	paths       []string
 	contentType string
 	accept      string
 	queryParams map[string]string
