@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	gr "github.com/termkit/gama/internal/github/repository"
@@ -49,6 +50,10 @@ func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInp
 			resultErrs = append(resultErrs, err)
 		}
 	}
+
+	slices.SortFunc(result, func(a, b GithubRepository) int {
+		return int(b.LastUpdated.Unix() - a.LastUpdated.Unix())
+	})
 
 	return &ListRepositoriesOutput{
 		Repositories: result,
