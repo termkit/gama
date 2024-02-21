@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/termkit/gama/internal/github/domain"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/taboptions"
@@ -157,7 +158,11 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	m.tableGithubRepository.SetRows([]table.Row{})
 	m.searchTableGithubRepository.SetRows([]table.Row{})
 
-	repositories, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{})
+	repositories, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{
+		Limit: 100, // limit to 100 repositories
+		Page:  5,   // page 1 to page 5, at summary we fetch 500 repositories
+		Sort:  domain.SortByUpdated,
+	})
 	if errors.Is(err, context.Canceled) {
 		return
 	} else if err != nil {

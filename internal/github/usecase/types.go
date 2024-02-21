@@ -3,11 +3,28 @@ package usecase
 import (
 	"time"
 
+	"github.com/termkit/gama/internal/github/domain"
 	pw "github.com/termkit/gama/pkg/workflow"
 )
 
 type ListRepositoriesInput struct {
 	Limit int
+	Page  int
+	Sort  domain.SortBy
+}
+
+func (i *ListRepositoriesInput) Prepare() {
+	if i.Limit <= 0 {
+		i.Limit = 500
+	}
+
+	if i.Page <= 0 {
+		i.Page = 1
+	}
+
+	if i.Sort == "" {
+		i.Sort = domain.SortByPushed
+	}
 }
 
 type ListRepositoriesOutput struct {

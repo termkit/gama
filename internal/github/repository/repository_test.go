@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/termkit/gama/internal/github/domain"
 	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
@@ -35,7 +36,11 @@ func TestRepo_ListRepositories(t *testing.T) {
 
 	repo := newRepo(ctx)
 
-	repositories, err := repo.ListRepositories(ctx, 10)
+	limit := 30
+	page := 1
+	sort := domain.SortByUpdated
+
+	repositories, err := repo.ListRepositories(ctx, limit, page, sort)
 	if err != nil {
 		t.Error(err)
 	}

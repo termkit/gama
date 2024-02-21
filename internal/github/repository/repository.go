@@ -13,7 +13,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/termkit/gama/internal/github/domain"
 	pkgconfig "github.com/termkit/gama/pkg/config"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,22 +54,18 @@ func (r *Repo) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubRepository, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 100
-	}
-
+func (r *Repo) ListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy) ([]GithubRepository, error) {
 	resultsChan := make(chan []GithubRepository)
 	errChan := make(chan error)
 
-	for page := 1; page <= 5; page++ {
-		go r.workerListRepositories(ctx, limit, page, resultsChan, errChan)
+	for p := 1; p <= page; p++ {
+		go r.workerListRepositories(ctx, limit, p, sort, resultsChan, errChan)
 	}
 
 	var repositories []GithubRepository
 	var repoErr error
 
-	for range make([]int, 5) {
+	for range make([]int, page) {
 		select {
 		case err := <-errChan:
 			repoErr = errors.Join(err)
@@ -83,7 +81,7 @@ func (r *Repo) ListRepositories(ctx context.Context, limit int) ([]GithubReposit
 	return repositories, nil
 }
 
-func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, results chan<- []GithubRepository, errs chan<- error) {
+func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, sort domain.SortBy, results chan<- []GithubRepository, errs chan<- error) {
 	var repositories []GithubRepository
 	err := r.do(ctx, nil, &repositories, requestOptions{
 		method:      http.MethodGet,
@@ -93,7 +91,7 @@ func (r *Repo) workerListRepositories(ctx context.Context, limit int, page int, 
 			"visibility": "all",
 			"per_page":   strconv.Itoa(limit),
 			"page":       strconv.Itoa(page),
-			"sort":       "updated",
+			"sort":       sort.String(),
 			"direction":  "desc",
 		},
 	})
@@ -379,19 +377,9 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	}
 	reqURL.RawQuery = query.Encode()
 
-	var reqBody []byte
-	// Marshal the request body to JSON if accept/content type is JSON
-	if requestOptions.accept == "application/json" || requestOptions.contentType == "application/json" {
-		if requestBody != nil {
-			reqBody, err = json.Marshal(requestBody)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		if requestBody != nil {
-			reqBody = []byte(requestBody.(string))
-		}
+	reqBody, err := parseRequestBody(requestOptions, requestBody)
+	if err != nil {
+		return err
 	}
 
 	// Create the HTTP request
@@ -400,10 +388,10 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 		return err
 	}
 
-	if requestOptions.contentType == "" {
+	if requestOptions.contentType != "" {
 		req.Header.Set("Content-Type", requestOptions.contentType)
 	}
-	if requestOptions.accept == "" {
+	if requestOptions.accept != "" {
 		req.Header.Set("Accept", requestOptions.accept)
 	}
 	req.Header.Set("Authorization", "Bearer "+r.githubToken)
@@ -439,6 +427,33 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	}
 
 	return nil
+}
+
+func parseRequestBody(requestOptions requestOptions, requestBody any) ([]byte, error) {
+	var reqBody []byte
+
+	if requestBody == nil {
+		return reqBody, nil
+	}
+
+	// Marshal the request body to JSON if accept/content type is JSON
+	if requestOptions.accept == "application/json" || requestOptions.contentType == "application/json" {
+		reqBody, err := json.Marshal(requestBody)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse request body: %w", err)
+		}
+
+		return reqBody, nil
+	}
+
+	reqStr, ok := requestBody.(string)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert request body to string: %v", requestBody)
+	}
+
+	reqBody = []byte(reqStr)
+
+	return reqBody, nil
 }
 
 type requestOptions struct {
