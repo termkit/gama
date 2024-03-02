@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -174,6 +175,10 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 			workflow.Path,
 		})
 	}
+
+	sort.SliceStable(tableRowsTriggerableWorkflow, func(i, j int) bool {
+		return tableRowsTriggerableWorkflow[i][0] < tableRowsTriggerableWorkflow[j][0]
+	})
 
 	m.tableTriggerableWorkflow.SetRows(tableRowsTriggerableWorkflow)
 
