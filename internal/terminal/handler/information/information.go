@@ -81,7 +81,7 @@ func (m *ModelInfo) Init() tea.Cmd {
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
-	isUpdateAvailable, version, err := m.versionUseCase.IsUpdateAvailable()
+	isUpdateAvailable, version, err := m.versionUseCase.IsUpdateAvailable(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to check updates")

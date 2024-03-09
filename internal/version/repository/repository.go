@@ -36,12 +36,12 @@ func (r *Repo) CurrentVersion() string {
 	return r.currentVersion
 }
 
-func (r *Repo) LatestVersion() (string, error) {
+func (r *Repo) LatestVersion(ctx context.Context) (string, error) {
 	var result struct {
 		TagName string `json:"tag_name"`
 	}
 
-	err := r.do(context.Background(), nil, &result, requestOptions{
+	err := r.do(ctx, nil, &result, requestOptions{
 		method: "GET",
 		path:   fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo),
 		accept: "application/vnd.github+json",
