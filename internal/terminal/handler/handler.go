@@ -230,7 +230,6 @@ func (m *model) syncTerminal(msg tea.Msg) {
 
 		if !m.terminalSizeReady {
 			m.viewport = viewport.New(msg.Width, msg.Height)
-			m.viewport.YPosition = headerHeight
 			m.terminalSizeReady = true
 			m.viewport.YPosition = headerHeight + 1
 		} else {
