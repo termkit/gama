@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	gamaVersion            string
+	currentVersion         string
 	newVersionAvailableMsg string
 	applicationDescription string
 )
@@ -72,8 +72,8 @@ func SetupModelInfo(githubUseCase gu.UseCase, versionUseCase vu.UseCase, lockTab
 }
 
 func (m *ModelInfo) Init() tea.Cmd {
-	gamaVersion = m.versionUseCase.CurrentVersion()
-	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", gamaVersion)
+	currentVersion = m.versionUseCase.CurrentVersion()
+	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", currentVersion)
 
 	go m.testConnection(context.Background())
 	go m.checkUpdates(context.Background())

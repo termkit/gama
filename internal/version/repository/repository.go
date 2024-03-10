@@ -47,7 +47,8 @@ func (r *Repo) LatestVersion(ctx context.Context) (string, error) {
 		accept: "application/vnd.github+json",
 	})
 	// client time out error
-	if errors.As(err, &context.DeadlineExceeded) {
+	var deadlineExceededError *url.Error
+	if errors.As(err, &deadlineExceededError) && deadlineExceededError.Timeout() {
 		return "", errors.New("request timed out")
 	} else if err != nil {
 		return "", err
