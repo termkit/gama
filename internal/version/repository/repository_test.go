@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func NewRepository() Repository {
@@ -13,8 +15,9 @@ func TestRepo_LatestVersion(t *testing.T) {
 	ctx := context.Background()
 	repo := NewRepository()
 
-	_, err := repo.LatestVersion(ctx)
-	if err != nil {
-		t.Error(err)
-	}
+	t.Run("Get latest version", func(t *testing.T) {
+		res, err := repo.LatestVersion(ctx)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, res)
+	})
 }
