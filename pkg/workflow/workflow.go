@@ -40,6 +40,7 @@ type KeyValue struct {
 type Value struct {
 	Default any
 	Value   any
+	Options []string
 }
 
 type Choice struct {
@@ -51,7 +52,7 @@ type Choice struct {
 // TODO: Add support for boolean
 
 func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
-	w := &Workflow{
+	var w = &Workflow{
 		Content: make(map[string]Content),
 	}
 
@@ -75,59 +76,13 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 			continue // Skip the rest of the loop
 		}
 
-		if value.Type == "choice" {
-			if value.Default == nil {
-				value.Default = value.Options[0]
-			}
-			w.Content[key] = Content{
-				Description: value.Description,
-				Type:        "choice",
-				Required:    value.Required,
-				Choice: &Choice{
-					Default: value.Default.(string),
-					Options: value.Options,
-					Value:   "",
-				},
-			}
-		}
-
-		if value.Type == "string" || value.Type == "number" || value.Type == "" {
-			defaultValue := ""
-			if value.Default != nil {
-				_, ok := value.Default.(string)
-				if ok {
-					defaultValue = value.Default.(string)
-				}
-			}
-			w.Content[key] = Content{
-				Description: value.Description,
-				Type:        "input",
-				Required:    value.Required,
-				Value: &Value{
-					Default: defaultValue,
-					Value:   "",
-				},
-			}
-		}
-
-		if value.Type == "boolean" {
-			defaultValue := "false"
-			if value.Default != nil {
-				_, ok := value.Default.(bool)
-				if ok {
-					strBool := strconv.FormatBool(value.Default.(bool))
-					defaultValue = strBool
-				}
-			}
-			w.Content[key] = Content{
-				Description: value.Description,
-				Type:        "boolean",
-				Required:    value.Required,
-				Boolean: &Value{
-					Default: defaultValue,
-					Value:   "",
-				},
-			}
+		switch value.Type {
+		case "choice":
+			w.Content[key] = parseChoiceTypes(value)
+		case "boolean":
+			w.Content[key] = parseBooleanTypes(value)
+		case "string", "number", "environment", "":
+			w.Content[key] = parseInputTypes(value)
 		}
 	}
 
@@ -161,34 +116,21 @@ func (w *Workflow) ToPretty() *Pretty {
 			id++
 		}
 		if data.Value != nil {
-			var defaultValue string
-			if data.Value.Default != nil {
-				_, ok := data.Value.Default.(string)
-				if ok {
-					defaultValue = data.Value.Default.(string)
-				}
-			}
 			pretty.Inputs = append(pretty.Inputs, PrettyInput{
 				ID:      id,
 				Key:     parent,
 				Value:   "",
-				Default: defaultValue,
+				Default: data.Value.Default.(string),
 			})
 			id++
 		}
 		if data.Boolean != nil {
-			var defaultValue string
-			if data.Boolean.Default != nil {
-				_, ok := data.Boolean.Default.(string)
-				if ok {
-					defaultValue = data.Boolean.Default.(string)
-				}
-			}
 			pretty.Boolean = append(pretty.Boolean, PrettyInput{
 				ID:      id,
 				Key:     parent,
 				Value:   "",
-				Default: defaultValue,
+				Values:  data.Boolean.Options,
+				Default: data.Boolean.Default.(string),
 			})
 			id++
 		}
@@ -278,6 +220,7 @@ type PrettyInput struct {
 	ID      int
 	Key     string
 	Value   string
+	Values  []string
 	Default string
 }
 
@@ -299,4 +242,75 @@ func (kv *PrettyKeyValue) SetValue(value string) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func parseChoiceTypes(value py.WorkflowInput) Content {
+	var defaultValue = ""
+	if value.Default == nil {
+		if len(value.Options) != 0 {
+			defaultValue = value.Options[0]
+		}
+	} else {
+		res, ok := value.Default.(string)
+		if ok {
+			defaultValue = res
+		}
+	}
+
+	return Content{
+		Description: value.Description,
+		Type:        "choice",
+		Required:    value.Required,
+		Choice: &Choice{
+			Default: defaultValue,
+			Options: value.Options,
+			Value:   "",
+		},
+	}
+}
+
+func parseBooleanTypes(value py.WorkflowInput) Content {
+	var defaultValue = "false"
+
+	if value.Default != nil {
+		res, ok := value.Default.(bool)
+		if ok {
+			var strBool = strconv.FormatBool(res)
+			defaultValue = strBool
+		}
+	}
+
+	var options = []string{"true", "false"}
+
+	return Content{
+		Description: value.Description,
+		Type:        "bool",
+		Required:    value.Required,
+		Boolean: &Value{
+			Default: defaultValue,
+			Options: options,
+			Value:   "",
+		},
+	}
+}
+
+func parseInputTypes(value py.WorkflowInput) Content {
+	var defaultValue = ""
+
+	if value.Default != nil {
+		res, ok := value.Default.(string)
+		if ok {
+			defaultValue = res
+		}
+	}
+
+	return Content{
+		Description: value.Description,
+		Type:        "input",
+		Required:    value.Required,
+		Value: &Value{
+			Default: defaultValue,
+			Value:   "",
+		},
+	}
 }
