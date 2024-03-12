@@ -1,6 +1,8 @@
 package repository
 
+import "context"
+
 type Repository interface {
 	CurrentVersion() string
-	LatestVersion() (string, error)
+	LatestVersion(ctx context.Context) (string, error)
 }
