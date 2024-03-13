@@ -198,7 +198,7 @@ func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
 	m.textInput.SetCursor(len(m.textInput.Value()))
 }
 
-func (m *ModelGithubTrigger) inputController(ctx context.Context) {
+func (m *ModelGithubTrigger) inputController(_ context.Context) {
 	if m.workflowContent == nil {
 		return
 	}
@@ -254,13 +254,14 @@ func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 
 	for i, choice := range m.workflowContent.Choices {
 		var selectedRow = m.tableTrigger.SelectedRow()
-		if len(selectedRow) == 0 {
+		var rows = m.tableTrigger.Rows()
+
+		if len(selectedRow) == 0 || len(rows) == 0 {
 			return
 		}
 		if fmt.Sprintf("%d", choice.ID) == selectedRow[0] {
 			m.workflowContent.Choices[i].SetValue(m.optionValues[m.optionCursor])
 
-			rows := m.tableTrigger.Rows()
 			for i, row := range rows {
 				if row[0] == selectedRow[0] {
 					rows[i][4] = m.optionValues[m.optionCursor]
@@ -274,13 +275,13 @@ func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 	if m.workflowContent.Boolean != nil {
 		for i, boolean := range m.workflowContent.Boolean {
 			var selectedRow = m.tableTrigger.SelectedRow()
-			if len(selectedRow) == 0 {
+			var rows = m.tableTrigger.Rows()
+			if len(selectedRow) == 0 || len(rows) == 0 {
 				return
 			}
 			if fmt.Sprintf("%d", boolean.ID) == selectedRow[0] {
 				m.workflowContent.Boolean[i].SetValue(m.optionValues[m.optionCursor])
 
-				rows := m.tableTrigger.Rows()
 				for i, row := range rows {
 					if row[0] == selectedRow[0] {
 						rows[i][4] = m.optionValues[m.optionCursor]
@@ -298,15 +299,16 @@ func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 		}
 
 		var selectedRow = m.tableTrigger.SelectedRow()
-		if len(selectedRow) == 0 {
+		var rows = m.tableTrigger.Rows()
+		if len(selectedRow) == 0 || len(rows) == 0 {
 			return
 		}
+
 		for i, input := range m.workflowContent.Inputs {
 			if fmt.Sprintf("%d", input.ID) == selectedRow[0] {
 				m.textInput.Placeholder = input.Default
 				m.workflowContent.Inputs[i].SetValue(m.textInput.Value())
 
-				rows := m.tableTrigger.Rows()
 				for i, row := range rows {
 					if row[0] == selectedRow[0] {
 						rows[i][4] = m.textInput.Value()
@@ -322,7 +324,6 @@ func (m *ModelGithubTrigger) inputController(ctx context.Context) {
 				m.textInput.Placeholder = keyVal.Default
 				m.workflowContent.KeyVals[i].SetValue(m.textInput.Value())
 
-				rows := m.tableTrigger.Rows()
 				for i, row := range rows {
 					if row[0] == selectedRow[0] {
 						rows[i][4] = m.textInput.Value()
