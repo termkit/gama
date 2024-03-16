@@ -1,41 +1,53 @@
 package ghrepository
 
 import (
+	"fmt"
+
 	teakey "github.com/charmbracelet/bubbles/key"
+	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
 type keyMap struct {
-	Refresh      teakey.Binding
-	LaunchOption teakey.Binding
-	TabSwitch    teakey.Binding
+	Refresh   teakey.Binding
+	LaunchTab teakey.Binding
+	SwitchTab teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.TabSwitch, k.Refresh, k.LaunchOption}
+	return []teakey.Binding{k.SwitchTab, k.Refresh, k.LaunchTab}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
-		{k.TabSwitch},
+		{k.SwitchTab},
 		{k.Refresh},
-		{k.LaunchOption},
+		{k.LaunchTab},
 	}
 }
 
-var keys = keyMap{
-	Refresh: teakey.NewBinding(
-		teakey.WithKeys("ctrl+r", "ctrl+R"),
-		teakey.WithHelp("ctrl + (r | R)", "Refresh list"),
-	),
-	LaunchOption: teakey.NewBinding(
-		teakey.WithKeys("enter"),
-		teakey.WithHelp("enter", "Launch the selected option"),
-	),
-	TabSwitch: teakey.NewBinding(
-		teakey.WithKeys(""), // help-only binding
-		teakey.WithHelp("shift + (← | →)", "switch tab"),
-	),
-}
+var keys = func() keyMap {
+	cfg, err := pkgconfig.LoadConfig()
+	if err != nil {
+		panic(fmt.Sprintf("failed to load config: %v", err))
+	}
+
+	var tabSwitch = fmt.Sprintf("%s ← | → %s", cfg.Shortcuts.SwitchTabLeft, cfg.Shortcuts.SwitchTabRight)
+
+	return keyMap{
+		Refresh: teakey.NewBinding(
+			teakey.WithKeys(cfg.Shortcuts.Refresh),
+			teakey.WithHelp(cfg.Shortcuts.Refresh, "Refresh list"),
+		),
+		LaunchTab: teakey.NewBinding(
+			teakey.WithKeys(cfg.Shortcuts.Enter),
+			teakey.WithHelp(cfg.Shortcuts.Enter, "Launch the selected option"),
+		),
+		SwitchTab: teakey.NewBinding(
+			teakey.WithKeys(""), // help-only binding
+			teakey.WithHelp(tabSwitch, "switch tab"),
+		),
+	}
+}()
 
 func (m *ModelGithubRepository) ViewHelp() string {
 	return m.Help.View(m.Keys)
