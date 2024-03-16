@@ -14,11 +14,21 @@ const (
 )
 
 type Config struct {
-	Github Github `mapstructure:"github"`
+	Github    Github    `mapstructure:"github"`
+	Shortcuts Shortcuts `mapstructure:"shortcuts"`
 }
 
 type Github struct {
 	Token string `mapstructure:"token"`
+}
+
+type Shortcuts struct {
+	SwitchTabRight string `mapstructure:"switchTabRight"`
+	SwitchTabLeft  string `mapstructure:"switchTabLeft"`
+	Quit           string `mapstructure:"quit"`
+	Refresh        string `mapstructure:"refresh"`
+	Enter          string `mapstructure:"enter"`
+	Tab            string `mapstructure:"tab"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -34,9 +44,13 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("github.token", "GITHUB_TOKEN")
 	viper.AutomaticEnv()
 
+	var config = new(Config)
+	defer func() {
+		config = fillDefaultShortcuts(config)
+	}()
+
 	// Read the config file first
 	if err := viper.ReadInConfig(); err == nil {
-		config := new(Config)
 		if err := viper.Unmarshal(config); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal config file: %w", err)
 		}
@@ -44,10 +58,10 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// If config file is not found, try to unmarshal from environment variables
-	config := new(Config)
 	if err := viper.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
 	return config, nil
 }
 
