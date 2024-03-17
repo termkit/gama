@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"github.com/Masterminds/semver/v3"
 
 	vr "github.com/termkit/gama/internal/version/repository"
@@ -20,13 +21,13 @@ func (u *useCase) CurrentVersion() string {
 	return u.versionRepository.CurrentVersion()
 }
 
-func (u *useCase) IsUpdateAvailable() (isAvailable bool, version string, err error) {
+func (u *useCase) IsUpdateAvailable(ctx context.Context) (isAvailable bool, version string, err error) {
 	currentVersion := u.versionRepository.CurrentVersion()
 	if currentVersion == "under development" {
 		return false, currentVersion, nil
 	}
 
-	latestVersion, err := u.versionRepository.LatestVersion()
+	latestVersion, err := u.versionRepository.LatestVersion(ctx)
 	if err != nil {
 		return false, currentVersion, err
 	}
