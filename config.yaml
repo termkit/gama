@@ -2,8 +2,8 @@ github:
   token: <your github token>
 
 keys:
-  switchTabRight: shift+right
-  switchTabLeft: shift+left
+  switch_tab_right: shift+right
+  switch_tab_left: shift+left
   quit: ctrl+c
   refresh: ctrl+r
   enter: enter
