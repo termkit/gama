@@ -24,6 +24,14 @@ Place a `~/.config/gama/config.yaml` file in your home directory with the follow
 ```yaml
 github:
   token: <your github token>
+
+keys:
+  switch_tab_right: shift+right
+  switch_tab_left: shift+left
+  quit: ctrl+c
+  refresh: ctrl+r
+  enter: enter
+  tab: tab
 ```
 
 #### Environment Variable Configuration
