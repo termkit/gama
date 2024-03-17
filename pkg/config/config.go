@@ -15,7 +15,7 @@ const (
 
 type Config struct {
 	Github    Github    `mapstructure:"github"`
-	Shortcuts Shortcuts `mapstructure:"shortcuts"`
+	Shortcuts Shortcuts `mapstructure:"keys"`
 }
 
 type Github struct {
@@ -23,8 +23,8 @@ type Github struct {
 }
 
 type Shortcuts struct {
-	SwitchTabRight string `mapstructure:"switchTabRight"`
-	SwitchTabLeft  string `mapstructure:"switchTabLeft"`
+	SwitchTabRight string `mapstructure:"switch_tab_right"`
+	SwitchTabLeft  string `mapstructure:"switch_tab_left"`
 	Quit           string `mapstructure:"quit"`
 	Refresh        string `mapstructure:"refresh"`
 	Enter          string `mapstructure:"enter"`

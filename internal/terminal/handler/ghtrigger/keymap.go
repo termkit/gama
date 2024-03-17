@@ -33,7 +33,7 @@ var keys = func() keyMap {
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
-	var previousTab = fmt.Sprintf("← %s", cfg.Shortcuts.SwitchTabLeft)
+	var previousTab = fmt.Sprintf("%s", cfg.Shortcuts.SwitchTabLeft)
 
 	return keyMap{
 		SwitchTabLeft: teakey.NewBinding(
