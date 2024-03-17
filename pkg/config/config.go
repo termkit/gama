@@ -3,14 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/viper"
-)
-
-const (
-	configName = ".gama"
-	configType = "yaml"
 )
 
 type Config struct {
@@ -32,22 +28,16 @@ type Shortcuts struct {
 }
 
 func LoadConfig() (*Config, error) {
-	configPath, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user home directory: %w", err)
-	}
-
-	viper.AddConfigPath(configPath)
-	viper.SetConfigName(configName)
-	viper.SetConfigType(configType)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(`.`, `_`))
-	viper.BindEnv("github.token", "GITHUB_TOKEN")
-	viper.AutomaticEnv()
-
 	var config = new(Config)
 	defer func() {
 		config = fillDefaultShortcuts(config)
 	}()
+
+	setConfig()
+
+	viper.SetEnvKeyReplacer(strings.NewReplacer(`.`, `_`))
+	viper.BindEnv("github.token", "GITHUB_TOKEN")
+	viper.AutomaticEnv()
 
 	// Read the config file first
 	if err := viper.ReadInConfig(); err == nil {
@@ -65,41 +55,20 @@ func LoadConfig() (*Config, error) {
 	return config, nil
 }
 
-func CheckConfig() error {
-	configPath, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
+func setConfig() {
+	configPath := filepath.Join(os.Getenv("HOME"), ".config", "gama", "config.yaml")
+	if _, err := os.Stat(configPath); err == nil {
+		viper.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "gama"))
+		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
+		return
 	}
 
-	configFile := fmt.Sprintf("%s/%s.%s", configPath, configName, configType)
-
-	file, err := os.Stat(configFile)
-	if err != nil {
-		return fmt.Errorf("failed to get file info: %w", err)
+	oldConfigPath := filepath.Join(os.Getenv("HOME"), ".gama.yaml")
+	if _, err := os.Stat(oldConfigPath); err == nil {
+		viper.AddConfigPath(os.Getenv("HOME"))
+		viper.SetConfigName(".gama")
+		viper.SetConfigType("yaml")
+		return
 	}
-
-	if file != nil {
-		return nil
-	}
-	return fmt.Errorf("config file does not exist")
-}
-
-// SaveConfig saves the configuration to the config file.
-func SaveConfig(config *Config) error {
-	configPath, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
-	}
-
-	viper.AddConfigPath(configPath)
-	viper.SetConfigName(configName)
-	viper.SetConfigType(configType)
-
-	viper.Set("github.token", config.Github.Token)
-
-	if err := viper.SafeWriteConfig(); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return nil
 }

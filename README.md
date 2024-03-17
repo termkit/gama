@@ -19,7 +19,7 @@ Before using GAMA, you need to generate a GitHub token. Follow these [instructio
 ### Configuration
 
 #### YAML Configuration
-Place a `.gama.yaml` file in your home directory with the following content:
+Place a `~/.config/gama/config.yaml` file in your home directory with the following content:
 
 ```yaml
 github:
