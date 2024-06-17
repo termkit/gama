@@ -1,63 +1,19 @@
-package repository
+package version
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 )
 
-type Repo struct {
-	Client HttpClient
-
-	currentVersion string
-	latestVersion  string
+type HttpClient interface {
+	Do(req *http.Request) (*http.Response, error)
 }
 
-const (
-	owner = "termkit"
-	repo  = "gama"
-)
-
-func New(currentVersion string) *Repo {
-	return &Repo{
-		Client: &http.Client{
-			Timeout: 20 * time.Second,
-		},
-		currentVersion: currentVersion,
-	}
-}
-
-func (r *Repo) CurrentVersion() string {
-	return r.currentVersion
-}
-
-func (r *Repo) LatestVersion(ctx context.Context) (string, error) {
-	var result struct {
-		TagName string `json:"tag_name"`
-	}
-
-	err := r.do(ctx, nil, &result, requestOptions{
-		method: "GET",
-		path:   fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo),
-		accept: "application/vnd.github+json",
-	})
-	// client time out error
-	var deadlineExceededError *url.Error
-	if errors.As(err, &deadlineExceededError) && deadlineExceededError.Timeout() {
-		return "", errors.New("request timed out")
-	} else if err != nil {
-		return "", err
-	}
-
-	return result.TagName, nil
-}
-
-func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, requestOptions requestOptions) error {
+func (v *version) do(ctx context.Context, requestBody any, responseBody any, requestOptions requestOptions) error {
 	// Construct the request URL
 	reqURL, err := url.Parse(requestOptions.path)
 	if err != nil {
@@ -102,7 +58,7 @@ func (r *Repo) do(ctx context.Context, requestBody any, responseBody any, reques
 	req = req.WithContext(ctx)
 
 	// Perform the HTTP request using the injected client
-	resp, err := r.Client.Do(req)
+	resp, err := v.client.Do(req)
 	if err != nil {
 		return err
 	}

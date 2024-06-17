@@ -14,13 +14,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
-	vu "github.com/termkit/gama/internal/version/usecase"
+	pkgversion "github.com/termkit/gama/pkg/version"
 )
 
 type ModelInfo struct {
 	// use cases
-	githubUseCase  gu.UseCase
-	versionUseCase vu.UseCase
+	githubUseCase gu.UseCase
+	version       pkgversion.Version
 
 	// lockTabs will be set true if test connection fails
 	lockTabs *bool
@@ -53,7 +53,7 @@ var (
 	applicationDescription string
 )
 
-func SetupModelInfo(githubUseCase gu.UseCase, versionUseCase vu.UseCase, lockTabs *bool) *ModelInfo {
+func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version, lockTabs *bool) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
 
 	s := spinner.New()
@@ -61,18 +61,18 @@ func SetupModelInfo(githubUseCase gu.UseCase, versionUseCase vu.UseCase, lockTab
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
-		githubUseCase:  githubUseCase,
-		versionUseCase: versionUseCase,
-		Help:           help.New(),
-		Keys:           keys,
-		modelError:     modelError,
-		lockTabs:       lockTabs,
-		spinner:        s,
+		githubUseCase: githubUseCase,
+		version:       version,
+		Help:          help.New(),
+		Keys:          keys,
+		modelError:    modelError,
+		lockTabs:      lockTabs,
+		spinner:       s,
 	}
 }
 
 func (m *ModelInfo) Init() tea.Cmd {
-	currentVersion = m.versionUseCase.CurrentVersion()
+	currentVersion = m.version.CurrentVersion()
 	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", currentVersion)
 
 	go m.testConnection(context.Background())
@@ -81,7 +81,7 @@ func (m *ModelInfo) Init() tea.Cmd {
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
-	isUpdateAvailable, version, err := m.versionUseCase.IsUpdateAvailable(ctx)
+	isUpdateAvailable, version, err := m.version.IsUpdateAvailable(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to check updates")
