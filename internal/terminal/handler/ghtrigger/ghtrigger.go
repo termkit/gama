@@ -497,8 +497,7 @@ func (m *ModelGithubTrigger) triggerButton() string {
 		Align(lipgloss.Center)
 
 	if m.triggerFocused {
-		button = button.Copy().
-			BorderForeground(lipgloss.Color("130")).
+		button = button.BorderForeground(lipgloss.Color("130")).
 			Foreground(lipgloss.Color("130")).
 			BorderStyle(lipgloss.DoubleBorder())
 	}

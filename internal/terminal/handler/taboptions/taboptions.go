@@ -150,7 +150,6 @@ func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return o, cmd
 	}
 
-	// TODO: If option less than 4, still count down the timer
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
@@ -179,32 +178,27 @@ func (o *Options) updateCursor(cursor int) {
 }
 
 func (o *Options) View() string {
+	var style = o.Style.Foreground(lipgloss.Color("15"))
+
 	var opts []string
+
 	for i, option := range o.optionsAction {
-		var style lipgloss.Style
-		isActive := i == o.cursor
-		if o.status == OptionWait {
-			// orange
-			style = o.Style.Copy().
-				Foreground(lipgloss.Color("15")).
-				BorderForeground(lipgloss.Color("208"))
-		} else if o.status == OptionNone {
-			// gray
-			style = o.Style.Copy().
-				Foreground(lipgloss.Color("15")).
-				BorderForeground(lipgloss.Color("240"))
-		} else {
+		switch o.status {
+		case OptionWait:
+			style = style.BorderForeground(lipgloss.Color("208"))
+		case OptionNone:
+			style = style.BorderForeground(lipgloss.Color("240"))
+		default:
+			isActive := i == o.cursor
+
 			if isActive {
-				style = o.Style.Copy().
-					Foreground(lipgloss.Color("15")).
-					BorderForeground(lipgloss.Color("150"))
+				style = style.BorderForeground(lipgloss.Color("150"))
 			} else {
-				style = o.Style.Copy().
-					Foreground(lipgloss.Color("15")).
-					BorderForeground(lipgloss.Color("240"))
+				style = style.BorderForeground(lipgloss.Color("240"))
 			}
 		}
 		opts = append(opts, style.Render(option))
 	}
+
 	return lipgloss.JoinHorizontal(lipgloss.Top, opts...)
 }
