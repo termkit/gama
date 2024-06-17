@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	pkgconfig "github.com/termkit/gama/internal/config"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,7 +11,6 @@ import (
 	th "github.com/termkit/gama/internal/terminal/handler"
 	vr "github.com/termkit/gama/internal/version/repository"
 	vu "github.com/termkit/gama/internal/version/usecase"
-	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
 var Version = "under development" // will be set by build flag

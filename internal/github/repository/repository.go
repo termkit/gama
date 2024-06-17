@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	pkgconfig "github.com/termkit/gama/internal/config"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,8 +16,6 @@ import (
 	"time"
 
 	"github.com/termkit/gama/internal/github/domain"
-	pkgconfig "github.com/termkit/gama/pkg/config"
-
 	"gopkg.in/yaml.v3"
 )
 

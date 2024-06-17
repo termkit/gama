@@ -2,11 +2,11 @@ package usecase
 
 import (
 	"context"
+	pkgconfig "github.com/termkit/gama/internal/config"
 	"testing"
 
 	"github.com/termkit/gama/internal/github/domain"
 	"github.com/termkit/gama/internal/github/repository"
-	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
 func TestUseCase_ListRepositories(t *testing.T) {

@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
+	pkgconfig "github.com/termkit/gama/internal/config"
 	"reflect"
 	"testing"
 
 	"github.com/termkit/gama/internal/github/domain"
-	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
 func newRepo(ctx context.Context) *Repo {

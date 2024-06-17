@@ -2,9 +2,9 @@ package handler
 
 import (
 	"fmt"
+	pkgconfig "github.com/termkit/gama/internal/config"
 
 	teakey "github.com/charmbracelet/bubbles/key"
-	pkgconfig "github.com/termkit/gama/pkg/config"
 )
 
 type keyMap struct {
