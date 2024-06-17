@@ -23,10 +23,9 @@ import (
 
 type model struct {
 	// current handler's properties
-	TabsWithColor     []string
-	currentTab        *int
-	isTabActive       bool
-	terminalSizeReady bool
+	TabsWithColor []string
+	currentTab    *int
+	isTabActive   bool
 
 	// Shared properties
 	SelectedRepository *hdltypes.SelectedRepository
@@ -54,6 +53,11 @@ type model struct {
 	// keymap
 	keys keyMap
 }
+
+const (
+	minTerminalWidth  = 102
+	minTerminalHeight = 24
+)
 
 func SetupTerminal(githubUseCase gu.UseCase, versionUseCase vu.UseCase) tea.Model {
 	var currentTab = new(int)
@@ -97,6 +101,7 @@ func SetupTerminal(githubUseCase gu.UseCase, versionUseCase vu.UseCase) tea.Mode
 }
 
 func (m *model) Init() tea.Cmd {
+	m.viewport = viewport.Model{Width: minTerminalWidth, Height: minTerminalHeight}
 	return tea.Batch(
 		tea.EnterAltScreen,
 		tea.SetWindowTitle("GitHub Actions Manager (GAMA)"),
@@ -109,13 +114,13 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Sync terminal size
-	m.syncTerminal(msg)
-
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.SwitchTabLeft):
@@ -141,16 +146,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-const (
-	minTerminalWidth  = 102
-	minTerminalHeight = 24
-)
-
 func (m *model) View() string {
-	if !m.terminalSizeReady {
-		return "Setting up..."
-	}
-
 	if m.viewport.Width < minTerminalWidth || m.viewport.Height < minTerminalHeight {
 		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", minTerminalWidth, minTerminalHeight)
 	}
@@ -160,26 +156,25 @@ func (m *model) View() string {
 	var operationDoc string
 	var helpDocHeight int
 
-	var renderedTabs []string
+	header := newHeader(&m.viewport)
 	for i, t := range m.TabsWithColor {
-		var style lipgloss.Style
+		var tabStyle lipgloss.Style
 		isActive := i == *m.currentTab
 		if isActive {
-			style = ts.TitleStyleActive.Copy()
+			tabStyle = ts.TitleStyleActive
 		} else {
 			if *m.lockTabs {
-				style = ts.TitleStyleDisabled.Copy()
+				tabStyle = ts.TitleStyleDisabled
 			} else {
-				style = ts.TitleStyleInactive.Copy()
+				tabStyle = ts.TitleStyleInactive
 			}
 		}
-		renderedTabs = append(renderedTabs, style.Render(t))
+		header.addHeaderTab(t, tabStyle)
 	}
 
-	mainDoc.WriteString("\n")
-	mainDoc.WriteString(m.headerView(renderedTabs...) + "\n")
+	mainDoc.WriteString("\n" + header.renderHeader() + "\n")
 
-	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - len(renderedTabs)
+	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - 4
 	hdltypes.ScreenWidth = &width
 
 	dynamicWindowStyle := ts.WindowStyleCyan.Width(width).Height(m.viewport.Height - 20)
@@ -223,22 +218,6 @@ func (m *model) View() string {
 	return mainDocContent + padding + informationPane
 }
 
-func (m *model) syncTerminal(msg tea.Msg) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		headerHeight := lipgloss.Height(m.headerView())
-
-		if !m.terminalSizeReady {
-			m.viewport = viewport.New(msg.Width, msg.Height)
-			m.viewport.YPosition = headerHeight + 1
-			m.terminalSizeReady = true
-		} else {
-			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height
-		}
-	}
-}
-
 func (m *model) handleTabContent(cmd tea.Cmd, msg tea.Msg) tea.Cmd {
 	switch *m.currentTab {
 	case 0:
@@ -255,12 +234,30 @@ func (m *model) handleTabContent(cmd tea.Cmd, msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (m *model) headerView(titles ...string) string {
-	var renderedTitles string
-	for _, t := range titles {
-		renderedTitles += t
+// --- Header ---
+
+// header is a helper for rendering the header of the terminal.
+type header struct {
+	viewport *viewport.Model
+	titles   []string
+}
+
+// newHeader returns a new header.
+func newHeader(viewport *viewport.Model) *header {
+	return &header{
+		titles:   make([]string, 0),
+		viewport: viewport,
 	}
-	line := strings.Repeat("─", max(0, m.viewport.Width-79))
-	titles = append(titles, line)
-	return lipgloss.JoinHorizontal(lipgloss.Center, titles...)
+}
+
+// addHeaderTab adds a tab to the header.
+func (h *header) addHeaderTab(title string, style lipgloss.Style) {
+	h.titles = append(h.titles, style.Render(title))
+}
+
+// renderHeader renders the header.
+func (h *header) renderHeader() string {
+	line := strings.Repeat("─", max(0, h.viewport.Width-79))
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, append(h.titles, line)...)
 }
