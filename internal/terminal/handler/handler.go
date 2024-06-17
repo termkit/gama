@@ -156,25 +156,25 @@ func (m *model) View() string {
 	var operationDoc string
 	var helpDocHeight int
 
-	var renderedTabs []string
+	header := newHeader(&m.viewport)
 	for i, t := range m.TabsWithColor {
-		var style lipgloss.Style
+		var tabStyle lipgloss.Style
 		isActive := i == *m.currentTab
 		if isActive {
-			style = ts.TitleStyleActive
+			tabStyle = ts.TitleStyleActive
 		} else {
 			if *m.lockTabs {
-				style = ts.TitleStyleDisabled
+				tabStyle = ts.TitleStyleDisabled
 			} else {
-				style = ts.TitleStyleInactive
+				tabStyle = ts.TitleStyleInactive
 			}
 		}
-		renderedTabs = append(renderedTabs, style.Render(t))
+		header.addHeaderTab(t, tabStyle)
 	}
 
-	mainDoc.WriteString("\n" + m.sprintHeader(renderedTabs...) + "\n")
+	mainDoc.WriteString("\n" + header.renderHeader() + "\n")
 
-	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - len(renderedTabs)
+	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - 4
 	hdltypes.ScreenWidth = &width
 
 	dynamicWindowStyle := ts.WindowStyleCyan.Width(width).Height(m.viewport.Height - 20)
@@ -234,12 +234,30 @@ func (m *model) handleTabContent(cmd tea.Cmd, msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (m *model) sprintHeader(titles ...string) string {
-	var renderedTitles string
-	for _, t := range titles {
-		renderedTitles += t
+// --- Header ---
+
+// header is a helper for rendering the header of the terminal.
+type header struct {
+	viewport *viewport.Model
+	titles   []string
+}
+
+// newHeader returns a new header.
+func newHeader(viewport *viewport.Model) *header {
+	return &header{
+		titles:   make([]string, 0),
+		viewport: viewport,
 	}
-	line := strings.Repeat("─", max(0, m.viewport.Width-79))
-	titles = append(titles, line)
-	return lipgloss.JoinHorizontal(lipgloss.Center, titles...)
+}
+
+// addHeaderTab adds a tab to the header.
+func (h *header) addHeaderTab(title string, style lipgloss.Style) {
+	h.titles = append(h.titles, style.Render(title))
+}
+
+// renderHeader renders the header.
+func (h *header) renderHeader() string {
+	line := strings.Repeat("─", max(0, h.viewport.Width-79))
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, append(h.titles, line)...)
 }

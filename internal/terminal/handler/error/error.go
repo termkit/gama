@@ -92,7 +92,7 @@ func (m *ModelError) Reset() {
 	m.ResetMessage()
 }
 
-func (m *ModelError) IsError() bool {
+func (m *ModelError) HaveError() bool {
 	return m.err != nil
 }
 
@@ -109,23 +109,27 @@ func (m *ModelError) ViewMessage() string {
 }
 
 func (m *ModelError) View() string {
-	var windowStyle = lipgloss.NewStyle()
+	var windowStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
 
 	doc := strings.Builder{}
-	if m.IsError() {
+	if m.HaveError() {
 		windowStyle = ts.WindowStyleError.Width(*hdltypes.ScreenWidth)
 		doc.WriteString(windowStyle.Render(m.ViewError()))
-	} else {
-		if m.messageType == MessageTypeDefault {
-			windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
-		} else if m.messageType == MessageTypeProgress {
-			windowStyle = ts.WindowStyleProgress.Width(*hdltypes.ScreenWidth)
-		} else if m.messageType == MessageTypeSuccess {
-			windowStyle = ts.WindowStyleSuccess.Width(*hdltypes.ScreenWidth)
-		} else {
-			windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
-		}
-		doc.WriteString(windowStyle.Render(m.ViewMessage()))
+		return doc.String()
 	}
+
+	switch m.messageType {
+	case MessageTypeDefault:
+		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+	case MessageTypeProgress:
+		windowStyle = ts.WindowStyleProgress.Width(*hdltypes.ScreenWidth)
+	case MessageTypeSuccess:
+		windowStyle = ts.WindowStyleSuccess.Width(*hdltypes.ScreenWidth)
+	default:
+		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+	}
+
+	doc.WriteString(windowStyle.Render(m.ViewMessage()))
+
 	return doc.String()
 }
