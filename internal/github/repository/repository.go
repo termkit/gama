@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/termkit/gama/internal/config"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/termkit/gama/internal/config"
 
 	"github.com/termkit/gama/internal/github/domain"
 	"gopkg.in/yaml.v3"
@@ -479,7 +480,7 @@ type githubWorkflow struct {
 }
 
 type workflowFile struct {
-	On map[string]interface{} `yaml:"on"`
+	On map[string]any `yaml:"on"`
 }
 
 type githubFile struct {

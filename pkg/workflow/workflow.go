@@ -141,7 +141,7 @@ func (w *Workflow) ToPretty() *Pretty {
 
 func (p *Pretty) ToJson() (string, error) {
 	// Create a map to hold the aggregated data
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 
 	// Process KeyVals
 	for _, kv := range p.KeyVals {
@@ -183,7 +183,7 @@ func (p *Pretty) ToJson() (string, error) {
 	return string(modifiedJSON), nil
 }
 
-func convertJsonToString(m map[string]interface{}) error {
+func convertJsonToString(m map[string]any) error {
 	for k, v := range m {
 		if reflect.TypeOf(v).Kind() == reflect.Map {
 			// Convert map to a JSON string
