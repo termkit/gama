@@ -27,19 +27,10 @@ func (v *version) do(ctx context.Context, requestBody any, responseBody any, req
 	}
 	reqURL.RawQuery = query.Encode()
 
-	var reqBody []byte
 	// Marshal the request body to JSON if accept/content type is JSON
-	if requestOptions.accept == "application/json" || requestOptions.contentType == "application/json" {
-		if requestBody != nil {
-			reqBody, err = json.Marshal(requestBody)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		if requestBody != nil {
-			reqBody = []byte(requestBody.(string))
-		}
+	reqBody, err := requestBodyToJSON(requestBody, requestOptions)
+	if err != nil {
+		return err
 	}
 
 	// Create the HTTP request
@@ -79,13 +70,24 @@ func (v *version) do(ctx context.Context, requestBody any, responseBody any, req
 
 	// Decode the response body
 	if responseBody != nil {
-		err = json.NewDecoder(resp.Body).Decode(responseBody)
-		if err != nil {
+		if err = json.NewDecoder(resp.Body).Decode(responseBody); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func requestBodyToJSON(requestBody any, requestOptions requestOptions) ([]byte, error) {
+	if requestBody != nil {
+		if requestOptions.accept == "application/json" || requestOptions.contentType == "application/json" {
+			return json.Marshal(requestBody)
+		}
+
+		return []byte(requestBody.(string)), nil
+	}
+
+	return []byte{}, nil
 }
 
 type requestOptions struct {
