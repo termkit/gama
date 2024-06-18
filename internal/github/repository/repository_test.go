@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	pkgconfig "github.com/termkit/gama/internal/config"
+	"github.com/termkit/gama/internal/config"
 	"reflect"
 	"testing"
 
@@ -10,7 +10,7 @@ import (
 )
 
 func newRepo(ctx context.Context) *Repo {
-	cfg, err := pkgconfig.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(err)
 	}

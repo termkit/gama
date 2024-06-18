@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	pkgconfig "github.com/termkit/gama/internal/config"
+	"github.com/termkit/gama/internal/config"
 	"net/http"
 	"net/url"
 	"path"
@@ -27,7 +27,7 @@ type Repo struct {
 
 var githubAPIURL = "https://api.github.com"
 
-func New(cfg *pkgconfig.Config) *Repo {
+func New(cfg *config.Config) *Repo {
 	return &Repo{
 		Client: &http.Client{
 			Timeout: 20 * time.Second,

@@ -2,7 +2,7 @@ package ghworkflow
 
 import (
 	"fmt"
-	pkgconfig "github.com/termkit/gama/internal/config"
+	"github.com/termkit/gama/internal/config"
 
 	teakey "github.com/charmbracelet/bubbles/key"
 )
@@ -22,7 +22,7 @@ func (k keyMap) FullHelp() [][]teakey.Binding {
 }
 
 var keys = func() keyMap {
-	cfg, err := pkgconfig.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	pkgconfig "github.com/termkit/gama/internal/config"
+	"github.com/termkit/gama/internal/config"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"os"
 
@@ -20,7 +20,7 @@ const (
 var Version = "under development" // will be set by build flag
 
 func main() {
-	cfg, err := pkgconfig.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}

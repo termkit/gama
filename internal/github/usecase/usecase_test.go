@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	pkgconfig "github.com/termkit/gama/internal/config"
+	"github.com/termkit/gama/internal/config"
 	"testing"
 
 	"github.com/termkit/gama/internal/github/domain"
@@ -11,7 +11,7 @@ import (
 
 func TestUseCase_ListRepositories(t *testing.T) {
 	ctx := context.Background()
-	cfg, err := pkgconfig.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestUseCase_ListRepositories(t *testing.T) {
 
 func TestUseCase_InspectWorkflow(t *testing.T) {
 	ctx := context.Background()
-	cfg, err := pkgconfig.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestUseCase_InspectWorkflow(t *testing.T) {
 
 func TestUseCase_TriggerWorkflow(t *testing.T) {
 	ctx := context.Background()
-	cfg, err := pkgconfig.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
