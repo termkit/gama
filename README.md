@@ -2,7 +2,7 @@
 
 GAMA is a powerful terminal-based user interface tool designed to streamline the management of GitHub Actions workflows. It allows developers to list, trigger, and manage workflows with ease directly from the terminal.
 
-<img alt="gama demo" src="docs/gama.gif" width="600"/>
+![gama demo](docs/gama.gif)
 
 ## Key Features
 
@@ -14,11 +14,13 @@ GAMA is a powerful terminal-based user interface tool designed to streamline the
 ## Getting Started
 
 ### Prerequisites
+
 Before using GAMA, you need to generate a GitHub token. Follow these [instructions](docs/generate_github_token/README.md) to create your token.
 
 ### Configuration
 
 #### YAML Configuration
+
 Place a `~/.config/gama/config.yaml` file in your home directory with the following content:
 
 ```yaml
@@ -35,6 +37,7 @@ keys:
 ```
 
 #### Environment Variable Configuration
+
 Alternatively, you can use an environment variable:
 
 ```bash
@@ -56,6 +59,7 @@ docker run --rm -it --env GITHUB_TOKEN="<your github token>" termkit/gama:latest
 Download the latest binary from the [releases page](https://github.com/termkit/gama/releases).
 
 ### Build from Source
+
 ```bash
 make build
 # output: ./release/gama
@@ -71,9 +75,10 @@ Contributions are what make the open source community such an amazing place to l
 
 Distributed under the GNU GENERAL PUBLIC LICENSE Version 3 or later. See `LICENSE` for more information.
 
-## Contact&Author
+## Contact & Author
 
 [Engin Açıkgöz](https://github.com/canack)
 
 ## Stargazers over time
+
 [![Stargazers over time](https://starchart.cc/termkit/gama.svg?variant=adaptive)](https://starchart.cc/termkit/gama)

@@ -1,4 +1,4 @@
-### Generate GitHub Token from GAMA ("Fine-Grained Token")
+# Generate GitHub Token from GAMA ("Fine-Grained Token")
 
 Generate a GitHub token with specific permissions for optimal use with GAMA. Follow these steps:
 
