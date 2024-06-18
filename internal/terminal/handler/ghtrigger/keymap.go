@@ -2,6 +2,7 @@ package ghtrigger
 
 import (
 	"fmt"
+
 	"github.com/termkit/gama/internal/config"
 
 	teakey "github.com/charmbracelet/bubbles/key"
@@ -33,7 +34,7 @@ var keys = func() keyMap {
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
-	var previousTab = fmt.Sprintf("%s", cfg.Shortcuts.SwitchTabLeft)
+	previousTab := cfg.Shortcuts.SwitchTabLeft
 
 	return keyMap{
 		SwitchTabLeft: teakey.NewBinding(

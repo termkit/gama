@@ -96,21 +96,21 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	openInBrowser := func() {
-		m.modelError.SetProgressMessage(fmt.Sprintf("Opening in browser..."))
+		m.modelError.SetProgressMessage("Opening in browser...")
 
 		var selectedWorkflow = fmt.Sprintf("https://github.com/%s/actions/runs/%d", m.SelectedRepository.RepositoryName, m.selectedWorkflowID)
 
 		err := browser.OpenInBrowser(selectedWorkflow)
 		if err != nil {
 			m.modelError.SetError(err)
-			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to open in browser"))
+			m.modelError.SetErrorMessage("Failed to open in browser")
 			return
 		}
-		m.modelError.SetSuccessMessage(fmt.Sprintf("Opened in browser"))
+		m.modelError.SetSuccessMessage("Opened in browser")
 	}
 
 	reRunFailedJobs := func() {
-		m.modelError.SetProgressMessage(fmt.Sprintf("Re-running failed jobs..."))
+		m.modelError.SetProgressMessage("Re-running failed jobs...")
 
 		_, err := m.github.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
 			Repository: m.SelectedRepository.RepositoryName,
@@ -119,15 +119,15 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 
 		if err != nil {
 			m.modelError.SetError(err)
-			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to re-run failed jobs"))
+			m.modelError.SetErrorMessage("Failed to re-run failed jobs")
 			return
 		}
 
-		m.modelError.SetSuccessMessage(fmt.Sprintf("Re-ran failed jobs"))
+		m.modelError.SetSuccessMessage("Re-ran failed jobs")
 	}
 
 	reRunWorkflow := func() {
-		m.modelError.SetProgressMessage(fmt.Sprintf("Re-running workflow..."))
+		m.modelError.SetProgressMessage("Re-running workflow...")
 
 		_, err := m.github.ReRunWorkflow(context.Background(), gu.ReRunWorkflowInput{
 			Repository: m.SelectedRepository.RepositoryName,
@@ -136,15 +136,15 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 
 		if err != nil {
 			m.modelError.SetError(err)
-			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to re-run workflow"))
+			m.modelError.SetErrorMessage("Failed to re-run workflow")
 			return
 		}
 
-		m.modelError.SetSuccessMessage(fmt.Sprintf("Re-ran workflow"))
+		m.modelError.SetSuccessMessage("Re-ran workflow")
 	}
 
 	cancelWorkflow := func() {
-		m.modelError.SetProgressMessage(fmt.Sprintf("Canceling workflow..."))
+		m.modelError.SetProgressMessage("Canceling workflow...")
 
 		_, err := m.github.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
 			Repository: m.SelectedRepository.RepositoryName,
@@ -153,11 +153,11 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 
 		if err != nil {
 			m.modelError.SetError(err)
-			m.modelError.SetErrorMessage(fmt.Sprintf("Failed to cancel workflow"))
+			m.modelError.SetErrorMessage("Failed to cancel workflow")
 			return
 		}
 
-		m.modelError.SetSuccessMessage(fmt.Sprintf("Canceled workflow"))
+		m.modelError.SetSuccessMessage("Canceled workflow")
 	}
 	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
 	m.actualModelTabOptions.AddOption("Rerun failed jobs", reRunFailedJobs)

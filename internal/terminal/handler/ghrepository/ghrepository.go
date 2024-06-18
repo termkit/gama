@@ -132,7 +132,7 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 	go m.syncRepositories(m.syncRepositoriesContext)
 
 	openInBrowser := func() {
-		m.modelError.SetProgressMessage(fmt.Sprintf("Opening in browser..."))
+		m.modelError.SetProgressMessage("Opening in browser...")
 
 		err := browser.OpenInBrowser(fmt.Sprintf("https://github.com/%s", m.SelectedRepository.RepositoryName))
 		if err != nil {
@@ -141,7 +141,7 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 			return
 		}
 
-		m.modelError.SetSuccessMessage(fmt.Sprintf("Opened in browser"))
+		m.modelError.SetSuccessMessage("Opened in browser")
 	}
 
 	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
@@ -198,7 +198,7 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	go m.Update(m) // update model
 }
 
-func (m *ModelGithubRepository) handleTableInputs(ctx context.Context) {
+func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
 	if !m.tableReady {
 		return
 	}
@@ -329,12 +329,11 @@ func (m *ModelGithubRepository) updateTableRowsBySearchBar() {
 }
 
 func (m *ModelGithubRepository) isNumber(s string) bool {
-	_, err := strconv.Atoi(s)
-	if err != nil {
-		return false
+	if _, err := strconv.Atoi(s); err == nil {
+		return true
 	}
 
-	return true
+	return false
 }
 
 func (m *ModelGithubRepository) isCharAndSymbol(r []rune) bool {
