@@ -35,7 +35,7 @@ type ModelGithubWorkflowHistory struct {
 	SelectedRepository *hdltypes.SelectedRepository
 
 	// use cases
-	githubUseCase gu.UseCase
+	github gu.UseCase
 
 	// keymap
 	Keys keyMap
@@ -82,7 +82,7 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 	return &ModelGithubWorkflowHistory{
 		Help:                       help.New(),
 		Keys:                       keys,
-		githubUseCase:              githubUseCase,
+		github:                     githubUseCase,
 		tableWorkflowHistory:       tableWorkflowHistory,
 		modelError:                 &modelError,
 		SelectedRepository:         selectedRepository,
@@ -112,7 +112,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	reRunFailedJobs := func() {
 		m.modelError.SetProgressMessage(fmt.Sprintf("Re-running failed jobs..."))
 
-		_, err := m.githubUseCase.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
+		_, err := m.github.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
 			Repository: m.SelectedRepository.RepositoryName,
 			WorkflowID: m.selectedWorkflowID,
 		})
@@ -129,7 +129,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	reRunWorkflow := func() {
 		m.modelError.SetProgressMessage(fmt.Sprintf("Re-running workflow..."))
 
-		_, err := m.githubUseCase.ReRunWorkflow(context.Background(), gu.ReRunWorkflowInput{
+		_, err := m.github.ReRunWorkflow(context.Background(), gu.ReRunWorkflowInput{
 			Repository: m.SelectedRepository.RepositoryName,
 			WorkflowID: m.selectedWorkflowID,
 		})
@@ -146,7 +146,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	cancelWorkflow := func() {
 		m.modelError.SetProgressMessage(fmt.Sprintf("Canceling workflow..."))
 
-		_, err := m.githubUseCase.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
+		_, err := m.github.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
 			Repository: m.SelectedRepository.RepositoryName,
 			WorkflowID: m.selectedWorkflowID,
 		})
@@ -225,7 +225,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	// delete old workflows
 	m.Workflows = nil
 
-	workflowHistory, err := m.githubUseCase.GetWorkflowHistory(ctx, gu.GetWorkflowHistoryInput{
+	workflowHistory, err := m.github.GetWorkflowHistory(ctx, gu.GetWorkflowHistoryInput{
 		Repository: m.SelectedRepository.RepositoryName,
 		Branch:     m.SelectedRepository.BranchName,
 	})

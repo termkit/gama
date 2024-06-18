@@ -18,9 +18,10 @@ import (
 )
 
 type ModelInfo struct {
+	version pkgversion.Version
+
 	// use cases
-	githubUseCase gu.UseCase
-	version       pkgversion.Version
+	github gu.UseCase
 
 	// lockTabs will be set true if test connection fails
 	lockTabs *bool
@@ -61,13 +62,13 @@ func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version, lockTa
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
-		githubUseCase: githubUseCase,
-		version:       version,
-		Help:          help.New(),
-		Keys:          keys,
-		modelError:    modelError,
-		lockTabs:      lockTabs,
-		spinner:       s,
+		github:     githubUseCase,
+		version:    version,
+		Help:       help.New(),
+		Keys:       keys,
+		modelError: modelError,
+		lockTabs:   lockTabs,
+		spinner:    s,
 	}
 }
 
@@ -148,7 +149,7 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	}(ctxWithCancel)
 	defer cancel()
 
-	_, err := m.githubUseCase.GetAuthUser(ctx)
+	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")

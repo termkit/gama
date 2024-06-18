@@ -41,7 +41,7 @@ type ModelGithubTrigger struct {
 	SelectedRepository *hdltypes.SelectedRepository
 
 	// use cases
-	githubUseCase gu.UseCase
+	github gu.UseCase
 
 	// keymap
 	Keys keyMap
@@ -85,7 +85,7 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 		forceUpdateWorkflowHistory: forceUpdateWorkflowHistory,
 		Help:                       help.New(),
 		Keys:                       keys,
-		githubUseCase:              githubUseCase,
+		github:                     githubUseCase,
 		SelectedRepository:         selectedRepository,
 		modelError:                 hdlerror.SetupModelError(),
 		tableTrigger:               tableTrigger,
@@ -389,7 +389,7 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 	// reset table rows
 	m.tableTrigger.SetRows([]table.Row{})
 
-	workflowContent, err := m.githubUseCase.InspectWorkflow(ctx, gu.InspectWorkflowInput{
+	workflowContent, err := m.github.InspectWorkflow(ctx, gu.InspectWorkflowInput{
 		Repository:   m.SelectedRepository.RepositoryName,
 		Branch:       m.SelectedRepository.BranchName,
 		WorkflowFile: m.selectedWorkflow,
@@ -567,7 +567,7 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 		return
 	}
 
-	_, err = m.githubUseCase.TriggerWorkflow(context.Background(), gu.TriggerWorkflowInput{
+	_, err = m.github.TriggerWorkflow(context.Background(), gu.TriggerWorkflowInput{
 		Repository:   m.SelectedRepository.RepositoryName,
 		Branch:       m.SelectedRepository.BranchName,
 		WorkflowFile: m.selectedWorkflow,

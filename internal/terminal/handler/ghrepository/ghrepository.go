@@ -32,7 +32,7 @@ type ModelGithubRepository struct {
 	SelectedRepository *hdltypes.SelectedRepository
 
 	// use cases
-	githubUseCase gu.UseCase
+	github gu.UseCase
 
 	// keymap
 	Keys keyMap
@@ -116,7 +116,7 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 	return &ModelGithubRepository{
 		Help:                    help.New(),
 		Keys:                    keys,
-		githubUseCase:           githubUseCase,
+		github:                  githubUseCase,
 		tableGithubRepository:   tableGithubRepository,
 		modelError:              &modelError,
 		SelectedRepository:      selectedRepository,
@@ -158,7 +158,7 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	m.tableGithubRepository.SetRows([]table.Row{})
 	m.searchTableGithubRepository.SetRows([]table.Row{})
 
-	repositories, err := m.githubUseCase.ListRepositories(ctx, gu.ListRepositoriesInput{
+	repositories, err := m.github.ListRepositories(ctx, gu.ListRepositoriesInput{
 		Limit: 100, // limit to 100 repositories
 		Page:  5,   // page 1 to page 5, at summary we fetch 500 repositories
 		Sort:  domain.SortByUpdated,

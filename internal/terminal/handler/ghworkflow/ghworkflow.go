@@ -32,7 +32,7 @@ type ModelGithubWorkflow struct {
 	SelectedRepository *hdltypes.SelectedRepository
 
 	// use cases
-	githubUseCase gu.UseCase
+	github gu.UseCase
 
 	// keymap
 	Keys keyMap
@@ -83,7 +83,7 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdlt
 	return &ModelGithubWorkflow{
 		Help:                            help.New(),
 		Keys:                            keys,
-		githubUseCase:                   githubUseCase,
+		github:                          githubUseCase,
 		modelError:                      &modelError,
 		tableTriggerableWorkflow:        tableTriggerableWorkflow,
 		SelectedRepository:              selectedRepository,
@@ -150,7 +150,7 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	// delete all rows
 	m.tableTriggerableWorkflow.SetRows([]table.Row{})
 
-	triggerableWorkflows, err := m.githubUseCase.GetTriggerableWorkflows(ctx, gu.GetTriggerableWorkflowsInput{
+	triggerableWorkflows, err := m.github.GetTriggerableWorkflows(ctx, gu.GetTriggerableWorkflowsInput{
 		Repository: m.SelectedRepository.RepositoryName,
 		Branch:     m.SelectedRepository.BranchName,
 	})
