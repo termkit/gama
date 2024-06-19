@@ -21,6 +21,19 @@ type version struct {
 	latestVersion  string
 }
 
+// Changelog represents a changelog information
+type Changelog struct {
+	// PublishedAt is the date when the changelog was published
+	PublishedAt time.Time `json:"published_at"`
+
+	// TagName is the tag name of the changelog
+	TagName string `json:"tag_name"`
+
+	// Body message of the changelog
+	Body string `json:"body"`
+}
+
+// New creates a new version instance
 func New(repositoryOwner, repositoryName, currentVersion string) Version {
 	return &version{
 		client: &http.Client{
@@ -32,10 +45,12 @@ func New(repositoryOwner, repositoryName, currentVersion string) Version {
 	}
 }
 
+// CurrentVersion returns the current version of the repository
 func (v *version) CurrentVersion() string {
 	return v.currentVersion
 }
 
+// LatestVersion returns the latest version of the repository
 func (v *version) LatestVersion(ctx context.Context) (string, error) {
 	var result struct {
 		TagName string `json:"tag_name"`
@@ -58,6 +73,55 @@ func (v *version) LatestVersion(ctx context.Context) (string, error) {
 	return result.TagName, nil
 }
 
+// Changelogs returns all changelogs of the repository
+func (v *version) Changelogs(ctx context.Context) ([]Changelog, error) {
+	var result []Changelog
+
+	err := v.do(ctx, nil, &result, requestOptions{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", v.repositoryOwner, v.repositoryName),
+		accept: "application/vnd.github+json",
+	})
+	// client time out error
+	var deadlineExceededError *url.Error
+	if err != nil {
+		if errors.As(err, &deadlineExceededError) && deadlineExceededError.Timeout() {
+			return nil, errors.New("request timed out")
+		}
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// ChangelogsSinceCurrentVersion returns all changelogs since the current version
+func (v *version) ChangelogsSinceCurrentVersion(ctx context.Context) ([]Changelog, error) {
+	changelogs, err := v.Changelogs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	currentVersion, err := semver.NewVersion(v.CurrentVersion())
+	if err != nil {
+		return nil, err
+	}
+
+	var result []Changelog
+	for _, cl := range changelogs {
+		tagVersion, err := semver.NewVersion(cl.TagName)
+		if err != nil {
+			continue
+		}
+
+		if tagVersion.GreaterThan(currentVersion) {
+			result = append(result, cl)
+		}
+	}
+
+	return result, nil
+}
+
+// IsUpdateAvailable checks if an update is available
 func (v *version) IsUpdateAvailable(ctx context.Context) (isAvailable bool, version string, err error) {
 	currentVersion := v.CurrentVersion()
 	if currentVersion == "under development" {
