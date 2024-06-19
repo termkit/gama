@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 type version struct {
@@ -41,15 +42,16 @@ func (v *version) LatestVersion(ctx context.Context) (string, error) {
 	}
 
 	err := v.do(ctx, nil, &result, requestOptions{
-		method: "GET",
+		method: http.MethodGet,
 		path:   fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", v.repositoryOwner, v.repositoryName),
 		accept: "application/vnd.github+json",
 	})
 	// client time out error
 	var deadlineExceededError *url.Error
-	if errors.As(err, &deadlineExceededError) && deadlineExceededError.Timeout() {
-		return "", errors.New("request timed out")
-	} else if err != nil {
+	if err != nil {
+		if errors.As(err, &deadlineExceededError) && deadlineExceededError.Timeout() {
+			return "", errors.New("request timed out")
+		}
 		return "", err
 	}
 

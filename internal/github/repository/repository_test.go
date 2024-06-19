@@ -2,14 +2,15 @@ package repository
 
 import (
 	"context"
-	"github.com/termkit/gama/internal/config"
 	"reflect"
 	"testing"
+
+	"github.com/termkit/gama/internal/config"
 
 	"github.com/termkit/gama/internal/github/domain"
 )
 
-func newRepo(ctx context.Context) *Repo {
+func newRepo(_ context.Context) *Repo {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(err)

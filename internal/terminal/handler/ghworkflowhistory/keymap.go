@@ -2,6 +2,7 @@ package ghworkflowhistory
 
 import (
 	"fmt"
+
 	"github.com/termkit/gama/internal/config"
 
 	teakey "github.com/charmbracelet/bubbles/key"

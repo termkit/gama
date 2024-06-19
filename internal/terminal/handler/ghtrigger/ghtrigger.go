@@ -218,7 +218,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 				}
 			}
 			m.optionValues = optionValues
-			if m.optionInit == false {
+			if !m.optionInit {
 				for i, option := range m.optionValues {
 					if option == selectedRow[4] {
 						m.optionCursor = i
@@ -234,7 +234,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 				}
 			}
 			m.optionValues = optionValues
-			if m.optionInit == false {
+			if !m.optionInit {
 				for i, option := range m.optionValues {
 					if option == selectedRow[4] {
 						m.optionCursor = i

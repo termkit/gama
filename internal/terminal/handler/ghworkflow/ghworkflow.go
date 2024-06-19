@@ -188,7 +188,7 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	go m.Update(m) // update model
 }
 
-func (m *ModelGithubWorkflow) handleTableInputs(ctx context.Context) {
+func (m *ModelGithubWorkflow) handleTableInputs(_ context.Context) {
 	if !m.tableReady {
 		return
 	}

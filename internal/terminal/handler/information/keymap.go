@@ -2,6 +2,7 @@ package information
 
 import (
 	"fmt"
+
 	"github.com/termkit/gama/internal/config"
 
 	teakey "github.com/charmbracelet/bubbles/key"
@@ -29,7 +30,7 @@ var keys = func() keyMap {
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
-	var switchTabRight = fmt.Sprintf("%s", cfg.Shortcuts.SwitchTabRight)
+	switchTabRight := cfg.Shortcuts.SwitchTabRight
 
 	return keyMap{
 		SwitchTabRight: teakey.NewBinding(

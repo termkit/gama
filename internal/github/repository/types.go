@@ -13,46 +13,46 @@ type InitializeOptions struct {
 }
 
 type GithubRepository struct {
-	Id              int         `json:"id"`
-	NodeId          string      `json:"node_id"`
-	Name            string      `json:"name"`
-	FullName        string      `json:"full_name"`
-	Private         bool        `json:"private"`
-	Description     string      `json:"description"`
-	Language        interface{} `json:"language"`
-	ForksCount      int         `json:"forks_count"`
-	StargazersCount int         `json:"stargazers_count"`
-	WatchersCount   int         `json:"watchers_count"`
-	Size            int         `json:"size"`
-	DefaultBranch   string      `json:"default_branch"`
-	OpenIssuesCount int         `json:"open_issues_count"`
-	IsTemplate      bool        `json:"is_template"`
-	Topics          []string    `json:"topics"`
-	HasIssues       bool        `json:"has_issues"`
-	HasProjects     bool        `json:"has_projects"`
-	HasWiki         bool        `json:"has_wiki"`
-	HasPages        bool        `json:"has_pages"`
-	HasDownloads    bool        `json:"has_downloads"`
-	Archived        bool        `json:"archived"`
-	Disabled        bool        `json:"disabled"`
-	Visibility      string      `json:"visibility"`
-	PushedAt        time.Time   `json:"pushed_at"`
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
+	Id              int       `json:"id"`
+	NodeId          string    `json:"node_id"`
+	Name            string    `json:"name"`
+	FullName        string    `json:"full_name"`
+	Private         bool      `json:"private"`
+	Description     string    `json:"description"`
+	Language        any       `json:"language"`
+	ForksCount      int       `json:"forks_count"`
+	StargazersCount int       `json:"stargazers_count"`
+	WatchersCount   int       `json:"watchers_count"`
+	Size            int       `json:"size"`
+	DefaultBranch   string    `json:"default_branch"`
+	OpenIssuesCount int       `json:"open_issues_count"`
+	IsTemplate      bool      `json:"is_template"`
+	Topics          []string  `json:"topics"`
+	HasIssues       bool      `json:"has_issues"`
+	HasProjects     bool      `json:"has_projects"`
+	HasWiki         bool      `json:"has_wiki"`
+	HasPages        bool      `json:"has_pages"`
+	HasDownloads    bool      `json:"has_downloads"`
+	Archived        bool      `json:"archived"`
+	Disabled        bool      `json:"disabled"`
+	Visibility      string    `json:"visibility"`
+	PushedAt        time.Time `json:"pushed_at"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 	Permissions     struct {
 		Admin bool `json:"admin"`
 		Push  bool `json:"push"`
 		Pull  bool `json:"pull"`
 	} `json:"permissions"`
-	AllowRebaseMerge    bool        `json:"allow_rebase_merge"`
-	TemplateRepository  interface{} `json:"template_repository"`
-	TempCloneToken      string      `json:"temp_clone_token"`
-	AllowSquashMerge    bool        `json:"allow_squash_merge"`
-	AllowAutoMerge      bool        `json:"allow_auto_merge"`
-	DeleteBranchOnMerge bool        `json:"delete_branch_on_merge"`
-	AllowMergeCommit    bool        `json:"allow_merge_commit"`
-	SubscribersCount    int         `json:"subscribers_count"`
-	NetworkCount        int         `json:"network_count"`
+	AllowRebaseMerge    bool   `json:"allow_rebase_merge"`
+	TemplateRepository  any    `json:"template_repository"`
+	TempCloneToken      string `json:"temp_clone_token"`
+	AllowSquashMerge    bool   `json:"allow_squash_merge"`
+	AllowAutoMerge      bool   `json:"allow_auto_merge"`
+	DeleteBranchOnMerge bool   `json:"delete_branch_on_merge"`
+	AllowMergeCommit    bool   `json:"allow_merge_commit"`
+	SubscribersCount    int    `json:"subscribers_count"`
+	NetworkCount        int    `json:"network_count"`
 	License             struct {
 		Key     string `json:"key"`
 		Name    string `json:"name"`

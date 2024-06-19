@@ -2,8 +2,9 @@ package usecase
 
 import (
 	"context"
-	"github.com/termkit/gama/internal/config"
 	"testing"
+
+	"github.com/termkit/gama/internal/config"
 
 	"github.com/termkit/gama/internal/github/domain"
 	"github.com/termkit/gama/internal/github/repository"
@@ -68,6 +69,9 @@ func TestUseCase_TriggerWorkflow(t *testing.T) {
 		Repository:   "canack/tc",
 		WorkflowFile: ".github/workflows/dispatch_test.yaml",
 	})
+	if err != nil {
+		t.Error(err)
+	}
 
 	for i, w := range workflow.Workflow.Inputs {
 		if w.Key == "go-version" {
