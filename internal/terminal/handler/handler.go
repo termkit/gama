@@ -121,6 +121,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height
+		m.modelInfo, cmd = m.modelInfo.Update(msg)
+		cmds = append(cmds, cmd)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.SwitchTabLeft):

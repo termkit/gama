@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
@@ -27,10 +28,12 @@ type ModelInfo struct {
 	lockTabs *bool
 
 	// models
-	Help       help.Model
-	Viewport   *viewport.Model
-	modelError hdlerror.ModelError
-	spinner    spinner.Model
+	Help              help.Model
+	Viewport          *viewport.Model
+	modelError        hdlerror.ModelError
+	spinner           spinner.Model
+	changelogViewer   *viewport.Model
+	changelogRenderer *glamour.TermRenderer
 
 	// keymap
 	Keys keyMap
@@ -61,14 +64,27 @@ func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version, lockTa
 	s.Spinner = spinner.Pulse
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
+	vp := viewport.New(96, 6)
+	vp.Style = lipgloss.NewStyle()
+
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(96),
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	return &ModelInfo{
-		github:     githubUseCase,
-		version:    version,
-		Help:       help.New(),
-		Keys:       keys,
-		modelError: modelError,
-		lockTabs:   lockTabs,
-		spinner:    s,
+		github:            githubUseCase,
+		version:           version,
+		Help:              help.New(),
+		Keys:              keys,
+		modelError:        modelError,
+		changelogRenderer: renderer,
+		changelogViewer:   &vp,
+		lockTabs:          lockTabs,
+		spinner:           s,
 	}
 }
 
@@ -91,7 +107,43 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	}
 
 	if isUpdateAvailable {
-		newVersionAvailableMsg = fmt.Sprintf("New version available: %s\nPlease visit: %s", version, releaseURL)
+		var changelogView strings.Builder
+
+		changelogView.WriteString("```markdown\n")
+
+		changelogView.WriteString(fmt.Sprintf("GAMA has new version! %s\n\n", version))
+
+		changeLogs, err := m.version.ChangelogsSinceCurrentVersion(ctx)
+		if err != nil {
+			m.modelError.SetError(err)
+			m.modelError.SetErrorMessage("failed to get changelogs")
+			return
+		}
+
+		changelogView.WriteString(fmt.Sprintf("\n# Changelogs"))
+
+		for _, cl := range changeLogs {
+			publishedAt := cl.PublishedAt.Format("2006-01-02 15:04:05")
+			changelogView.WriteString(fmt.Sprintf("\n\n## %s - %s\n\n%s", cl.TagName, publishedAt, cl.Body))
+			changelogView.WriteString("\n\n")
+			changelogView.WriteString("##### ")
+			changelogView.WriteString(strings.Repeat("-", 84))
+			changelogView.WriteString("\n")
+		}
+
+		changelogView.WriteString("\n```")
+		changelogView.WriteString("\n")
+
+		str, err := m.changelogRenderer.Render(changelogView.String())
+		if err != nil {
+			m.modelError.SetError(err)
+			m.modelError.SetErrorMessage("failed to render changelogs")
+			return
+		}
+
+		//newVersionAvailableMsg = str
+
+		m.changelogViewer.SetContent(str)
 	}
 
 	go m.Update(m)
@@ -102,10 +154,16 @@ func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.Help.Width = msg.Width
+		m.changelogViewer.Width = msg.Width - 2
+		m.changelogViewer.Height = msg.Height - 20
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.Keys.Quit):
 			return m, tea.Quit
+		default:
+			var cmd tea.Cmd
+			*m.changelogViewer, cmd = m.changelogViewer.Update(msg)
+			return m, cmd
 		}
 	}
 
@@ -121,13 +179,14 @@ func (m *ModelInfo) View() string {
 		Border(lipgloss.RoundedBorder()).
 		Width(m.Viewport.Width - 7)
 
-	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
+	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription))
+	infoDoc.WriteString("\n")
+	infoDoc.WriteString(m.changelogViewer.View())
 
 	docHeight := strings.Count(infoDoc.String(), "\n")
 	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 13
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
-
 	return ws.Render(infoDoc.String())
 }
 
