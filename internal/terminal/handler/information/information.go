@@ -54,15 +54,16 @@ var (
 	applicationDescription string
 )
 
-func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
+func SetupModelInfo(viewport *viewport.Model, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
-	hdlModelHeader := header.NewHeader()
+	hdlModelHeader := header.NewHeader(viewport)
 
 	s := spinner.New()
 	s.Spinner = spinner.Pulse
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
+		Viewport:    viewport,
 		modelHeader: hdlModelHeader,
 		github:      githubUseCase,
 		version:     version,
@@ -87,7 +88,7 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to check updates")
-		newVersionAvailableMsg = fmt.Sprintf("failed to check updates: %v\nPlease visit: %s", err, releaseURL)
+		newVersionAvailableMsg = fmt.Sprintf("failed to check updates.\nPlease visit: %s", releaseURL)
 		return
 	}
 
@@ -98,7 +99,7 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	go m.Update(m)
 }
 
-func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelInfo) Update(msg tea.Msg) (*ModelInfo, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:

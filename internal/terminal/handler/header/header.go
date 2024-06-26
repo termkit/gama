@@ -48,9 +48,10 @@ var (
 )
 
 // NewHeader returns a new Header.
-func NewHeader() *Header {
+func NewHeader(viewport *viewport.Model) *Header {
 	once.Do(func() {
 		h = &Header{
+			Viewport:   viewport,
 			currentTab: 0,
 			lockTabs:   true,
 			keys:       keys,
@@ -155,7 +156,7 @@ func (h *Header) View() string {
 	var specialHeader string
 	specialHeader = h.specialHeaders[0].header
 
-	renderedTitles := make([]string, 0, len(h.commonHeaders))
+	var renderedTitles []string
 	for i, title := range h.commonHeaders {
 		if i == h.currentTab {
 			renderedTitles = append(renderedTitles, title.activeStyle.Render(title.header))

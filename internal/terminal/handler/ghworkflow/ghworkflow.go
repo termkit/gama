@@ -55,7 +55,7 @@ var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflow {
+func SetupModelGithubWorkflow(viewport *viewport.Model, githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflow {
 	var tableRowsTriggerableWorkflow []table.Row
 
 	tableTriggerableWorkflow := table.New(
@@ -81,6 +81,7 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdlt
 	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubWorkflow{
+		Viewport:                        viewport,
 		Help:                            help.New(),
 		Keys:                            keys,
 		github:                          githubUseCase,
@@ -98,7 +99,7 @@ func (m *ModelGithubWorkflow) Init() tea.Cmd {
 	return nil
 }
 
-func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelGithubWorkflow) Update(msg tea.Msg) (*ModelGithubWorkflow, tea.Cmd) {
 	var cmd tea.Cmd
 
 	if m.lastRepository != m.SelectedRepository.RepositoryName {

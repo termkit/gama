@@ -56,7 +56,7 @@ type ModelGithubTrigger struct {
 	tableTrigger table.Model
 }
 
-func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, currentTab *int, forceUpdateWorkflowHistory *bool) *ModelGithubTrigger {
+func SetupModelGithubTrigger(viewport *viewport.Model, githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, forceUpdateWorkflowHistory *bool) *ModelGithubTrigger {
 	var tableRowsTrigger []table.Row
 
 	tableTrigger := table.New(
@@ -83,7 +83,8 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 	ti.CharLimit = 72
 
 	return &ModelGithubTrigger{
-		header:                     header.NewHeader(),
+		Viewport:                   viewport,
+		header:                     header.NewHeader(viewport),
 		forceUpdateWorkflowHistory: forceUpdateWorkflowHistory,
 		Help:                       help.New(),
 		Keys:                       keys,
@@ -102,7 +103,7 @@ func (m *ModelGithubTrigger) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelGithubTrigger) Update(msg tea.Msg) (*ModelGithubTrigger, tea.Cmd) {
 	if m.SelectedRepository.WorkflowName == "" {
 		m.modelError.Reset()
 		m.modelError.SetDefaultMessage("No workflow selected.")

@@ -54,7 +54,7 @@ var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, forceUpdate *bool) *ModelGithubWorkflowHistory {
+func SetupModelGithubWorkflowHistory(viewport *viewport.Model, githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, forceUpdate *bool) *ModelGithubWorkflowHistory {
 	var tableRowsWorkflowHistory []table.Row
 
 	tableWorkflowHistory := table.New(
@@ -80,6 +80,7 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase, selectedRepositor
 	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubWorkflowHistory{
+		Viewport:                   viewport,
 		Help:                       help.New(),
 		Keys:                       keys,
 		github:                     githubUseCase,
@@ -178,7 +179,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	return tea.Batch(m.modelTabOptions.Init())
 }
 
-func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (*ModelGithubWorkflowHistory, tea.Cmd) {
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
 		m.tableReady = false
 		m.cancelSyncWorkflowHistory() // cancel previous sync

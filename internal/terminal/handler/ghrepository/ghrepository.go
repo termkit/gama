@@ -54,7 +54,7 @@ var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubRepository {
+func SetupModelGithubRepository(viewport *viewport.Model, githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubRepository {
 	var tableRowsGithubRepository []table.Row
 
 	tableGithubRepository := table.New(
@@ -114,6 +114,7 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase, selectedRepository *hd
 	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubRepository{
+		Viewport:                viewport,
 		Help:                    help.New(),
 		Keys:                    keys,
 		github:                  githubUseCase,
@@ -215,7 +216,7 @@ func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
 	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 }
 
-func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelGithubRepository) Update(msg tea.Msg) (*ModelGithubRepository, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
