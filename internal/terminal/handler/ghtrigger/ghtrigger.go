@@ -473,6 +473,7 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 	if len(workflowContent.Workflow.KeyVals) == 0 &&
 		len(workflowContent.Workflow.Choices) == 0 &&
 		len(workflowContent.Workflow.Inputs) == 0 {
+		m.fillTableWithEmptyMessage()
 		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] Workflow doesn't contain options but still triggerable",
 			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	} else {
@@ -481,6 +482,19 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 	}
 
 	go m.Update(m) // update model
+}
+
+func (m *ModelGithubTrigger) fillTableWithEmptyMessage() {
+	var rows []table.Row
+	for i := 0; i < 100; i++ {
+		idx := fmt.Sprintf("%d", i)
+		rows = append(rows, table.Row{
+			idx, "EMPTY", "EMPTY", "EMPTY", "No workflow input found",
+		})
+	}
+
+	m.tableTrigger.SetRows(rows)
+	m.tableTrigger.SetCursor(0)
 }
 
 func (m *ModelGithubTrigger) showInformationIfAnyEmptyValue() {
