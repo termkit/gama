@@ -6,7 +6,6 @@ import (
 
 var (
 	DocStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
-	WindowStyleCyan   = lipgloss.NewStyle().BorderForeground(lipgloss.Color("39"))
 	WindowStyleOrange = lipgloss.NewStyle().BorderForeground(lipgloss.Color("#ffaf00")).Border(lipgloss.RoundedBorder())
 	WindowStyleRed    = lipgloss.NewStyle().BorderForeground(lipgloss.Color("9")).Border(lipgloss.RoundedBorder())
 	WindowStyleGreen  = lipgloss.NewStyle().BorderForeground(lipgloss.Color("10")).Border(lipgloss.RoundedBorder())

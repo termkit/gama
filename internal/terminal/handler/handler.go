@@ -131,7 +131,7 @@ func (m *model) View() string {
 	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - 5
 	hdltypes.ScreenWidth = &width
 
-	dynamicWindowStyle := ts.WindowStyleCyan.Width(width).Height(m.viewport.Height - 22)
+	dynamicWindowStyle := lipgloss.NewStyle().Width(width).Height(m.viewport.Height - 22)
 	helpWindowStyle := ts.WindowStyleHelp.Width(width)
 
 	mainDoc.WriteString(m.modelHeader.View() + "\n")

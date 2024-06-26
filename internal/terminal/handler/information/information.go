@@ -125,8 +125,8 @@ func (m *ModelInfo) View() string {
 
 	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
 
-	docHeight := strings.Count(infoDoc.String(), "\n")
-	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 13
+	docHeight := lipgloss.Height(infoDoc.String())
+	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 12
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 

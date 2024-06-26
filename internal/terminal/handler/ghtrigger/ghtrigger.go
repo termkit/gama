@@ -340,12 +340,12 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 }
 
 func (m *ModelGithubTrigger) View() string {
-	baseStyle := lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240"))
-
-	termWidth := m.Viewport.Width
-	termHeight := m.Viewport.Height
+	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder())
+	if m.triggerFocused {
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
+	} else {
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("130"))
+	}
 
 	var tableWidth int
 	for _, t := range tableColumnsTrigger {
@@ -353,7 +353,7 @@ func (m *ModelGithubTrigger) View() string {
 	}
 
 	newTableColumns := tableColumnsTrigger
-	widthDiff := termWidth - tableWidth
+	widthDiff := m.Viewport.Width - tableWidth
 	if widthDiff > 0 {
 		keyWidth := &newTableColumns[2].Width
 		valueWidth := &newTableColumns[4].Width
@@ -363,7 +363,7 @@ func (m *ModelGithubTrigger) View() string {
 			*keyWidth = *valueWidth / 2
 		}
 		m.tableTrigger.SetColumns(newTableColumns)
-		m.tableTrigger.SetHeight(termHeight - 17)
+		m.tableTrigger.SetHeight(m.Viewport.Height - 17)
 	}
 
 	doc := strings.Builder{}

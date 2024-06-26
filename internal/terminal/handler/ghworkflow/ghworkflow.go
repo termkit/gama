@@ -51,10 +51,6 @@ type ModelGithubWorkflow struct {
 	actualModelGithubTrigger *ghtrigger.ModelGithubTrigger
 }
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
-
 func SetupModelGithubWorkflow(viewport *viewport.Model, githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflow {
 	var tableRowsTriggerableWorkflow []table.Row
 
@@ -120,6 +116,10 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (*ModelGithubWorkflow, tea.Cmd
 }
 
 func (m *ModelGithubWorkflow) View() string {
+	var style = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240"))
+
 	termWidth := m.Viewport.Width
 	termHeight := m.Viewport.Height
 
@@ -137,7 +137,8 @@ func (m *ModelGithubWorkflow) View() string {
 	}
 
 	doc := strings.Builder{}
-	doc.WriteString(baseStyle.Render(m.tableTriggerableWorkflow.View()))
+	doc.WriteString(style.Render(m.tableTriggerableWorkflow.View()))
+	doc.WriteString("\n\n\n")
 
 	return doc.String()
 }
