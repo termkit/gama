@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/termkit/gama/internal/terminal/handler/header"
 	"slices"
 	"strings"
 	"time"
@@ -27,7 +28,6 @@ type ModelGithubTrigger struct {
 	workflowContent            *workflow.Pretty
 	tableReady                 bool
 	isTriggerable              bool
-	currentTab                 *int
 	forceUpdateWorkflowHistory *bool
 	optionInit                 bool
 	optionCursor               int
@@ -47,6 +47,8 @@ type ModelGithubTrigger struct {
 	Keys keyMap
 
 	// models
+	header *header.Header
+
 	Help         help.Model
 	Viewport     *viewport.Model
 	modelError   hdlerror.ModelError
@@ -81,7 +83,7 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 	ti.CharLimit = 72
 
 	return &ModelGithubTrigger{
-		currentTab:                 currentTab,
+		header:                     header.NewHeader(),
 		forceUpdateWorkflowHistory: forceUpdateWorkflowHistory,
 		Help:                       help.New(),
 		Keys:                       keys,
@@ -166,7 +168,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.textInput.Focus()
 				}
 			}
-		case "enter":
+		case "enter", tea.KeyEnter.String():
 			if m.triggerFocused && m.isTriggerable {
 				go m.triggerWorkflow()
 			}
@@ -597,7 +599,8 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 		time.Sleep(1 * time.Second)
 		*m.forceUpdateWorkflowHistory = true // force update workflow history
 	}()
-	*m.currentTab = 2 // switch tab to workflow history
+
+	m.header.SetCurrentTab(2) // switch tab to workflow history
 }
 
 func (m *ModelGithubTrigger) emptySelector() string {

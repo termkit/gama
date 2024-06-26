@@ -44,4 +44,18 @@ var (
 		b.Left = "┤"
 		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 2).BorderForeground(lipgloss.Color("240")).Foreground(lipgloss.Color("240"))
 	}()
+
+	TitleStyleLiveModeOn = func() lipgloss.Style {
+		b := lipgloss.DoubleBorder()
+		b.Right = "├"
+		b.Left = "┤"
+		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 2).BorderForeground(lipgloss.Color("#aa1010")).Foreground(lipgloss.Color("#ff0000"))
+	}()
+
+	TitleStyleLiveModeOff = func() lipgloss.Style {
+		b := lipgloss.DoubleBorder()
+		b.Right = "├"
+		b.Left = "┤"
+		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 2).BorderForeground(lipgloss.Color("#101010"))
+	}()
 )

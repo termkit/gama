@@ -3,6 +3,7 @@ package information
 import (
 	"context"
 	"fmt"
+	"github.com/termkit/gama/internal/terminal/handler/header"
 	"strings"
 	"time"
 
@@ -23,10 +24,9 @@ type ModelInfo struct {
 	// use cases
 	github gu.UseCase
 
-	// lockTabs will be set true if test connection fails
-	lockTabs *bool
-
 	// models
+	modelHeader *header.Header
+
 	Help       help.Model
 	Viewport   *viewport.Model
 	modelError hdlerror.ModelError
@@ -54,21 +54,22 @@ var (
 	applicationDescription string
 )
 
-func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version, lockTabs *bool) *ModelInfo {
+func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
+	hdlModelHeader := header.NewHeader()
 
 	s := spinner.New()
 	s.Spinner = spinner.Pulse
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
-		github:     githubUseCase,
-		version:    version,
-		Help:       help.New(),
-		Keys:       keys,
-		modelError: modelError,
-		lockTabs:   lockTabs,
-		spinner:    s,
+		modelHeader: hdlModelHeader,
+		github:      githubUseCase,
+		version:     version,
+		Help:        help.New(),
+		Keys:        keys,
+		modelError:  modelError,
+		spinner:     s,
 	}
 }
 
@@ -153,13 +154,13 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")
-		*m.lockTabs = true
+		m.modelHeader.SetLockTabs(true)
 		return
 	}
 
 	m.modelError.Reset()
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
-	*m.lockTabs = false
+	m.modelHeader.SetLockTabs(false)
 
 	go m.Update(m)
 }
