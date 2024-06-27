@@ -3,19 +3,17 @@ package information
 import (
 	"context"
 	"fmt"
-	"github.com/termkit/gama/internal/terminal/handler/header"
-	"strings"
-	"time"
-
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/header"
 	pkgversion "github.com/termkit/gama/pkg/version"
+	"strings"
+	"time"
 )
 
 type ModelInfo struct {
@@ -23,6 +21,8 @@ type ModelInfo struct {
 
 	// use cases
 	github gu.UseCase
+
+	complete bool
 
 	// models
 	modelHeader *header.Header
@@ -37,6 +37,8 @@ type ModelInfo struct {
 }
 
 const (
+	spinnerInterval = 100 * time.Millisecond
+
 	releaseURL = "https://github.com/termkit/gama/releases"
 
 	applicationName = `
@@ -59,7 +61,7 @@ func SetupModelInfo(viewport *viewport.Model, githubUseCase gu.UseCase, version 
 	hdlModelHeader := header.NewHeader(viewport)
 
 	s := spinner.New()
-	s.Spinner = spinner.Pulse
+	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
@@ -74,13 +76,25 @@ func SetupModelInfo(viewport *viewport.Model, githubUseCase gu.UseCase, version 
 	}
 }
 
+type UpdateSpinnerMsg string
+
 func (m *ModelInfo) Init() tea.Cmd {
 	currentVersion = m.version.CurrentVersion()
 	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", currentVersion)
 
 	go m.testConnection(context.Background())
 	go m.checkUpdates(context.Background())
-	return nil
+	return m.tickSpinner()
+}
+
+func (m *ModelInfo) tickSpinner() tea.Cmd {
+	t := time.NewTimer(spinnerInterval)
+	return func() tea.Msg {
+		select {
+		case <-t.C:
+			return UpdateSpinnerMsg("tick")
+		}
+	}
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
@@ -101,14 +115,15 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 
 func (m *ModelInfo) Update(msg tea.Msg) (*ModelInfo, tea.Cmd) {
 	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.Help.Width = msg.Width
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.Keys.Quit):
-			return m, tea.Quit
+	switch msg.(type) {
+	case UpdateSpinnerMsg:
+		if m.complete {
+			return m, nil
 		}
+
+		m.modelError.SetProgressMessage("Checking your token " + m.spinner.View())
+		m.spinner, cmd = m.spinner.Update(m.spinner.Tick())
+		return m, m.tickSpinner()
 	}
 
 	return m, cmd
@@ -134,23 +149,7 @@ func (m *ModelInfo) View() string {
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {
-	ctxWithCancel, cancel := context.WithCancel(ctx)
-
-	// TODO: make it better
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				m.spinner, _ = m.spinner.Update(m.spinner.Tick())
-				m.modelError.SetProgressMessage("Checking your token " + m.spinner.View())
-				time.Sleep(200 * time.Millisecond)
-			}
-		}
-	}(ctxWithCancel)
-	defer cancel()
-
+	time.Sleep(time.Second * 5) // TODO : remove, just for testing spinner
 	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
@@ -162,8 +161,7 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	m.modelError.Reset()
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
 	m.modelHeader.SetLockTabs(false)
-
-	go m.Update(m)
+	m.complete = true
 }
 
 func (m *ModelInfo) ViewStatus() string {

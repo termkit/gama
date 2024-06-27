@@ -5,8 +5,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	ts "github.com/termkit/gama/internal/terminal/style"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Header is a helper for rendering the Header of the terminal.
@@ -14,7 +16,8 @@ type Header struct {
 	keys keyMap
 
 	Viewport *viewport.Model
-	//timer    timer.Model
+
+	tickerInterval time.Duration
 
 	currentTab int
 	lockTabs   bool
@@ -51,10 +54,11 @@ var (
 func NewHeader(viewport *viewport.Model) *Header {
 	once.Do(func() {
 		h = &Header{
-			Viewport:   viewport,
-			currentTab: 0,
-			lockTabs:   true,
-			keys:       keys,
+			tickerInterval: time.Millisecond * 250,
+			Viewport:       viewport,
+			currentTab:     0,
+			lockTabs:       true,
+			keys:           keys,
 		}
 	})
 	return h
@@ -94,9 +98,36 @@ func (h *Header) SetSpecialHeader(header string, firstStyle, secondStyle lipglos
 	})
 }
 
+type UpdateMsg struct {
+	Msg               string
+	UpdatingComponent string
+}
+
 func (h *Header) Init() tea.Cmd {
-	//return h.timer.Init()
-	return nil
+	return h.tick()
+}
+
+func (h *Header) tick() tea.Cmd {
+	t := time.NewTimer(h.tickerInterval)
+	return func() tea.Msg {
+		//ts := <-t.C
+		//t.Stop()
+		//for len(t.C) > 0 {
+		//	<-t.C
+		//}
+		//return UpdateMsg{
+		//	Msg:               "tick",
+		//	UpdatingComponent: "header",
+		//}
+
+		select {
+		case <-t.C:
+			return UpdateMsg{
+				Msg:               "tick",
+				UpdatingComponent: "header",
+			}
+		}
+	}
 }
 
 func (h *Header) Update(msg tea.Msg) (*Header, tea.Cmd) {
@@ -114,29 +145,10 @@ func (h *Header) Update(msg tea.Msg) (*Header, tea.Cmd) {
 				h.currentTab = min(h.currentTab+1, len(h.commonHeaders)-1)
 			}
 		}
+	case UpdateMsg:
+		h.switchSpecialAnimation = !h.switchSpecialAnimation
 
-		//case timer.TickMsg:
-		//h.switchSpecialAnimation = !h.switchSpecialAnimation
-
-		//var cmd tea.Cmd
-		//h.timer, cmd = h.timer.Update(msg)
-		//return h, cmd
-		//
-		//case timer.StartStopMsg:
-		//	var cmd tea.Cmd
-		//h.timer, cmd = h.timer.Update(msg)
-		//return h, cmd
-
-		//case tea.KeyMsg:
-		//	switch {
-		//	case key.Matches(msg, m.keymap.quit):
-		//		m.quitting = true
-		//		return m, tea.Quit
-		//	case key.Matches(msg, m.keymap.reset):
-		//		m.timer.Timeout = timeout
-		//	case key.Matches(msg, m.keymap.start, m.keymap.stop):
-		//		return m, m.timer.Toggle()
-		//	}
+		return h, h.Init()
 	}
 
 	return h, nil
@@ -158,14 +170,22 @@ func (h *Header) View() string {
 
 	var renderedTitles []string
 	for i, title := range h.commonHeaders {
-		if i == h.currentTab {
-			renderedTitles = append(renderedTitles, title.activeStyle.Render(title.header))
+		if h.lockTabs {
+			if i == 0 {
+				renderedTitles = append(renderedTitles, title.activeStyle.Render(title.header))
+			} else {
+				renderedTitles = append(renderedTitles, ts.TitleStyleDisabled.Render(title.header))
+			}
 		} else {
-			renderedTitles = append(renderedTitles, title.inactiveStyle.Render(title.header))
+			if i == h.currentTab {
+				renderedTitles = append(renderedTitles, title.activeStyle.Render(title.header))
+			} else {
+				renderedTitles = append(renderedTitles, title.inactiveStyle.Render(title.header))
+			}
 		}
 	}
 
-	if h.currentTab == -1 {
+	if h.switchSpecialAnimation {
 		specialHeader = h.specialHeaders[0].firstStyle.Render(h.specialHeaders[0].header)
 	} else {
 		specialHeader = h.specialHeaders[0].secondStyle.Render(h.specialHeaders[0].header)

@@ -2,12 +2,7 @@ package handler
 
 import (
 	"fmt"
-	"github.com/termkit/gama/internal/terminal/handler/header"
-	"strings"
-	"time"
-
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/timer"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -16,10 +11,12 @@ import (
 	hdltrigger "github.com/termkit/gama/internal/terminal/handler/ghtrigger"
 	hdlWorkflow "github.com/termkit/gama/internal/terminal/handler/ghworkflow"
 	hdlworkflowhistory "github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
+	"github.com/termkit/gama/internal/terminal/handler/header"
 	hdlinfo "github.com/termkit/gama/internal/terminal/handler/information"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	pkgversion "github.com/termkit/gama/pkg/version"
+	"strings"
 )
 
 type model struct {
@@ -28,7 +25,6 @@ type model struct {
 
 	// models
 	viewport *viewport.Model
-	timer    timer.Model
 
 	modelHeader           *header.Header
 	modelInfo             *hdlinfo.ModelInfo
@@ -68,7 +64,6 @@ func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Mod
 
 	m := model{
 		viewport:              vp,
-		timer:                 timer.NewWithInterval(1<<63-1, time.Millisecond*200),
 		modelHeader:           hdlModelHeader,
 		modelInfo:             hdlModelInfo,
 		SelectedRepository:    selectedRepository,
@@ -86,7 +81,7 @@ func (m *model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.EnterAltScreen,
 		tea.SetWindowTitle("GitHub Actions Manager (GAMA)"),
-		m.timer.Init(),
+		m.modelHeader.Init(),
 		m.modelInfo.Init(),
 		m.modelGithubRepository.Init(),
 		m.modelWorkflowHistory.Init(),
@@ -103,17 +98,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height
 	case tea.KeyMsg:
-		m.modelHeader, cmd = m.modelHeader.Update(msg)
-		cmds = append(cmds, cmd)
-		cmds = append(cmds, m.handleTabContent(cmd, msg))
-
+		// Handle global keybindings
 		switch {
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
 		}
-	case timer.TickMsg:
-		m.timer, cmd = m.timer.Update(msg)
+
+		m.modelHeader, cmd = m.modelHeader.Update(msg)
 		cmds = append(cmds, cmd)
+	case hdlinfo.UpdateSpinnerMsg:
+		m.modelInfo, cmd = m.modelInfo.Update(msg)
+		cmds = append(cmds, cmd)
+	case header.UpdateMsg:
+		m.modelHeader, cmd = m.modelHeader.Update(msg)
+		cmds = append(cmds, cmd)
+	default:
+		cmds = append(cmds, m.handleTabContent(cmd, msg))
 	}
 
 	return m, tea.Batch(cmds...)
