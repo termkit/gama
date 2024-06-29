@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -26,7 +27,6 @@ type ModelGithubWorkflowHistory struct {
 	selectedWorkflowID         int64
 	isTableFocused             bool
 	lastRepository             string
-	forceUpdate                *bool
 	syncWorkflowHistoryContext context.Context
 	cancelSyncWorkflowHistory  context.CancelFunc
 	Workflows                  []gu.Workflow
@@ -46,15 +46,10 @@ type ModelGithubWorkflowHistory struct {
 	tableWorkflowHistory table.Model
 	modelError           *hdlerror.ModelError
 
-	modelTabOptions       tea.Model
-	actualModelTabOptions *taboptions.Options
+	modelTabOptions *taboptions.Options
 }
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
-
-func SetupModelGithubWorkflowHistory(viewport *viewport.Model, githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, forceUpdate *bool) *ModelGithubWorkflowHistory {
+func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
 	var tableRowsWorkflowHistory []table.Row
 
 	tableWorkflowHistory := table.New(
@@ -80,22 +75,34 @@ func SetupModelGithubWorkflowHistory(viewport *viewport.Model, githubUseCase gu.
 	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubWorkflowHistory{
-		Viewport:                   viewport,
+		Viewport:                   hdltypes.NewTerminalViewport(),
 		Help:                       help.New(),
 		Keys:                       keys,
 		github:                     githubUseCase,
 		tableWorkflowHistory:       tableWorkflowHistory,
 		modelError:                 &modelError,
-		SelectedRepository:         selectedRepository,
+		SelectedRepository:         hdltypes.NewSelectedRepository(),
 		modelTabOptions:            tabOptions,
-		actualModelTabOptions:      tabOptions,
-		forceUpdate:                forceUpdate,
 		syncWorkflowHistoryContext: context.Background(),
 		cancelSyncWorkflowHistory:  func() {},
 	}
 }
 
+type UpdateWorkflowHistoryMsg struct {
+	UpdateAfter time.Duration
+}
+
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
+	m.setupOptions()
+	return tea.Batch(
+		m.modelTabOptions.Init(),
+		func() tea.Msg {
+			return UpdateWorkflowHistoryMsg{UpdateAfter: time.Second * 1}
+		},
+	)
+}
+
+func (m *ModelGithubWorkflowHistory) setupOptions() {
 	openInBrowser := func() {
 		m.modelError.SetProgressMessage("Opening in browser...")
 
@@ -160,23 +167,10 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 
 		m.modelError.SetSuccessMessage("Canceled workflow")
 	}
-	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
-	m.actualModelTabOptions.AddOption("Rerun failed jobs", reRunFailedJobs)
-	m.actualModelTabOptions.AddOption("Rerun workflow", reRunWorkflow)
-	m.actualModelTabOptions.AddOption("Cancel workflow", cancelWorkflow)
-
-	go func() {
-		// Make it works with to channels
-		for {
-			if *m.forceUpdate {
-				m.tableReady = false
-				go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
-				*m.forceUpdate = false
-			}
-		}
-	}()
-
-	return tea.Batch(m.modelTabOptions.Init())
+	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
+	m.modelTabOptions.AddOption("Rerun failed jobs", reRunFailedJobs)
+	m.modelTabOptions.AddOption("Rerun workflow", reRunWorkflow)
+	m.modelTabOptions.AddOption("Cancel workflow", cancelWorkflow)
 }
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (*ModelGithubWorkflowHistory, tea.Cmd) {
@@ -203,6 +197,12 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (*ModelGithubWorkflowHi
 			m.tableReady = false
 			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 		}
+	case UpdateWorkflowHistoryMsg:
+		go func() {
+			time.Sleep(msg.UpdateAfter)
+			m.tableReady = false
+			m.syncWorkflowHistory(m.syncWorkflowHistoryContext) // TODO : may you use go routine here?
+		}()
 	}
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
@@ -218,7 +218,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
+	m.modelTabOptions.SetStatus(taboptions.OptionWait)
 
 	// delete all rows
 	m.tableWorkflowHistory.SetRows([]table.Row{})
@@ -239,7 +239,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	}
 
 	if len(workflowHistory.Workflows) == 0 {
-		m.actualModelTabOptions.SetStatus(taboptions.OptionNone)
+		m.modelTabOptions.SetStatus(taboptions.OptionNone)
 		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflows found.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 		return
 	}
@@ -261,12 +261,16 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.tableReady = true
 	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
 	m.tableWorkflowHistory.SetCursor(0)
-	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
+	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	go m.Update(m) // update model
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {
+	var baseStyle = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240"))
+
 	termWidth := m.Viewport.Width
 	termHeight := m.Viewport.Height
 
@@ -293,7 +297,7 @@ func (m *ModelGithubWorkflowHistory) View() string {
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableWorkflowHistory.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.actualModelTabOptions.View())
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View())
 }
 
 func (m *ModelGithubWorkflowHistory) ViewStatus() string {

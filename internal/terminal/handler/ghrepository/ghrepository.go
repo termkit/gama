@@ -44,8 +44,7 @@ type ModelGithubRepository struct {
 	searchTableGithubRepository table.Model
 	modelError                  *hdlerror.ModelError
 
-	modelTabOptions       tea.Model
-	actualModelTabOptions *taboptions.Options
+	modelTabOptions *taboptions.Options
 
 	textInput textinput.Model
 }
@@ -54,7 +53,7 @@ var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-func SetupModelGithubRepository(viewport *viewport.Model, githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubRepository {
+func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository {
 	var tableRowsGithubRepository []table.Row
 
 	tableGithubRepository := table.New(
@@ -114,15 +113,14 @@ func SetupModelGithubRepository(viewport *viewport.Model, githubUseCase gu.UseCa
 	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubRepository{
-		Viewport:                viewport,
+		Viewport:                hdltypes.NewTerminalViewport(),
 		Help:                    help.New(),
 		Keys:                    keys,
 		github:                  githubUseCase,
 		tableGithubRepository:   tableGithubRepository,
 		modelError:              &modelError,
-		SelectedRepository:      selectedRepository,
+		SelectedRepository:      hdltypes.NewSelectedRepository(),
 		modelTabOptions:         tabOptions,
-		actualModelTabOptions:   tabOptions,
 		textInput:               ti,
 		syncRepositoriesContext: context.Background(),
 		cancelSyncRepositories:  func() {},
@@ -145,75 +143,9 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 		m.modelError.SetSuccessMessage("Opened in browser")
 	}
 
-	m.actualModelTabOptions.AddOption("Open in browser", openInBrowser)
+	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
 
-	return nil
-}
-
-func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
-	m.modelError.ResetError() // reset previous errors
-	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
-	m.modelError.SetProgressMessage("Fetching repositories...")
-
-	// delete all rows
-	m.tableGithubRepository.SetRows([]table.Row{})
-	m.searchTableGithubRepository.SetRows([]table.Row{})
-
-	repositories, err := m.github.ListRepositories(ctx, gu.ListRepositoriesInput{
-		Limit: 100, // limit to 100 repositories
-		Page:  5,   // page 1 to page 5, at summary we fetch 500 repositories
-		Sort:  domain.SortByUpdated,
-	})
-	if errors.Is(err, context.Canceled) {
-		return
-	} else if err != nil {
-		m.modelError.SetError(err)
-		m.modelError.SetErrorMessage("Repositories cannot be listed")
-		return
-	}
-
-	if len(repositories.Repositories) == 0 {
-		m.actualModelTabOptions.SetStatus(taboptions.OptionNone)
-		m.modelError.SetDefaultMessage("No repositories found")
-		m.textInput.Blur()
-		return
-	}
-
-	tableRowsGithubRepository := make([]table.Row, 0, len(repositories.Repositories))
-	for _, repository := range repositories.Repositories {
-		tableRowsGithubRepository = append(tableRowsGithubRepository,
-			table.Row{repository.Name, repository.DefaultBranch, strconv.Itoa(repository.Stars), strconv.Itoa(len(repository.Workflows))})
-	}
-
-	m.tableGithubRepository.SetRows(tableRowsGithubRepository)
-	m.searchTableGithubRepository.SetRows(tableRowsGithubRepository)
-
-	// set cursor to 0
-	m.tableGithubRepository.SetCursor(0)
-	m.searchTableGithubRepository.SetCursor(0)
-
-	m.tableReady = true
-	//m.updateSearchBarSuggestions()
-	m.textInput.Focus()
-	m.modelError.SetSuccessMessage("Repositories fetched")
-	go m.Update(m) // update model
-}
-
-func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
-	if !m.tableReady {
-		return
-	}
-
-	// To avoid go routine leak
-	selectedRow := m.tableGithubRepository.SelectedRow()
-
-	// Synchronize selected repository name with parent model
-	if len(selectedRow) > 0 && selectedRow[0] != "" {
-		m.SelectedRepository.RepositoryName = selectedRow[0]
-		m.SelectedRepository.BranchName = selectedRow[1]
-	}
-
-	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
+	return tea.Batch(m.modelTabOptions.Init())
 }
 
 func (m *ModelGithubRepository) Update(msg tea.Msg) (*ModelGithubRepository, tea.Cmd) {
@@ -278,7 +210,73 @@ func (m *ModelGithubRepository) View() string {
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.actualModelTabOptions.View())
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View())
+}
+
+func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
+	m.modelError.ResetError() // reset previous errors
+	m.modelTabOptions.SetStatus(taboptions.OptionWait)
+	m.modelError.SetProgressMessage("Fetching repositories...")
+
+	// delete all rows
+	m.tableGithubRepository.SetRows([]table.Row{})
+	m.searchTableGithubRepository.SetRows([]table.Row{})
+
+	repositories, err := m.github.ListRepositories(ctx, gu.ListRepositoriesInput{
+		Limit: 100, // limit to 100 repositories
+		Page:  5,   // page 1 to page 5, at summary we fetch 500 repositories
+		Sort:  domain.SortByUpdated,
+	})
+	if errors.Is(err, context.Canceled) {
+		return
+	} else if err != nil {
+		m.modelError.SetError(err)
+		m.modelError.SetErrorMessage("Repositories cannot be listed")
+		return
+	}
+
+	if len(repositories.Repositories) == 0 {
+		m.modelTabOptions.SetStatus(taboptions.OptionNone)
+		m.modelError.SetDefaultMessage("No repositories found")
+		m.textInput.Blur()
+		return
+	}
+
+	tableRowsGithubRepository := make([]table.Row, 0, len(repositories.Repositories))
+	for _, repository := range repositories.Repositories {
+		tableRowsGithubRepository = append(tableRowsGithubRepository,
+			table.Row{repository.Name, repository.DefaultBranch, strconv.Itoa(repository.Stars), strconv.Itoa(len(repository.Workflows))})
+	}
+
+	m.tableGithubRepository.SetRows(tableRowsGithubRepository)
+	m.searchTableGithubRepository.SetRows(tableRowsGithubRepository)
+
+	// set cursor to 0
+	m.tableGithubRepository.SetCursor(0)
+	m.searchTableGithubRepository.SetCursor(0)
+
+	m.tableReady = true
+	//m.updateSearchBarSuggestions()
+	m.textInput.Focus()
+	m.modelError.SetSuccessMessage("Repositories fetched")
+	go m.Update(m) // update model
+}
+
+func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
+	if !m.tableReady {
+		return
+	}
+
+	// To avoid go routine leak
+	selectedRow := m.tableGithubRepository.SelectedRow()
+
+	// Synchronize selected repository name with parent model
+	if len(selectedRow) > 0 && selectedRow[0] != "" {
+		m.SelectedRepository.RepositoryName = selectedRow[0]
+		m.SelectedRepository.BranchName = selectedRow[1]
+	}
+
+	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 }
 
 func (m *ModelGithubRepository) viewSearchBar() string {

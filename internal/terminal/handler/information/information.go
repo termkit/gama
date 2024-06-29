@@ -11,6 +11,7 @@ import (
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/header"
+	"github.com/termkit/gama/internal/terminal/handler/types"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"strings"
 	"time"
@@ -29,7 +30,7 @@ type ModelInfo struct {
 
 	Help       help.Model
 	Viewport   *viewport.Model
-	modelError hdlerror.ModelError
+	modelError *hdlerror.ModelError
 	spinner    spinner.Model
 
 	// keymap
@@ -56,22 +57,22 @@ var (
 	applicationDescription string
 )
 
-func SetupModelInfo(viewport *viewport.Model, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
+func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
-	hdlModelHeader := header.NewHeader(viewport)
+	hdlModelHeader := header.NewHeader()
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
-		Viewport:    viewport,
+		Viewport:    types.NewTerminalViewport(),
 		modelHeader: hdlModelHeader,
 		github:      githubUseCase,
 		version:     version,
 		Help:        help.New(),
 		Keys:        keys,
-		modelError:  modelError,
+		modelError:  &modelError,
 		spinner:     s,
 	}
 }
@@ -149,7 +150,6 @@ func (m *ModelInfo) View() string {
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {
-	time.Sleep(time.Second * 5) // TODO : remove, just for testing spinner
 	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)

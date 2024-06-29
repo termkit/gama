@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
+	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	hdlgithubrepo "github.com/termkit/gama/internal/terminal/handler/ghrepository"
 	hdltrigger "github.com/termkit/gama/internal/terminal/handler/ghtrigger"
 	hdlWorkflow "github.com/termkit/gama/internal/terminal/handler/ghworkflow"
@@ -17,15 +18,14 @@ import (
 	ts "github.com/termkit/gama/internal/terminal/style"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"strings"
+	"time"
 )
 
 type model struct {
-	// Shared properties
-	SelectedRepository *hdltypes.SelectedRepository
-
 	// models
 	viewport *viewport.Model
 
+	modelError            *hdlerror.ModelError
 	modelHeader           *header.Header
 	modelInfo             *hdlinfo.ModelInfo
 	modelGithubRepository *hdlgithubrepo.ModelGithubRepository
@@ -37,36 +37,28 @@ type model struct {
 	keys keyMap
 }
 
-const (
-	minTerminalWidth  = 102
-	minTerminalHeight = 24
-)
-
 func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Model {
-	forceUpdateWorkflowHistory := new(bool)
-	vp := &viewport.Model{Width: minTerminalWidth, Height: minTerminalHeight}
-	selectedRepository := &hdltypes.SelectedRepository{}
-
 	// setup models
-	hdlModelHeader := header.NewHeader(vp)
-	hdlModelInfo := hdlinfo.SetupModelInfo(vp, githubUseCase, version)
-	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(vp, githubUseCase, selectedRepository)
-	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(vp, githubUseCase, selectedRepository, forceUpdateWorkflowHistory)
-	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(vp, githubUseCase, selectedRepository)
-	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(vp, githubUseCase, selectedRepository, forceUpdateWorkflowHistory)
+	hdlModelError := hdlerror.SetupModelError()
+	hdlModelHeader := header.NewHeader()
+	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase, version)
+	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase)
+	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase)
+	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase)
+	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(githubUseCase)
 
 	hdlModelHeader.AddCommonHeader("Info", ts.TitleStyleInactive, ts.TitleStyleActive)
 	hdlModelHeader.AddCommonHeader("Repository", ts.TitleStyleInactive, ts.TitleStyleActive)
 	hdlModelHeader.AddCommonHeader("Workflow History", ts.TitleStyleInactive, ts.TitleStyleActive)
 	hdlModelHeader.AddCommonHeader("Workflow", ts.TitleStyleInactive, ts.TitleStyleActive)
 	hdlModelHeader.AddCommonHeader("Trigger", ts.TitleStyleInactive, ts.TitleStyleActive)
-	hdlModelHeader.SetSpecialHeader("GAMA", ts.TitleStyleLiveModeOn, ts.TitleStyleLiveModeOff)
+	hdlModelHeader.SetSpecialHeader("GAMA", time.Millisecond*500, ts.TitleStyleLiveModeOn, ts.TitleStyleLiveModeOff, ts.TitleStyleDisabled)
 
 	m := model{
-		viewport:              vp,
+		viewport:              hdltypes.NewTerminalViewport(),
+		modelError:            &hdlModelError,
 		modelHeader:           hdlModelHeader,
 		modelInfo:             hdlModelInfo,
-		SelectedRepository:    selectedRepository,
 		modelGithubRepository: hdlModelGithubRepository,
 		modelWorkflowHistory:  hdlModelWorkflowHistory,
 		modelWorkflow:         hdlModelWorkflow,
@@ -106,22 +98,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.modelHeader, cmd = m.modelHeader.Update(msg)
 		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.handleTabContent(cmd, msg))
 	case hdlinfo.UpdateSpinnerMsg:
 		m.modelInfo, cmd = m.modelInfo.Update(msg)
 		cmds = append(cmds, cmd)
 	case header.UpdateMsg:
 		m.modelHeader, cmd = m.modelHeader.Update(msg)
 		cmds = append(cmds, cmd)
-	default:
-		cmds = append(cmds, m.handleTabContent(cmd, msg))
+	case hdlworkflowhistory.UpdateWorkflowHistoryMsg:
+		m.modelWorkflowHistory, cmd = m.modelWorkflowHistory.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m *model) View() string {
-	if m.viewport.Width < minTerminalWidth || m.viewport.Height < minTerminalHeight {
-		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", minTerminalWidth, minTerminalHeight)
+	if m.viewport.Width < hdltypes.MinTerminalWidth || m.viewport.Height < hdltypes.MinTerminalHeight {
+		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", hdltypes.MinTerminalWidth, hdltypes.MinTerminalHeight)
 	}
 
 	var mainDoc strings.Builder

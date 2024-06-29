@@ -43,6 +43,32 @@ func SetupModelError() ModelError {
 	}
 }
 
+func (m *ModelError) View() string {
+	var windowStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
+
+	doc := strings.Builder{}
+	if m.HaveError() {
+		windowStyle = ts.WindowStyleError.Width(*hdltypes.ScreenWidth)
+		doc.WriteString(windowStyle.Render(m.ViewError()))
+		return doc.String()
+	}
+
+	switch m.messageType {
+	case MessageTypeDefault:
+		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+	case MessageTypeProgress:
+		windowStyle = ts.WindowStyleProgress.Width(*hdltypes.ScreenWidth)
+	case MessageTypeSuccess:
+		windowStyle = ts.WindowStyleSuccess.Width(*hdltypes.ScreenWidth)
+	default:
+		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+	}
+
+	doc.WriteString(windowStyle.Render(m.ViewMessage()))
+
+	return doc.String()
+}
+
 func (m *ModelError) SetError(err error) {
 	m.err = err
 }
@@ -105,31 +131,5 @@ func (m *ModelError) ViewError() string {
 func (m *ModelError) ViewMessage() string {
 	doc := strings.Builder{}
 	doc.WriteString(m.message)
-	return doc.String()
-}
-
-func (m *ModelError) View() string {
-	var windowStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
-
-	doc := strings.Builder{}
-	if m.HaveError() {
-		windowStyle = ts.WindowStyleError.Width(*hdltypes.ScreenWidth)
-		doc.WriteString(windowStyle.Render(m.ViewError()))
-		return doc.String()
-	}
-
-	switch m.messageType {
-	case MessageTypeDefault:
-		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
-	case MessageTypeProgress:
-		windowStyle = ts.WindowStyleProgress.Width(*hdltypes.ScreenWidth)
-	case MessageTypeSuccess:
-		windowStyle = ts.WindowStyleSuccess.Width(*hdltypes.ScreenWidth)
-	default:
-		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
-	}
-
-	doc.WriteString(windowStyle.Render(m.ViewMessage()))
-
 	return doc.String()
 }

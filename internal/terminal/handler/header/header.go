@@ -5,6 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	"strings"
 	"sync"
@@ -13,19 +14,17 @@ import (
 
 // Header is a helper for rendering the Header of the terminal.
 type Header struct {
-	keys keyMap
-
 	Viewport *viewport.Model
 
-	tickerInterval time.Duration
+	keys keyMap
 
 	currentTab int
 	lockTabs   bool
 
-	commonHeaders  []commonHeader
-	specialHeaders []specialHeader
-
-	switchSpecialAnimation bool
+	commonHeaders         []commonHeader
+	specialHeader         specialHeader
+	specialHeaderInterval time.Duration
+	currentSpecialStyle   int
 }
 
 type commonHeader struct {
@@ -40,8 +39,7 @@ type specialHeader struct {
 	header    string
 	rawHeader string
 
-	firstStyle  lipgloss.Style
-	secondStyle lipgloss.Style
+	styles []lipgloss.Style
 }
 
 // Define sync.Once and NewHeader should return same instance
@@ -51,14 +49,14 @@ var (
 )
 
 // NewHeader returns a new Header.
-func NewHeader(viewport *viewport.Model) *Header {
+func NewHeader() *Header {
 	once.Do(func() {
 		h = &Header{
-			tickerInterval: time.Millisecond * 250,
-			Viewport:       viewport,
-			currentTab:     0,
-			lockTabs:       true,
-			keys:           keys,
+			specialHeaderInterval: time.Millisecond * 100,
+			Viewport:              types.NewTerminalViewport(),
+			currentTab:            0,
+			lockTabs:              true,
+			keys:                  keys,
 		}
 	})
 	return h
@@ -89,13 +87,16 @@ func (h *Header) AddCommonHeader(header string, inactiveStyle, activeStyle lipgl
 	})
 }
 
-func (h *Header) SetSpecialHeader(header string, firstStyle, secondStyle lipgloss.Style) {
-	h.specialHeaders = append(h.specialHeaders, specialHeader{
-		header:      header,
-		rawHeader:   header,
-		firstStyle:  firstStyle,
-		secondStyle: secondStyle,
-	})
+func (h *Header) SetSpecialHeader(header string, interval time.Duration, styles ...lipgloss.Style) {
+	h.specialHeaderInterval = interval
+	if len(styles) == 0 {
+		styles = append(styles, ts.TitleStyleDisabled)
+	}
+	h.specialHeader = specialHeader{
+		header:    header,
+		rawHeader: header,
+		styles:    styles,
+	}
 }
 
 type UpdateMsg struct {
@@ -108,18 +109,8 @@ func (h *Header) Init() tea.Cmd {
 }
 
 func (h *Header) tick() tea.Cmd {
-	t := time.NewTimer(h.tickerInterval)
+	t := time.NewTimer(h.specialHeaderInterval)
 	return func() tea.Msg {
-		//ts := <-t.C
-		//t.Stop()
-		//for len(t.C) > 0 {
-		//	<-t.C
-		//}
-		//return UpdateMsg{
-		//	Msg:               "tick",
-		//	UpdatingComponent: "header",
-		//}
-
 		select {
 		case <-t.C:
 			return UpdateMsg{
@@ -131,8 +122,6 @@ func (h *Header) tick() tea.Cmd {
 }
 
 func (h *Header) Update(msg tea.Msg) (*Header, tea.Cmd) {
-	//var cmds []tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -146,7 +135,13 @@ func (h *Header) Update(msg tea.Msg) (*Header, tea.Cmd) {
 			}
 		}
 	case UpdateMsg:
-		h.switchSpecialAnimation = !h.switchSpecialAnimation
+		if msg.UpdatingComponent == "header" {
+			if h.currentSpecialStyle >= len(h.specialHeader.styles)-1 {
+				h.currentSpecialStyle = 0
+			} else {
+				h.currentSpecialStyle++
+			}
+		}
 
 		return h, h.Init()
 	}
@@ -163,10 +158,7 @@ func (h *Header) View() string {
 		titles += "LLL RRR"
 	}
 	titleLen := len(titles)
-	specialTitleLen := len(h.specialHeaders[0].header)
-
-	var specialHeader string
-	specialHeader = h.specialHeaders[0].header
+	specialTitleLen := len(h.specialHeader.header)
 
 	var renderedTitles []string
 	for i, title := range h.commonHeaders {
@@ -185,11 +177,8 @@ func (h *Header) View() string {
 		}
 	}
 
-	if h.switchSpecialAnimation {
-		specialHeader = h.specialHeaders[0].firstStyle.Render(h.specialHeaders[0].header)
-	} else {
-		specialHeader = h.specialHeaders[0].secondStyle.Render(h.specialHeaders[0].header)
-	}
+	var specialHeader string
+	specialHeader = h.specialHeader.styles[h.currentSpecialStyle].Render(h.specialHeader.header)
 
 	line := strings.Repeat("─", h.Viewport.Width-(titleLen+specialTitleLen))
 
