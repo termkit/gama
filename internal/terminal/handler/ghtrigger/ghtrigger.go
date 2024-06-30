@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"strings"
-	"time"
-
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -16,26 +12,29 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
+	"github.com/termkit/gama/internal/terminal/handler/header"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	"github.com/termkit/gama/pkg/workflow"
+	"slices"
+	"strings"
+	"time"
 )
 
 type ModelGithubTrigger struct {
 	// current handler's properties
-	syncWorkflowContext        context.Context
-	cancelSyncWorkflow         context.CancelFunc
-	workflowContent            *workflow.Pretty
-	tableReady                 bool
-	isTriggerable              bool
-	currentTab                 *int
-	forceUpdateWorkflowHistory *bool
-	optionInit                 bool
-	optionCursor               int
-	optionValues               []string
-	currentOption              string
-	selectedWorkflow           string
-	selectedRepositoryName     string
-	triggerFocused             bool
+	syncWorkflowContext    context.Context
+	cancelSyncWorkflow     context.CancelFunc
+	workflowContent        *workflow.Pretty
+	tableReady             bool
+	isTriggerable          bool
+	optionInit             bool
+	optionCursor           int
+	optionValues           []string
+	currentOption          string
+	selectedWorkflow       string
+	selectedRepositoryName string
+	triggerFocused         bool
 
 	// shared properties
 	SelectedRepository *hdltypes.SelectedRepository
@@ -47,6 +46,8 @@ type ModelGithubTrigger struct {
 	Keys keyMap
 
 	// models
+	header *header.Header
+
 	Help         help.Model
 	Viewport     *viewport.Model
 	modelError   hdlerror.ModelError
@@ -54,7 +55,7 @@ type ModelGithubTrigger struct {
 	tableTrigger table.Model
 }
 
-func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository, currentTab *int, forceUpdateWorkflowHistory *bool) *ModelGithubTrigger {
+func SetupModelGithubTrigger(githubUseCase gu.UseCase) *ModelGithubTrigger {
 	var tableRowsTrigger []table.Row
 
 	tableTrigger := table.New(
@@ -81,26 +82,26 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase, selectedRepository *hdlty
 	ti.CharLimit = 72
 
 	return &ModelGithubTrigger{
-		currentTab:                 currentTab,
-		forceUpdateWorkflowHistory: forceUpdateWorkflowHistory,
-		Help:                       help.New(),
-		Keys:                       keys,
-		github:                     githubUseCase,
-		SelectedRepository:         selectedRepository,
-		modelError:                 hdlerror.SetupModelError(),
-		tableTrigger:               tableTrigger,
-		textInput:                  ti,
-		syncWorkflowContext:        context.Background(),
-		cancelSyncWorkflow:         func() {},
+		Viewport:            hdltypes.NewTerminalViewport(),
+		header:              header.NewHeader(),
+		Help:                help.New(),
+		Keys:                keys,
+		github:              githubUseCase,
+		SelectedRepository:  hdltypes.NewSelectedRepository(),
+		modelError:          hdlerror.SetupModelError(),
+		tableTrigger:        tableTrigger,
+		textInput:           ti,
+		syncWorkflowContext: context.Background(),
+		cancelSyncWorkflow:  func() {},
 	}
 }
 
 func (m *ModelGithubTrigger) Init() tea.Cmd {
 	m.modelError.SetDefaultMessage("No workflow contents found.")
-	return textinput.Blink
+	return tea.Batch(textinput.Blink)
 }
 
-func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelGithubTrigger) Update(msg tea.Msg) (*ModelGithubTrigger, tea.Cmd) {
 	if m.SelectedRepository.WorkflowName == "" {
 		m.modelError.Reset()
 		m.modelError.SetDefaultMessage("No workflow selected.")
@@ -166,9 +167,12 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.textInput.Focus()
 				}
 			}
-		case "enter":
+		case "enter", tea.KeyEnter.String():
 			if m.triggerFocused && m.isTriggerable {
 				go m.triggerWorkflow()
+				return m, func() tea.Msg {
+					return ghworkflowhistory.UpdateWorkflowHistoryMsg{UpdateAfter: time.Second * 5}
+				}
 			}
 		}
 	}
@@ -337,12 +341,12 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 }
 
 func (m *ModelGithubTrigger) View() string {
-	baseStyle := lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240"))
-
-	termWidth := m.Viewport.Width
-	termHeight := m.Viewport.Height
+	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder())
+	if m.triggerFocused {
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
+	} else {
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("130"))
+	}
 
 	var tableWidth int
 	for _, t := range tableColumnsTrigger {
@@ -350,7 +354,7 @@ func (m *ModelGithubTrigger) View() string {
 	}
 
 	newTableColumns := tableColumnsTrigger
-	widthDiff := termWidth - tableWidth
+	widthDiff := m.Viewport.Width - tableWidth
 	if widthDiff > 0 {
 		keyWidth := &newTableColumns[2].Width
 		valueWidth := &newTableColumns[4].Width
@@ -360,7 +364,7 @@ func (m *ModelGithubTrigger) View() string {
 			*keyWidth = *valueWidth / 2
 		}
 		m.tableTrigger.SetColumns(newTableColumns)
-		m.tableTrigger.SetHeight(termHeight - 17)
+		m.tableTrigger.SetHeight(m.Viewport.Height - 17)
 	}
 
 	doc := strings.Builder{}
@@ -598,7 +602,7 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 
 	time.Sleep(1 * time.Second)
 	m.modelError.SetProgressMessage("Switching to workflow history tab...")
-	time.Sleep(1 * time.Second)
+	time.Sleep(1500 * time.Millisecond)
 
 	// move these operations under new function named "resetTabSettings"
 	m.workflowContent = nil       // reset workflow content
@@ -607,11 +611,7 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 	m.optionValues = nil          // reset option values
 	m.selectedRepositoryName = "" // reset selected repository name
 
-	go func() {
-		time.Sleep(1 * time.Second)
-		*m.forceUpdateWorkflowHistory = true // force update workflow history
-	}()
-	*m.currentTab = 2 // switch tab to workflow history
+	m.header.SetCurrentTab(2) // switch tab to workflow history
 }
 
 func (m *ModelGithubTrigger) emptySelector() string {

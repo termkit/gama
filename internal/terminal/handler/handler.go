@@ -2,110 +2,78 @@ package handler
 
 import (
 	"fmt"
-	"strings"
-	"time"
-
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/timer"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
+	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	hdlgithubrepo "github.com/termkit/gama/internal/terminal/handler/ghrepository"
 	hdltrigger "github.com/termkit/gama/internal/terminal/handler/ghtrigger"
 	hdlWorkflow "github.com/termkit/gama/internal/terminal/handler/ghworkflow"
 	hdlworkflowhistory "github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
+	"github.com/termkit/gama/internal/terminal/handler/header"
 	hdlinfo "github.com/termkit/gama/internal/terminal/handler/information"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	pkgversion "github.com/termkit/gama/pkg/version"
+	"strings"
+	"time"
 )
 
 type model struct {
-	// current handler's properties
-	TabsWithColor []string
-	currentTab    *int
-	isTabActive   bool
-
-	// Shared properties
-	SelectedRepository *hdltypes.SelectedRepository
-	lockTabs           *bool // lockTabs will be set true if test connection fails
-
 	// models
-	viewport viewport.Model
-	timer    timer.Model
+	viewport *viewport.Model
 
-	modelInfo       tea.Model
-	actualModelInfo *hdlinfo.ModelInfo
-
-	modelGithubRepository       tea.Model
-	actualModelGithubRepository *hdlgithubrepo.ModelGithubRepository
-
-	modelWorkflow       tea.Model
-	directModelWorkflow *hdlWorkflow.ModelGithubWorkflow
-
-	modelWorkflowHistory       tea.Model
-	directModelWorkflowHistory *hdlworkflowhistory.ModelGithubWorkflowHistory
-
-	modelTrigger       tea.Model
-	actualModelTrigger *hdltrigger.ModelGithubTrigger
+	modelError            *hdlerror.ModelError
+	modelHeader           *header.Header
+	modelInfo             *hdlinfo.ModelInfo
+	modelGithubRepository *hdlgithubrepo.ModelGithubRepository
+	modelWorkflow         *hdlWorkflow.ModelGithubWorkflow
+	modelWorkflowHistory  *hdlworkflowhistory.ModelGithubWorkflowHistory
+	modelTrigger          *hdltrigger.ModelGithubTrigger
 
 	// keymap
 	keys keyMap
 }
 
-const (
-	minTerminalWidth  = 102
-	minTerminalHeight = 24
-)
-
 func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Model {
-	var currentTab = new(int)
-	var forceUpdateWorkflowHistory = new(bool)
-	var lockTabs = new(bool)
-
-	*lockTabs = true // by default lock tabs
-
-	tabsWithColor := []string{"Info", "Repository", "Workflow History", "Workflow", "Trigger"}
-
-	selectedRepository := hdltypes.SelectedRepository{}
-
 	// setup models
-	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase, version, lockTabs)
-	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase, &selectedRepository)
-	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase, &selectedRepository, forceUpdateWorkflowHistory)
-	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase, &selectedRepository)
-	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(githubUseCase, &selectedRepository, currentTab, forceUpdateWorkflowHistory)
+	hdlModelError := hdlerror.SetupModelError()
+	hdlModelHeader := header.NewHeader()
+	hdlModelInfo := hdlinfo.SetupModelInfo(githubUseCase, version)
+	hdlModelGithubRepository := hdlgithubrepo.SetupModelGithubRepository(githubUseCase)
+	hdlModelWorkflowHistory := hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase)
+	hdlModelWorkflow := hdlWorkflow.SetupModelGithubWorkflow(githubUseCase)
+	hdlModelTrigger := hdltrigger.SetupModelGithubTrigger(githubUseCase)
+
+	hdlModelHeader.AddCommonHeader("Info", ts.TitleStyleInactive, ts.TitleStyleActive)
+	hdlModelHeader.AddCommonHeader("Repository", ts.TitleStyleInactive, ts.TitleStyleActive)
+	hdlModelHeader.AddCommonHeader("Workflow History", ts.TitleStyleInactive, ts.TitleStyleActive)
+	hdlModelHeader.AddCommonHeader("Workflow", ts.TitleStyleInactive, ts.TitleStyleActive)
+	hdlModelHeader.AddCommonHeader("Trigger", ts.TitleStyleInactive, ts.TitleStyleActive)
+	hdlModelHeader.SetSpecialHeader("GAMA", time.Millisecond*500, ts.TitleStyleLiveModeOn, ts.TitleStyleLiveModeOff, ts.TitleStyleDisabled)
 
 	m := model{
-		lockTabs:      lockTabs,
-		currentTab:    currentTab,
-		TabsWithColor: tabsWithColor,
-		timer:         timer.NewWithInterval(1<<63-1, time.Millisecond*200),
-		modelInfo:     hdlModelInfo, actualModelInfo: hdlModelInfo,
-		SelectedRepository:    &selectedRepository,
-		modelGithubRepository: hdlModelGithubRepository, actualModelGithubRepository: hdlModelGithubRepository,
-		modelWorkflowHistory: hdlModelWorkflowHistory, directModelWorkflowHistory: hdlModelWorkflowHistory,
-		modelWorkflow: hdlModelWorkflow, directModelWorkflow: hdlModelWorkflow,
-		modelTrigger: hdlModelTrigger, actualModelTrigger: hdlModelTrigger,
-		keys: keys,
+		viewport:              hdltypes.NewTerminalViewport(),
+		modelError:            &hdlModelError,
+		modelHeader:           hdlModelHeader,
+		modelInfo:             hdlModelInfo,
+		modelGithubRepository: hdlModelGithubRepository,
+		modelWorkflowHistory:  hdlModelWorkflowHistory,
+		modelWorkflow:         hdlModelWorkflow,
+		modelTrigger:          hdlModelTrigger,
+		keys:                  keys,
 	}
-
-	hdlModelInfo.Viewport = &m.viewport
-	hdlModelGithubRepository.Viewport = &m.viewport
-	hdlModelWorkflowHistory.Viewport = &m.viewport
-	hdlModelWorkflow.Viewport = &m.viewport
-	hdlModelTrigger.Viewport = &m.viewport
 
 	return &m
 }
 
 func (m *model) Init() tea.Cmd {
-	m.viewport = viewport.Model{Width: minTerminalWidth, Height: minTerminalHeight}
 	return tea.Batch(
 		tea.EnterAltScreen,
 		tea.SetWindowTitle("GitHub Actions Manager (GAMA)"),
-		m.timer.Init(),
+		m.modelHeader.Init(),
 		m.modelInfo.Init(),
 		m.modelGithubRepository.Init(),
 		m.modelWorkflowHistory.Init(),
@@ -122,24 +90,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height
 	case tea.KeyMsg:
+		// Handle global keybindings
 		switch {
-		case key.Matches(msg, m.keys.SwitchTabLeft):
-			if !*m.lockTabs {
-				*m.currentTab = max(*m.currentTab-1, 0)
-			}
-			cmds = append(cmds, m.handleTabContent(cmd, msg))
-		case key.Matches(msg, m.keys.SwitchTabRight):
-			if !*m.lockTabs {
-				*m.currentTab = min(*m.currentTab+1, len(m.TabsWithColor)-1)
-			}
-			cmds = append(cmds, m.handleTabContent(cmd, msg))
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
-		default:
-			cmds = append(cmds, m.handleTabContent(cmd, msg))
 		}
-	case timer.TickMsg:
-		m.timer, cmd = m.timer.Update(msg)
+
+		m.modelHeader, cmd = m.modelHeader.Update(msg)
+		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.handleTabContent(cmd, msg))
+	case hdlinfo.UpdateSpinnerMsg:
+		m.modelInfo, cmd = m.modelInfo.Update(msg)
+		cmds = append(cmds, cmd)
+	case header.UpdateMsg:
+		m.modelHeader, cmd = m.modelHeader.Update(msg)
+		cmds = append(cmds, cmd)
+	case hdlworkflowhistory.UpdateWorkflowHistoryMsg:
+		m.modelWorkflowHistory, cmd = m.modelWorkflowHistory.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -147,79 +114,52 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) View() string {
-	if m.viewport.Width < minTerminalWidth || m.viewport.Height < minTerminalHeight {
-		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", minTerminalWidth, minTerminalHeight)
+	if m.viewport.Width < hdltypes.MinTerminalWidth || m.viewport.Height < hdltypes.MinTerminalHeight {
+		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", hdltypes.MinTerminalWidth, hdltypes.MinTerminalHeight)
 	}
 
 	var mainDoc strings.Builder
 	var helpDoc string
 	var operationDoc string
-	var helpDocHeight int
 
-	header := newHeader(&m.viewport)
-	for i, t := range m.TabsWithColor {
-		var tabStyle lipgloss.Style
-		isActive := i == *m.currentTab
-		if isActive {
-			tabStyle = ts.TitleStyleActive
-		} else {
-			if *m.lockTabs {
-				tabStyle = ts.TitleStyleDisabled
-			} else {
-				tabStyle = ts.TitleStyleInactive
-			}
-		}
-		header.addHeaderTab(t, tabStyle)
-	}
-
-	mainDoc.WriteString("\n" + header.renderHeader() + "\n")
-
-	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - 4
+	var width = lipgloss.Width(strings.Repeat("-", m.viewport.Width)) - 5
 	hdltypes.ScreenWidth = &width
 
-	dynamicWindowStyle := ts.WindowStyleCyan.Width(width).Height(m.viewport.Height - 20)
-
+	dynamicWindowStyle := lipgloss.NewStyle().Width(width).Height(m.viewport.Height - 22)
 	helpWindowStyle := ts.WindowStyleHelp.Width(width)
-	operationWindowStyle := lipgloss.NewStyle()
 
-	switch *m.currentTab {
+	mainDoc.WriteString(m.modelHeader.View() + "\n")
+	switch m.modelHeader.GetCurrentTab() {
 	case 0:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelInfo.View()))
-		operationDoc = operationWindowStyle.Render(m.actualModelInfo.ViewStatus())
-		helpDoc = helpWindowStyle.Render(m.actualModelInfo.ViewHelp())
+		operationDoc = m.modelInfo.ViewStatus()
+		helpDoc = helpWindowStyle.Render(m.modelInfo.ViewHelp())
 	case 1:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelGithubRepository.View()))
-		operationDoc = operationWindowStyle.Render(m.actualModelGithubRepository.ViewStatus())
-		helpDoc = helpWindowStyle.Render(m.actualModelGithubRepository.ViewHelp())
+		operationDoc = m.modelGithubRepository.ViewStatus()
+		helpDoc = helpWindowStyle.Render(m.modelGithubRepository.ViewHelp())
 	case 2:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelWorkflowHistory.View()))
-		operationDoc = operationWindowStyle.Render(m.directModelWorkflowHistory.ViewStatus())
-		helpDoc = helpWindowStyle.Render(m.directModelWorkflowHistory.ViewHelp())
+		operationDoc = m.modelWorkflowHistory.ViewStatus()
+		helpDoc = helpWindowStyle.Render(m.modelWorkflowHistory.ViewHelp())
 	case 3:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelWorkflow.View()))
-		operationDoc = operationWindowStyle.Render(m.directModelWorkflow.ViewStatus())
-		helpDoc = helpWindowStyle.Render(m.directModelWorkflow.ViewHelp())
+		operationDoc = m.modelWorkflow.ViewStatus()
+		helpDoc = helpWindowStyle.Render(m.modelWorkflow.ViewHelp())
 	case 4:
 		mainDoc.WriteString(dynamicWindowStyle.Render(m.modelTrigger.View()))
-		operationDoc = operationWindowStyle.Render(m.actualModelTrigger.ViewStatus())
-		helpDoc = helpWindowStyle.Render(m.actualModelTrigger.ViewHelp())
+		operationDoc = m.modelTrigger.ViewStatus()
+		helpDoc = helpWindowStyle.Render(m.modelTrigger.ViewHelp())
 	}
 
 	mainDocContent := ts.DocStyle.Render(mainDoc.String())
-
-	mainDocHeight := strings.Count(mainDocContent, "\n")
-	helpDocHeight = strings.Count(helpDoc, "\n")
-	errorDocHeight := strings.Count(operationDoc, "\n")
-	requiredNewlinesForPadding := m.viewport.Height - mainDocHeight - helpDocHeight - errorDocHeight
-	padding := strings.Repeat("\n", max(0, requiredNewlinesForPadding))
-
 	informationPane := lipgloss.JoinVertical(lipgloss.Top, operationDoc, helpDoc)
 
-	return mainDocContent + padding + informationPane
+	return lipgloss.JoinVertical(lipgloss.Top, mainDocContent, informationPane)
 }
 
 func (m *model) handleTabContent(cmd tea.Cmd, msg tea.Msg) tea.Cmd {
-	switch *m.currentTab {
+	switch m.modelHeader.GetCurrentTab() {
 	case 0:
 		m.modelInfo, cmd = m.modelInfo.Update(msg)
 	case 1:
@@ -232,32 +172,4 @@ func (m *model) handleTabContent(cmd tea.Cmd, msg tea.Msg) tea.Cmd {
 		m.modelTrigger, cmd = m.modelTrigger.Update(msg)
 	}
 	return cmd
-}
-
-// --- Header ---
-
-// header is a helper for rendering the header of the terminal.
-type header struct {
-	viewport *viewport.Model
-	titles   []string
-}
-
-// newHeader returns a new header.
-func newHeader(viewport *viewport.Model) *header {
-	return &header{
-		titles:   make([]string, 0),
-		viewport: viewport,
-	}
-}
-
-// addHeaderTab adds a tab to the header.
-func (h *header) addHeaderTab(title string, style lipgloss.Style) {
-	h.titles = append(h.titles, style.Render(title))
-}
-
-// renderHeader renders the header.
-func (h *header) renderHeader() string {
-	line := strings.Repeat("─", max(0, h.viewport.Width-79))
-
-	return lipgloss.JoinHorizontal(lipgloss.Center, append(h.titles, line)...)
 }

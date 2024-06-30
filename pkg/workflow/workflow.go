@@ -49,8 +49,6 @@ type Choice struct {
 	Value   string
 }
 
-// TODO: Add support for boolean
-
 func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 	var w = &Workflow{
 		Content: make(map[string]Content),

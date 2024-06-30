@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/ghtrigger"
-	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -44,18 +43,10 @@ type ModelGithubWorkflow struct {
 	tableTriggerableWorkflow table.Model
 	modelError               *hdlerror.ModelError
 
-	modelTabOptions       tea.Model
-	actualModelTabOptions *taboptions.Options
-
-	modelGithubTrigger       tea.Model
-	actualModelGithubTrigger *ghtrigger.ModelGithubTrigger
+	modelGithubTrigger *ghtrigger.ModelGithubTrigger
 }
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
-
-func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdltypes.SelectedRepository) *ModelGithubWorkflow {
+func SetupModelGithubWorkflow(githubUseCase gu.UseCase) *ModelGithubWorkflow {
 	var tableRowsTriggerableWorkflow []table.Row
 
 	tableTriggerableWorkflow := table.New(
@@ -78,17 +69,15 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase, selectedRepository *hdlt
 	tableTriggerableWorkflow.SetStyles(s)
 
 	modelError := hdlerror.SetupModelError()
-	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubWorkflow{
+		Viewport:                        hdltypes.NewTerminalViewport(),
 		Help:                            help.New(),
 		Keys:                            keys,
 		github:                          githubUseCase,
 		modelError:                      &modelError,
 		tableTriggerableWorkflow:        tableTriggerableWorkflow,
-		SelectedRepository:              selectedRepository,
-		modelTabOptions:                 tabOptions,
-		actualModelTabOptions:           tabOptions,
+		SelectedRepository:              hdltypes.NewSelectedRepository(),
 		syncTriggerableWorkflowsContext: context.Background(),
 		cancelSyncTriggerableWorkflows:  func() {},
 	}
@@ -98,7 +87,7 @@ func (m *ModelGithubWorkflow) Init() tea.Cmd {
 	return nil
 }
 
-func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelGithubWorkflow) Update(msg tea.Msg) (*ModelGithubWorkflow, tea.Cmd) {
 	var cmd tea.Cmd
 
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
@@ -119,6 +108,10 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ModelGithubWorkflow) View() string {
+	var style = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240"))
+
 	termWidth := m.Viewport.Width
 	termHeight := m.Viewport.Height
 
@@ -136,7 +129,8 @@ func (m *ModelGithubWorkflow) View() string {
 	}
 
 	doc := strings.Builder{}
-	doc.WriteString(baseStyle.Render(m.tableTriggerableWorkflow.View()))
+	doc.WriteString(style.Render(m.tableTriggerableWorkflow.View()))
+	doc.WriteString("\n\n\n")
 
 	return doc.String()
 }
@@ -145,7 +139,6 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-	m.actualModelTabOptions.SetStatus(taboptions.OptionWait)
 
 	// delete all rows
 	m.tableTriggerableWorkflow.SetRows([]table.Row{})
@@ -163,7 +156,6 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	}
 
 	if len(triggerableWorkflows.TriggerableWorkflows) == 0 {
-		m.actualModelTabOptions.SetStatus(taboptions.OptionNone)
 		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] No triggerable workflow found.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 		return
 	}
@@ -200,8 +192,6 @@ func (m *ModelGithubWorkflow) handleTableInputs(_ context.Context) {
 	if len(rows) > 0 && len(selectedRow) > 0 {
 		m.SelectedRepository.WorkflowName = selectedRow[1]
 	}
-
-	m.actualModelTabOptions.SetStatus(taboptions.OptionIdle)
 }
 
 func (m *ModelGithubWorkflow) ViewStatus() string {

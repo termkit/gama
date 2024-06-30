@@ -3,18 +3,18 @@ package information
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
-
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/header"
+	"github.com/termkit/gama/internal/terminal/handler/types"
 	pkgversion "github.com/termkit/gama/pkg/version"
+	"strings"
+	"time"
 )
 
 type ModelInfo struct {
@@ -23,13 +23,14 @@ type ModelInfo struct {
 	// use cases
 	github gu.UseCase
 
-	// lockTabs will be set true if test connection fails
-	lockTabs *bool
+	complete bool
 
 	// models
+	modelHeader *header.Header
+
 	Help       help.Model
 	Viewport   *viewport.Model
-	modelError hdlerror.ModelError
+	modelError *hdlerror.ModelError
 	spinner    spinner.Model
 
 	// keymap
@@ -37,6 +38,8 @@ type ModelInfo struct {
 }
 
 const (
+	spinnerInterval = 100 * time.Millisecond
+
 	releaseURL = "https://github.com/termkit/gama/releases"
 
 	applicationName = `
@@ -54,23 +57,27 @@ var (
 	applicationDescription string
 )
 
-func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version, lockTabs *bool) *ModelInfo {
+func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
+	hdlModelHeader := header.NewHeader()
 
 	s := spinner.New()
-	s.Spinner = spinner.Pulse
+	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
-		github:     githubUseCase,
-		version:    version,
-		Help:       help.New(),
-		Keys:       keys,
-		modelError: modelError,
-		lockTabs:   lockTabs,
-		spinner:    s,
+		Viewport:    types.NewTerminalViewport(),
+		modelHeader: hdlModelHeader,
+		github:      githubUseCase,
+		version:     version,
+		Help:        help.New(),
+		Keys:        keys,
+		modelError:  &modelError,
+		spinner:     s,
 	}
 }
+
+type UpdateSpinnerMsg string
 
 func (m *ModelInfo) Init() tea.Cmd {
 	currentVersion = m.version.CurrentVersion()
@@ -78,7 +85,17 @@ func (m *ModelInfo) Init() tea.Cmd {
 
 	go m.testConnection(context.Background())
 	go m.checkUpdates(context.Background())
-	return nil
+	return m.tickSpinner()
+}
+
+func (m *ModelInfo) tickSpinner() tea.Cmd {
+	t := time.NewTimer(spinnerInterval)
+	return func() tea.Msg {
+		select {
+		case <-t.C:
+			return UpdateSpinnerMsg("tick")
+		}
+	}
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
@@ -86,7 +103,7 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to check updates")
-		newVersionAvailableMsg = fmt.Sprintf("failed to check updates: %v\nPlease visit: %s", err, releaseURL)
+		newVersionAvailableMsg = fmt.Sprintf("failed to check updates.\nPlease visit: %s", releaseURL)
 		return
 	}
 
@@ -97,16 +114,17 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	go m.Update(m)
 }
 
-func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ModelInfo) Update(msg tea.Msg) (*ModelInfo, tea.Cmd) {
 	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.Help.Width = msg.Width
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.Keys.Quit):
-			return m, tea.Quit
+	switch msg.(type) {
+	case UpdateSpinnerMsg:
+		if m.complete {
+			return m, nil
 		}
+
+		m.modelError.SetProgressMessage("Checking your token " + m.spinner.View())
+		m.spinner, cmd = m.spinner.Update(m.spinner.Tick())
+		return m, m.tickSpinner()
 	}
 
 	return m, cmd
@@ -123,8 +141,8 @@ func (m *ModelInfo) View() string {
 
 	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
 
-	docHeight := strings.Count(infoDoc.String(), "\n")
-	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 13
+	docHeight := lipgloss.Height(infoDoc.String())
+	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 12
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 
@@ -132,36 +150,18 @@ func (m *ModelInfo) View() string {
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {
-	ctxWithCancel, cancel := context.WithCancel(ctx)
-
-	// TODO: make it better
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				m.spinner, _ = m.spinner.Update(m.spinner.Tick())
-				m.modelError.SetProgressMessage("Checking your token " + m.spinner.View())
-				time.Sleep(200 * time.Millisecond)
-			}
-		}
-	}(ctxWithCancel)
-	defer cancel()
-
 	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")
-		*m.lockTabs = true
+		m.modelHeader.SetLockTabs(true)
 		return
 	}
 
 	m.modelError.Reset()
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
-	*m.lockTabs = false
-
-	go m.Update(m)
+	m.modelHeader.SetLockTabs(false)
+	m.complete = true
 }
 
 func (m *ModelInfo) ViewStatus() string {

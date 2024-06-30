@@ -78,6 +78,90 @@ func NewOptions(modelError *hdlerror.ModelError) *Options {
 	}
 }
 
+func (o *Options) Init() tea.Cmd {
+	return func() tea.Msg {
+		return tea.KeyMsg{}
+	}
+}
+
+func (o *Options) Update(msg tea.Msg) (*Options, tea.Cmd) {
+	var cmd tea.Cmd
+
+	if o.status == OptionWait || o.status == OptionNone {
+		return o, cmd
+	}
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch keypress := msg.String(); keypress {
+		case "1":
+			o.updateCursor(1)
+		case "2":
+			o.updateCursor(2)
+		case "3":
+			o.updateCursor(3)
+		case "4":
+			o.updateCursor(4)
+		case "enter":
+			o.executeOption()
+		}
+	}
+
+	return o, cmd
+}
+
+func (o *Options) View() string {
+	var style = o.Style.Foreground(lipgloss.Color("15"))
+
+	var opts []string
+
+	for i, option := range o.optionsAction {
+		switch o.status {
+		case OptionWait:
+			style = style.BorderForeground(lipgloss.Color("208"))
+		case OptionNone:
+			style = style.BorderForeground(lipgloss.Color("240"))
+		default:
+			isActive := i == o.cursor
+
+			if isActive {
+				style = style.BorderForeground(lipgloss.Color("150"))
+			} else {
+				style = style.BorderForeground(lipgloss.Color("240"))
+			}
+		}
+		opts = append(opts, style.Render(option))
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, opts...)
+}
+
+func (o *Options) resetOptionsWithOriginal() {
+	if o.isTabSelected {
+		return
+	}
+	o.isTabSelected = true
+	o.timer = 3
+	for o.timer >= 0 {
+		o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
+		time.Sleep(1 * time.Second)
+		o.timer--
+	}
+	o.modelLock = false
+	o.switchToPreviousError()
+	o.optionsAction[0] = string(OptionIdle)
+	o.cursor = 0
+	o.isTabSelected = false
+}
+
+func (o *Options) updateCursor(cursor int) {
+	if cursor < len(o.options) {
+		o.cursor = cursor
+		o.showAreYouSure()
+		go o.resetOptionsWithOriginal()
+	}
+}
+
 func (o *Options) SetStatus(status OptionStatus) {
 	o.status = status
 	o.options[0] = status.String()
@@ -119,86 +203,4 @@ func (o *Options) executeOption() {
 	go o.optionsWithFunc[o.cursor]()
 	o.cursor = 0
 	o.timer = -1
-}
-
-func (o *Options) Init() tea.Cmd {
-	return nil
-}
-
-func (o *Options) resetOptionsWithOriginal() {
-	if o.isTabSelected {
-		return
-	}
-	o.isTabSelected = true
-	o.timer = 3
-	for o.timer >= 0 {
-		o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
-		time.Sleep(1 * time.Second)
-		o.timer--
-	}
-	o.modelLock = false
-	o.switchToPreviousError()
-	o.optionsAction[0] = string(OptionIdle)
-	o.cursor = 0
-	o.isTabSelected = false
-}
-
-func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	if o.status == OptionWait || o.status == OptionNone {
-		return o, cmd
-	}
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch keypress := msg.String(); keypress {
-		case "1":
-			o.updateCursor(1)
-		case "2":
-			o.updateCursor(2)
-		case "3":
-			o.updateCursor(3)
-		case "4":
-			o.updateCursor(4)
-		case "enter":
-			o.executeOption()
-		}
-	}
-
-	return o, cmd
-}
-
-func (o *Options) updateCursor(cursor int) {
-	if cursor < len(o.options) {
-		o.cursor = cursor
-		o.showAreYouSure()
-		go o.resetOptionsWithOriginal()
-	}
-}
-
-func (o *Options) View() string {
-	var style = o.Style.Foreground(lipgloss.Color("15"))
-
-	var opts []string
-
-	for i, option := range o.optionsAction {
-		switch o.status {
-		case OptionWait:
-			style = style.BorderForeground(lipgloss.Color("208"))
-		case OptionNone:
-			style = style.BorderForeground(lipgloss.Color("240"))
-		default:
-			isActive := i == o.cursor
-
-			if isActive {
-				style = style.BorderForeground(lipgloss.Color("150"))
-			} else {
-				style = style.BorderForeground(lipgloss.Color("240"))
-			}
-		}
-		opts = append(opts, style.Render(option))
-	}
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, opts...)
 }
