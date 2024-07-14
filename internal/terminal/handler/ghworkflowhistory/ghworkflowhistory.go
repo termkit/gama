@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	ts "github.com/termkit/gama/internal/terminal/style"
 	"strings"
 	"time"
 
@@ -173,7 +174,7 @@ func (m *ModelGithubWorkflowHistory) setupOptions() {
 	m.modelTabOptions.AddOption("Cancel workflow", cancelWorkflow)
 }
 
-func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (*ModelGithubWorkflowHistory, tea.Cmd) {
+func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
 		m.tableReady = false
 		m.cancelSyncWorkflowHistory() // cancel previous sync
@@ -269,7 +270,8 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 func (m *ModelGithubWorkflowHistory) View() string {
 	var baseStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240"))
+		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
 
 	termWidth := m.Viewport.Width
 	termHeight := m.Viewport.Height
@@ -284,20 +286,20 @@ func (m *ModelGithubWorkflowHistory) View() string {
 
 	if widthDiff > 0 {
 		if m.updateRound%2 == 0 {
-			newTableColumns[0].Width += widthDiff - 19
+			newTableColumns[0].Width += widthDiff - 16
 		} else {
-			newTableColumns[1].Width += widthDiff - 19
+			newTableColumns[1].Width += widthDiff - 16
 		}
 		m.updateRound++
 		m.tableWorkflowHistory.SetColumns(newTableColumns)
 	}
 
-	m.tableWorkflowHistory.SetHeight(termHeight - 17)
+	m.tableWorkflowHistory.SetHeight(termHeight - 16)
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableWorkflowHistory.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View())
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubWorkflowHistory) ViewStatus() string {

@@ -5,6 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/termkit/gama/internal/terminal/handler/spirit"
 	"github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	"strings"
@@ -19,7 +20,8 @@ type Header struct {
 	keys keyMap
 
 	currentTab int
-	lockTabs   bool
+
+	modelSpirit *spirit.ModelSpirit
 
 	commonHeaders         []commonHeader
 	specialHeader         specialHeader
@@ -51,11 +53,13 @@ var (
 // NewHeader returns a new Header.
 func NewHeader() *Header {
 	once.Do(func() {
+		s := spirit.NewSpirit()
+		s.SetLockTabs(false)
 		h = &Header{
+			modelSpirit:           s,
 			specialHeaderInterval: time.Millisecond * 100,
 			Viewport:              types.NewTerminalViewport(),
 			currentTab:            0,
-			lockTabs:              true,
 			keys:                  keys,
 		}
 	})
@@ -70,15 +74,7 @@ func (h *Header) GetCurrentTab() int {
 	return h.currentTab
 }
 
-func (h *Header) SetLockTabs(lock bool) {
-	h.lockTabs = lock
-}
-
-func (h *Header) GetLockTabs() bool {
-	return h.lockTabs
-}
-
-func (h *Header) AddCommonHeader(header string, inactiveStyle, activeStyle lipgloss.Style) {
+func (h *Header) AddCommonHeader(header string, activeStyle, inactiveStyle lipgloss.Style) {
 	h.commonHeaders = append(h.commonHeaders, commonHeader{
 		header:        header,
 		rawHeader:     header,
@@ -126,11 +122,11 @@ func (h *Header) Update(msg tea.Msg) (*Header, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, h.keys.SwitchTabLeft):
-			if !h.lockTabs {
+			if !h.modelSpirit.GetLockTabs() {
 				h.currentTab = max(h.currentTab-1, 0)
 			}
 		case key.Matches(msg, h.keys.SwitchTabRight):
-			if !h.lockTabs {
+			if !h.modelSpirit.GetLockTabs() {
 				h.currentTab = min(h.currentTab+1, len(h.commonHeaders)-1)
 			}
 		}
@@ -158,11 +154,10 @@ func (h *Header) View() string {
 		titles += "LLL RRR"
 	}
 	titleLen := len(titles)
-	specialTitleLen := len(h.specialHeader.header)
 
 	var renderedTitles []string
 	for i, title := range h.commonHeaders {
-		if h.lockTabs {
+		if h.modelSpirit.GetLockTabs() {
 			if i == 0 {
 				renderedTitles = append(renderedTitles, title.activeStyle.Render(title.header))
 			} else {
@@ -177,10 +172,7 @@ func (h *Header) View() string {
 		}
 	}
 
-	var specialHeader string
-	specialHeader = h.specialHeader.styles[h.currentSpecialStyle].Render(h.specialHeader.header)
+	line := strings.Repeat("─", h.Viewport.Width-(titleLen)+10)
 
-	line := strings.Repeat("─", h.Viewport.Width-(titleLen+specialTitleLen))
-
-	return lipgloss.JoinHorizontal(lipgloss.Center, append(renderedTitles, line, specialHeader)...)
+	return lipgloss.JoinHorizontal(lipgloss.Center, append(renderedTitles, line)...)
 }

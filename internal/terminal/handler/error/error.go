@@ -45,23 +45,23 @@ func SetupModelError() ModelError {
 
 func (m *ModelError) View() string {
 	var windowStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
-
+	width := hdltypes.NewTerminalViewport().Width - 4
 	doc := strings.Builder{}
 	if m.HaveError() {
-		windowStyle = ts.WindowStyleError.Width(*hdltypes.ScreenWidth)
+		windowStyle = ts.WindowStyleError.Width(width)
 		doc.WriteString(windowStyle.Render(m.ViewError()))
 		return doc.String()
 	}
 
 	switch m.messageType {
 	case MessageTypeDefault:
-		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+		windowStyle = ts.WindowStyleDefault.Width(width)
 	case MessageTypeProgress:
-		windowStyle = ts.WindowStyleProgress.Width(*hdltypes.ScreenWidth)
+		windowStyle = ts.WindowStyleProgress.Width(width)
 	case MessageTypeSuccess:
-		windowStyle = ts.WindowStyleSuccess.Width(*hdltypes.ScreenWidth)
+		windowStyle = ts.WindowStyleSuccess.Width(width)
 	default:
-		windowStyle = ts.WindowStyleDefault.Width(*hdltypes.ScreenWidth)
+		windowStyle = ts.WindowStyleDefault.Width(width)
 	}
 
 	doc.WriteString(windowStyle.Render(m.ViewMessage()))

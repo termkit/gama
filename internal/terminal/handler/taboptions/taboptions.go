@@ -114,6 +114,7 @@ func (o *Options) View() string {
 	var style = o.Style.Foreground(lipgloss.Color("15"))
 
 	var opts []string
+	opts = append(opts, " ")
 
 	for i, option := range o.optionsAction {
 		switch o.status {

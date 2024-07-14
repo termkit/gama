@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
@@ -19,7 +16,11 @@ import (
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
+	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/gama/pkg/browser"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type ModelGithubRepository struct {
@@ -48,10 +49,6 @@ type ModelGithubRepository struct {
 
 	textInput textinput.Model
 }
-
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
 
 func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository {
 	var tableRowsGithubRepository []table.Row
@@ -127,9 +124,19 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository
 	}
 }
 
-func (m *ModelGithubRepository) Init() tea.Cmd {
-	go m.syncRepositories(m.syncRepositoriesContext)
+type UpdateSpinnerMsg string
 
+func (m *ModelGithubRepository) tickSpinner() tea.Cmd {
+	t := time.NewTimer(time.Millisecond * 200)
+	return func() tea.Msg {
+		select {
+		case <-t.C:
+			return UpdateSpinnerMsg("tick")
+		}
+	}
+}
+
+func (m *ModelGithubRepository) Init() tea.Cmd {
 	openInBrowser := func() {
 		m.modelError.SetProgressMessage("Opening in browser...")
 
@@ -145,10 +152,10 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 
 	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
 
-	return tea.Batch(m.modelTabOptions.Init())
+	return tea.Batch(m.modelTabOptions.Init(), m.syncRepositories(m.syncRepositoriesContext), m.tickSpinner())
 }
 
-func (m *ModelGithubRepository) Update(msg tea.Msg) (*ModelGithubRepository, tea.Cmd) {
+func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
@@ -169,6 +176,8 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (*ModelGithubRepository, tea
 			m.searchTableGithubRepository.GotoTop()
 			m.searchTableGithubRepository.SetCursor(0)
 		}
+	case UpdateSpinnerMsg:
+		return m, m.tickSpinner()
 	}
 
 	m.textInput, cmd = m.textInput.Update(textInputMsg)
@@ -191,8 +200,11 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (*ModelGithubRepository, tea
 }
 
 func (m *ModelGithubRepository) View() string {
-	termWidth := m.Viewport.Width
-	termHeight := m.Viewport.Height
+	var baseStyle = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
+
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
 
 	var tableWidth int
 	for _, t := range tableColumnsGithubRepository {
@@ -200,20 +212,20 @@ func (m *ModelGithubRepository) View() string {
 	}
 
 	newTableColumns := tableColumnsGithubRepository
-	widthDiff := termWidth - tableWidth
+	widthDiff := m.Viewport.Width - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[0].Width += widthDiff - 15
+		newTableColumns[0].Width += widthDiff - 12
 		m.tableGithubRepository.SetColumns(newTableColumns)
-		m.tableGithubRepository.SetHeight(termHeight - 20)
+		m.tableGithubRepository.SetHeight(m.Viewport.Height - 19)
 	}
 
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View())
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
-func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
+func (m *ModelGithubRepository) syncRepositories(ctx context.Context) tea.Cmd {
 	m.modelError.ResetError() // reset previous errors
 	m.modelTabOptions.SetStatus(taboptions.OptionWait)
 	m.modelError.SetProgressMessage("Fetching repositories...")
@@ -228,18 +240,18 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 		Sort:  domain.SortByUpdated,
 	})
 	if errors.Is(err, context.Canceled) {
-		return
+		return nil
 	} else if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Repositories cannot be listed")
-		return
+		return nil
 	}
 
 	if len(repositories.Repositories) == 0 {
 		m.modelTabOptions.SetStatus(taboptions.OptionNone)
 		m.modelError.SetDefaultMessage("No repositories found")
 		m.textInput.Blur()
-		return
+		return nil
 	}
 
 	tableRowsGithubRepository := make([]table.Row, 0, len(repositories.Repositories))
@@ -260,6 +272,7 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	m.textInput.Focus()
 	m.modelError.SetSuccessMessage("Repositories fetched")
 	go m.Update(m) // update model
+	return nil
 }
 
 func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
@@ -284,7 +297,7 @@ func (m *ModelGithubRepository) viewSearchBar() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(*hdltypes.ScreenWidth - 2)
+		Width(m.Viewport.Width - 4).MarginLeft(1)
 
 	// Build the options list
 	doc := strings.Builder{}

@@ -10,8 +10,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
-	"github.com/termkit/gama/internal/terminal/handler/header"
+	"github.com/termkit/gama/internal/terminal/handler/spirit"
 	"github.com/termkit/gama/internal/terminal/handler/types"
+	ts "github.com/termkit/gama/internal/terminal/style"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ type ModelInfo struct {
 	complete bool
 
 	// models
-	modelHeader *header.Header
+	modelSpirit *spirit.ModelSpirit
 
 	Help       help.Model
 	Viewport   *viewport.Model
@@ -59,7 +60,7 @@ var (
 
 func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
-	hdlModelHeader := header.NewHeader()
+	//hdlModelHeader := header.NewHeader()
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
@@ -67,7 +68,7 @@ func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *Model
 
 	return &ModelInfo{
 		Viewport:    types.NewTerminalViewport(),
-		modelHeader: hdlModelHeader,
+		modelSpirit: spirit.NewSpirit(),
 		github:      githubUseCase,
 		version:     version,
 		Help:        help.New(),
@@ -114,7 +115,7 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	go m.Update(m)
 }
 
-func (m *ModelInfo) Update(msg tea.Msg) (*ModelInfo, tea.Cmd) {
+func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg.(type) {
 	case UpdateSpinnerMsg:
@@ -137,30 +138,33 @@ func (m *ModelInfo) View() string {
 		BorderForeground(lipgloss.Color("39")).
 		Align(lipgloss.Center).
 		Border(lipgloss.RoundedBorder()).
-		Width(m.Viewport.Width - 7)
+		Width(m.Viewport.Width - 3)
+
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
 
 	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
 
 	docHeight := lipgloss.Height(infoDoc.String())
-	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 12
+	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 11
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 
-	return ws.Render(infoDoc.String())
+	return lipgloss.JoinVertical(lipgloss.Top, ws.Render(infoDoc.String()), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {
+	//time.Sleep(3 * time.Second)
 	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")
-		m.modelHeader.SetLockTabs(true)
+		m.modelSpirit.SetLockTabs(true)
 		return
 	}
 
 	m.modelError.Reset()
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
-	m.modelHeader.SetLockTabs(false)
+	m.modelSpirit.SetLockTabs(false)
 	m.complete = true
 }
 

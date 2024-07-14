@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	ts "github.com/termkit/gama/internal/terminal/style"
 	"sort"
 	"strings"
 
@@ -87,7 +88,7 @@ func (m *ModelGithubWorkflow) Init() tea.Cmd {
 	return nil
 }
 
-func (m *ModelGithubWorkflow) Update(msg tea.Msg) (*ModelGithubWorkflow, tea.Cmd) {
+func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
@@ -112,6 +113,8 @@ func (m *ModelGithubWorkflow) View() string {
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240"))
 
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
+
 	termWidth := m.Viewport.Width
 	termHeight := m.Viewport.Height
 
@@ -132,7 +135,7 @@ func (m *ModelGithubWorkflow) View() string {
 	doc.WriteString(style.Render(m.tableTriggerableWorkflow.View()))
 	doc.WriteString("\n\n\n")
 
-	return doc.String()
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {

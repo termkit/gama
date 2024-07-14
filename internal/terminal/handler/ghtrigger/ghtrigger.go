@@ -15,6 +15,7 @@ import (
 	"github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
 	"github.com/termkit/gama/internal/terminal/handler/header"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
+	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/gama/pkg/workflow"
 	"slices"
 	"strings"
@@ -101,7 +102,7 @@ func (m *ModelGithubTrigger) Init() tea.Cmd {
 	return tea.Batch(textinput.Blink)
 }
 
-func (m *ModelGithubTrigger) Update(msg tea.Msg) (*ModelGithubTrigger, tea.Cmd) {
+func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.SelectedRepository.WorkflowName == "" {
 		m.modelError.Reset()
 		m.modelError.SetDefaultMessage("No workflow selected.")
@@ -342,6 +343,8 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 
 func (m *ModelGithubTrigger) View() string {
 	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder())
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
+
 	if m.triggerFocused {
 		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
 	} else {
@@ -381,7 +384,7 @@ func (m *ModelGithubTrigger) View() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(),
-		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()))
+		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
@@ -619,7 +622,7 @@ func (m *ModelGithubTrigger) emptySelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(*hdltypes.ScreenWidth - 13)
+		Width(m.Viewport.Width - 13)
 
 	// Build the options list
 	doc := strings.Builder{}
@@ -632,14 +635,9 @@ func (m *ModelGithubTrigger) inputSelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(*hdltypes.ScreenWidth - 13)
+		Width(m.Viewport.Width - 13).MarginLeft(2)
 
-	// Build the options list
-	doc := strings.Builder{}
-
-	doc.WriteString(m.textInput.View())
-
-	return windowStyle.Render(doc.String())
+	return windowStyle.Render(m.textInput.View())
 }
 
 // optionSelector renders the options list
@@ -649,7 +647,7 @@ func (m *ModelGithubTrigger) optionSelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(*hdltypes.ScreenWidth - 13)
+		Width(m.Viewport.Width - 13).MarginLeft(1)
 
 	// Define styles for selected and unselected options
 	selectedOptionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Padding(0, 1)

@@ -24,8 +24,6 @@ func NewSelectedRepository() *SelectedRepository {
 	return selectedRepository
 }
 
-var ScreenWidth *int
-
 // ----------------------------------------------
 
 const (
