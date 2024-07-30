@@ -2,11 +2,12 @@ package error
 
 import (
 	"fmt"
-	"strings"
-
+	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
+	"strings"
 )
 
 type ModelError struct {
@@ -21,6 +22,17 @@ type ModelError struct {
 
 	// messageType is hold the message type
 	messageType MessageType
+
+	// spinner is hold the spinner
+	spinner spinner.Model
+
+	updateChan     chan UpdateSelf
+	disableSpinner bool
+}
+
+type UpdateSelf struct {
+	Message    string
+	InProgress bool
 }
 
 type MessageType string
@@ -37,59 +49,129 @@ const (
 )
 
 func SetupModelError() ModelError {
+	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 	return ModelError{
-		err:          nil,
-		errorMessage: "",
+		spinner:        s,
+		err:            nil,
+		errorMessage:   "",
+		updateChan:     make(chan UpdateSelf),
+		disableSpinner: false,
 	}
+}
+
+func (m *ModelError) Init() tea.Cmd {
+	return tea.Batch(m.SelfUpdater())
+}
+
+func (m *ModelError) Update(msg tea.Msg) (*ModelError, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		m.spinner, cmd = m.spinner.Update(msg)
+		cmds = append(cmds, cmd)
+	case UpdateSelf:
+		if msg.InProgress {
+			m.spinner, cmd = m.spinner.Update(m.spinner.Tick())
+			cmds = append(cmds, cmd)
+		}
+	}
+
+	cmds = append(cmds, m.SelfUpdater())
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m *ModelError) View() string {
 	var windowStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
 	width := hdltypes.NewTerminalViewport().Width - 4
 	doc := strings.Builder{}
+
+	var s string
+	if !m.disableSpinner {
+		s = m.spinner.View()
+	}
+
 	if m.HaveError() {
 		windowStyle = ts.WindowStyleError.Width(width)
-		doc.WriteString(windowStyle.Render(m.ViewError()))
-		return doc.String()
+		doc.WriteString(windowStyle.Render(m.viewError()))
+		return lipgloss.JoinHorizontal(lipgloss.Top, doc.String())
 	}
 
 	switch m.messageType {
 	case MessageTypeDefault:
 		windowStyle = ts.WindowStyleDefault.Width(width)
+		s = ""
 	case MessageTypeProgress:
 		windowStyle = ts.WindowStyleProgress.Width(width)
 	case MessageTypeSuccess:
 		windowStyle = ts.WindowStyleSuccess.Width(width)
+		s = ""
 	default:
 		windowStyle = ts.WindowStyleDefault.Width(width)
 	}
 
-	doc.WriteString(windowStyle.Render(m.ViewMessage()))
-
+	doc.WriteString(windowStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, m.viewMessage(), " ", s)))
 	return doc.String()
+}
+
+func (m *ModelError) SelfUpdater() tea.Cmd {
+	return func() tea.Msg {
+		go func() {
+			select {
+			case o := <-m.updateChan:
+				if o.InProgress {
+					m.updateChan <- UpdateSelf{Message: o.Message, InProgress: true}
+				} else {
+					m.updateChan <- UpdateSelf{Message: o.Message, InProgress: false}
+				}
+			}
+		}()
+		return <-m.updateChan
+	}
+}
+
+func (m *ModelError) EnableSpinner() {
+	m.disableSpinner = false
+	//m.updateChan <- UpdateSelf{Message: m.message, InProgress: true}
+}
+
+func (m *ModelError) DisableSpinner() {
+	m.disableSpinner = true
+	//m.updateChan <- UpdateSelf{Message: m.message, InProgress: false}
 }
 
 func (m *ModelError) SetError(err error) {
 	m.err = err
 }
 
-func (m *ModelError) SetErrorMessage(errorMessage string) {
-	m.errorMessage = errorMessage
+func (m *ModelError) SetErrorMessage(message string) {
+	m.errorMessage = message
+	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
 }
 
 func (m *ModelError) SetProgressMessage(message string) {
 	m.messageType = MessageTypeProgress
 	m.message = message
+
+	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
 }
 
 func (m *ModelError) SetSuccessMessage(message string) {
+	// You should trigger update itself
 	m.messageType = MessageTypeSuccess
 	m.message = message
+
+	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
 }
 
 func (m *ModelError) SetDefaultMessage(message string) {
+	// You should trigger update itself
 	m.messageType = MessageTypeDefault
 	m.message = message
+
+	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
 }
 
 func (m *ModelError) GetError() error {
@@ -122,13 +204,13 @@ func (m *ModelError) HaveError() bool {
 	return m.err != nil
 }
 
-func (m *ModelError) ViewError() string {
+func (m *ModelError) viewError() string {
 	doc := strings.Builder{}
 	doc.WriteString(fmt.Sprintf("Error [%v]: %s", m.err, m.errorMessage))
 	return doc.String()
 }
 
-func (m *ModelError) ViewMessage() string {
+func (m *ModelError) viewMessage() string {
 	doc := strings.Builder{}
 	doc.WriteString(m.message)
 	return doc.String()

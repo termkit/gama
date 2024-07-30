@@ -82,6 +82,11 @@ func (s *Skeleton) Init() tea.Cmd {
 }
 
 func (s *Skeleton) Update(msg tea.Msg) (*Skeleton, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	s.currentTab = s.header.GetCurrentTab()
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		s.Viewport.Width = msg.Width
@@ -108,11 +113,13 @@ func (s *Skeleton) Update(msg tea.Msg) (*Skeleton, tea.Cmd) {
 		}
 	}
 
-	var cmd tea.Cmd
 	s.header, cmd = s.header.Update(msg)
+	cmds = append(cmds, cmd)
+
 	s.Pages[s.currentTab], cmd = s.Pages[s.currentTab].Update(msg)
-	
-	return s, cmd
+	cmds = append(cmds, cmd)
+
+	return s, tea.Batch(cmds...)
 }
 
 func (s *Skeleton) View() string {

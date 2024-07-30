@@ -100,6 +100,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 		func() tea.Msg {
 			return UpdateWorkflowHistoryMsg{UpdateAfter: time.Second * 1}
 		},
+		m.modelError.Init(),
 	)
 }
 
@@ -205,6 +206,9 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncWorkflowHistory(m.syncWorkflowHistoryContext) // TODO : may you use go routine here?
 		}()
 	}
+
+	m.modelError, cmd = m.modelError.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
 	cmds = append(cmds, cmd)

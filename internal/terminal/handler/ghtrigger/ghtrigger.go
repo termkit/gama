@@ -51,7 +51,7 @@ type ModelGithubTrigger struct {
 
 	Help         help.Model
 	Viewport     *viewport.Model
-	modelError   hdlerror.ModelError
+	modelError   *hdlerror.ModelError
 	textInput    textinput.Model
 	tableTrigger table.Model
 }
@@ -82,6 +82,7 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase) *ModelGithubTrigger {
 	ti.Blur()
 	ti.CharLimit = 72
 
+	modelError := hdlerror.SetupModelError()
 	return &ModelGithubTrigger{
 		Viewport:            hdltypes.NewTerminalViewport(),
 		header:              header.NewHeader(),
@@ -89,7 +90,7 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase) *ModelGithubTrigger {
 		Keys:                keys,
 		github:              githubUseCase,
 		SelectedRepository:  hdltypes.NewSelectedRepository(),
-		modelError:          hdlerror.SetupModelError(),
+		modelError:          &modelError,
 		tableTrigger:        tableTrigger,
 		textInput:           ti,
 		syncWorkflowContext: context.Background(),
@@ -98,8 +99,8 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase) *ModelGithubTrigger {
 }
 
 func (m *ModelGithubTrigger) Init() tea.Cmd {
-	m.modelError.SetDefaultMessage("No workflow contents found.")
-	return tea.Batch(textinput.Blink)
+	//m.modelError.SetDefaultMessage("No workflow contents found.")
+	return tea.Batch(textinput.Blink, m.modelError.Init())
 }
 
 func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -177,6 +178,9 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
+
+	m.modelError, cmd = m.modelError.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.tableTrigger, cmd = m.tableTrigger.Update(msg)
 	cmds = append(cmds, cmd)

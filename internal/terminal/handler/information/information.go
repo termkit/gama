@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -15,7 +14,6 @@ import (
 	ts "github.com/termkit/gama/internal/terminal/style"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"strings"
-	"time"
 )
 
 type ModelInfo struct {
@@ -24,23 +22,25 @@ type ModelInfo struct {
 	// use cases
 	github gu.UseCase
 
-	complete bool
-
 	// models
 	modelSpirit *spirit.ModelSpirit
 
 	Help       help.Model
 	Viewport   *viewport.Model
 	modelError *hdlerror.ModelError
-	spinner    spinner.Model
 
 	// keymap
 	Keys keyMap
+
+	updateChan chan updateSelf
+}
+
+type updateSelf struct {
+	RefreshTerminal bool
+	Done            bool
 }
 
 const (
-	spinnerInterval = 100 * time.Millisecond
-
 	releaseURL = "https://github.com/termkit/gama/releases"
 
 	applicationName = `
@@ -60,11 +60,6 @@ var (
 
 func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	modelError := hdlerror.SetupModelError()
-	//hdlModelHeader := header.NewHeader()
-
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("120"))
 
 	return &ModelInfo{
 		Viewport:    types.NewTerminalViewport(),
@@ -74,29 +69,16 @@ func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *Model
 		Help:        help.New(),
 		Keys:        keys,
 		modelError:  &modelError,
-		spinner:     s,
 	}
 }
-
-type UpdateSpinnerMsg string
 
 func (m *ModelInfo) Init() tea.Cmd {
 	currentVersion = m.version.CurrentVersion()
 	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", currentVersion)
 
-	go m.testConnection(context.Background())
 	go m.checkUpdates(context.Background())
-	return m.tickSpinner()
-}
-
-func (m *ModelInfo) tickSpinner() tea.Cmd {
-	t := time.NewTimer(spinnerInterval)
-	return func() tea.Msg {
-		select {
-		case <-t.C:
-			return UpdateSpinnerMsg("tick")
-		}
-	}
+	go m.testConnection(context.Background())
+	return tea.Batch(m.modelError.Init(), m.handleSelfUpdate())
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
@@ -111,24 +93,26 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	if isUpdateAvailable {
 		newVersionAvailableMsg = fmt.Sprintf("New version available: %s\nPlease visit: %s", version, releaseURL)
 	}
-
-	go m.Update(m)
 }
 
 func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
-	switch msg.(type) {
-	case UpdateSpinnerMsg:
-		if m.complete {
-			return m, nil
+	switch msg := msg.(type) {
+	case updateSelf:
+		//if msg.Done {
+		//	return m, nil
+		//}
+		if msg.RefreshTerminal {
+			m.modelError, cmd = m.modelError.Update(msg)
+			cmds = append(cmds, cmd)
 		}
-
-		m.modelError.SetProgressMessage("Checking your token " + m.spinner.View())
-		m.spinner, cmd = m.spinner.Update(m.spinner.Tick())
-		return m, m.tickSpinner()
 	}
 
-	return m, cmd
+	m.modelError, cmd = m.modelError.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m *ModelInfo) View() string {
@@ -153,7 +137,12 @@ func (m *ModelInfo) View() string {
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {
+	m.modelError.EnableSpinner()
+	m.modelError.SetProgressMessage("Checking your token...")
+	m.modelSpirit.SetLockTabs(true)
+
 	//time.Sleep(3 * time.Second)
+
 	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
@@ -165,7 +154,23 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	m.modelError.Reset()
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
 	m.modelSpirit.SetLockTabs(false)
-	m.complete = true
+	m.updateChan <- updateSelf{Done: true}
+}
+
+func (m *ModelInfo) handleSelfUpdate() tea.Cmd {
+	return func() tea.Msg {
+		go func() {
+			select {
+			case o := <-m.updateChan:
+				if o.Done {
+					m.updateChan <- updateSelf{Done: true}
+				} else {
+					m.updateChan <- updateSelf{RefreshTerminal: true}
+				}
+			}
+		}()
+		return <-m.updateChan
+	}
 }
 
 func (m *ModelInfo) ViewStatus() string {

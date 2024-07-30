@@ -20,7 +20,6 @@ import (
 	"github.com/termkit/gama/pkg/browser"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type ModelGithubRepository struct {
@@ -48,6 +47,8 @@ type ModelGithubRepository struct {
 	modelTabOptions *taboptions.Options
 
 	textInput textinput.Model
+
+	updateChan chan updateSelf
 }
 
 func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository {
@@ -121,18 +122,22 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository
 		textInput:               ti,
 		syncRepositoriesContext: context.Background(),
 		cancelSyncRepositories:  func() {},
+		updateChan:              make(chan updateSelf),
 	}
 }
 
-type UpdateSpinnerMsg string
+type updateSelf struct {
+}
 
-func (m *ModelGithubRepository) tickSpinner() tea.Cmd {
-	t := time.NewTimer(time.Millisecond * 200)
+func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
 	return func() tea.Msg {
-		select {
-		case <-t.C:
-			return UpdateSpinnerMsg("tick")
-		}
+		go func() {
+			select {
+			case _ = <-m.updateChan:
+				m.updateChan <- updateSelf{}
+			}
+		}()
+		return <-m.updateChan
 	}
 }
 
@@ -152,7 +157,8 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 
 	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
 
-	return tea.Batch(m.modelTabOptions.Init(), m.syncRepositories(m.syncRepositoriesContext), m.tickSpinner())
+	go m.syncRepositories(m.syncRepositoriesContext)
+	return tea.Batch(m.modelTabOptions.Init(), m.modelError.Init(), m.SelfUpdater())
 }
 
 func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -176,9 +182,12 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchTableGithubRepository.GotoTop()
 			m.searchTableGithubRepository.SetCursor(0)
 		}
-	case UpdateSpinnerMsg:
-		return m, m.tickSpinner()
+	case updateSelf:
+		cmds = append(cmds, m.SelfUpdater())
 	}
+
+	m.modelError, cmd = m.modelError.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.textInput, cmd = m.textInput.Update(textInputMsg)
 	cmds = append(cmds, cmd)
@@ -225,8 +234,8 @@ func (m *ModelGithubRepository) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
-func (m *ModelGithubRepository) syncRepositories(ctx context.Context) tea.Cmd {
-	m.modelError.ResetError() // reset previous errors
+func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
+	m.modelError.Reset() // reset previous errors
 	m.modelTabOptions.SetStatus(taboptions.OptionWait)
 	m.modelError.SetProgressMessage("Fetching repositories...")
 
@@ -240,18 +249,18 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) tea.Cmd {
 		Sort:  domain.SortByUpdated,
 	})
 	if errors.Is(err, context.Canceled) {
-		return nil
+		return
 	} else if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("Repositories cannot be listed")
-		return nil
+		return
 	}
 
 	if len(repositories.Repositories) == 0 {
 		m.modelTabOptions.SetStatus(taboptions.OptionNone)
 		m.modelError.SetDefaultMessage("No repositories found")
 		m.textInput.Blur()
-		return nil
+		return
 	}
 
 	tableRowsGithubRepository := make([]table.Row, 0, len(repositories.Repositories))
@@ -271,8 +280,8 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) tea.Cmd {
 	//m.updateSearchBarSuggestions()
 	m.textInput.Focus()
 	m.modelError.SetSuccessMessage("Repositories fetched")
-	go m.Update(m) // update model
-	return nil
+
+	m.updateChan <- updateSelf{}
 }
 
 func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {

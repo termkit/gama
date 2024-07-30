@@ -80,7 +80,7 @@ func NewOptions(modelError *hdlerror.ModelError) *Options {
 
 func (o *Options) Init() tea.Cmd {
 	return func() tea.Msg {
-		return tea.KeyMsg{}
+		return o.modelError.Init()
 	}
 }
 

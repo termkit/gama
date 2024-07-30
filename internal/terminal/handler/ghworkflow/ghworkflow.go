@@ -85,10 +85,11 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase) *ModelGithubWorkflow {
 }
 
 func (m *ModelGithubWorkflow) Init() tea.Cmd {
-	return nil
+	return tea.Batch(m.modelError.Init())
 }
 
 func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
@@ -101,11 +102,15 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		go m.syncTriggerableWorkflows(m.syncTriggerableWorkflowsContext)
 	}
 
+	m.modelError, cmd = m.modelError.Update(msg)
+	cmds = append(cmds, cmd)
+
 	m.tableTriggerableWorkflow, cmd = m.tableTriggerableWorkflow.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.handleTableInputs(m.syncTriggerableWorkflowsContext) // update table operations
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m *ModelGithubWorkflow) View() string {
