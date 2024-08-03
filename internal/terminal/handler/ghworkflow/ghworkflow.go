@@ -116,7 +116,7 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelGithubWorkflow) View() string {
 	var style = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240"))
+		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
 
 	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
 
@@ -131,9 +131,9 @@ func (m *ModelGithubWorkflow) View() string {
 	newTableColumns := tableColumnsWorkflow
 	widthDiff := termWidth - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[1].Width += widthDiff - 11
+		newTableColumns[1].Width += widthDiff - 8
 		m.tableTriggerableWorkflow.SetColumns(newTableColumns)
-		m.tableTriggerableWorkflow.SetHeight(termHeight - 17)
+		m.tableTriggerableWorkflow.SetHeight(termHeight - 16)
 	}
 
 	doc := strings.Builder{}
