@@ -122,7 +122,7 @@ func (m *ModelInfo) View() string {
 		BorderForeground(lipgloss.Color("39")).
 		Align(lipgloss.Center).
 		Border(lipgloss.RoundedBorder()).
-		Width(m.Viewport.Width - 3)
+		Width(m.Viewport.Width - 4).MarginLeft(1)
 
 	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
 

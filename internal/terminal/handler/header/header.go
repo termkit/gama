@@ -156,6 +156,7 @@ func (h *Header) View() string {
 	titleLen := len(titles)
 
 	var renderedTitles []string
+	renderedTitles = append(renderedTitles, " ")
 	for i, title := range h.commonHeaders {
 		if h.modelSpirit.GetLockTabs() {
 			if i == 0 {
@@ -172,7 +173,7 @@ func (h *Header) View() string {
 		}
 	}
 
-	line := strings.Repeat("─", h.Viewport.Width-(titleLen)+10)
+	line := strings.Repeat("─", h.Viewport.Width-(titleLen)+7)
 
 	return lipgloss.JoinHorizontal(lipgloss.Center, append(renderedTitles, line)...)
 }
