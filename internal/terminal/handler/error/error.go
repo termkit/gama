@@ -118,17 +118,12 @@ func (m *ModelError) View() string {
 
 func (m *ModelError) SelfUpdater() tea.Cmd {
 	return func() tea.Msg {
-		go func() {
-			select {
-			case o := <-m.updateChan:
-				if o.InProgress {
-					m.updateChan <- UpdateSelf{Message: o.Message, InProgress: true}
-				} else {
-					m.updateChan <- UpdateSelf{Message: o.Message, InProgress: false}
-				}
-			}
-		}()
-		return <-m.updateChan
+		select {
+		case o := <-m.updateChan:
+			return o
+		default:
+			return nil
+		}
 	}
 }
 
@@ -148,30 +143,33 @@ func (m *ModelError) SetError(err error) {
 
 func (m *ModelError) SetErrorMessage(message string) {
 	m.errorMessage = message
-	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	go func() {
+		m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	}()
 }
 
 func (m *ModelError) SetProgressMessage(message string) {
 	m.messageType = MessageTypeProgress
 	m.message = message
-
-	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	go func() {
+		m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	}()
 }
 
 func (m *ModelError) SetSuccessMessage(message string) {
-	// You should trigger update itself
 	m.messageType = MessageTypeSuccess
 	m.message = message
-
-	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	go func() {
+		m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	}()
 }
 
 func (m *ModelError) SetDefaultMessage(message string) {
-	// You should trigger update itself
 	m.messageType = MessageTypeDefault
 	m.message = message
-
-	m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	go func() {
+		m.updateChan <- UpdateSelf{Message: message, InProgress: true}
+	}()
 }
 
 func (m *ModelError) GetError() error {
