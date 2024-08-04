@@ -99,7 +99,6 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase) *ModelGithubTrigger {
 }
 
 func (m *ModelGithubTrigger) Init() tea.Cmd {
-	//m.modelError.SetDefaultMessage("No workflow contents found.")
 	return tea.Batch(textinput.Blink, m.modelError.Init())
 }
 
@@ -109,6 +108,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.modelError.SetDefaultMessage("No workflow selected.")
 		return m, nil
 	}
+
 	if m.SelectedRepository.WorkflowName != "" && (m.SelectedRepository.WorkflowName != m.selectedWorkflow || m.SelectedRepository.RepositoryName != m.selectedRepositoryName) {
 		m.tableReady = false
 		m.isTriggerable = false

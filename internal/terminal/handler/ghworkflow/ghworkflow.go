@@ -145,8 +145,7 @@ func (m *ModelGithubWorkflow) View() string {
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	m.modelError.Reset()
-	m.modelError.SetProgressMessage(
-		fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+	m.modelError.SetProgressMessage(fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 
 	// delete all rows
 	m.tableTriggerableWorkflow.SetRows([]table.Row{})
@@ -184,8 +183,6 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 
 	m.tableReady = true
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Triggerable workflows fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-
-	go m.Update(m) // update model
 }
 
 func (m *ModelGithubWorkflow) handleTableInputs(_ context.Context) {

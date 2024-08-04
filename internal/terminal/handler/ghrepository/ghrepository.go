@@ -156,9 +156,9 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 	}
 
 	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
-
+	m.modelError.Init()
 	go m.syncRepositories(m.syncRepositoriesContext)
-	return tea.Batch(m.modelTabOptions.Init(), m.modelError.Init(), m.SelfUpdater())
+	return tea.Batch(m.modelTabOptions.Init(), m.SelfUpdater())
 }
 
 func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
