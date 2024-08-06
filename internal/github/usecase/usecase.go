@@ -213,15 +213,17 @@ func (u useCase) timeToString(t time.Time) string {
 }
 
 func (u useCase) getDuration(startTime time.Time, endTime time.Time, status string) string {
-	if status != "completed" {
-		return "running"
-	}
-
 	// Convert UTC times to local timezone
 	localStartTime := startTime.In(time.Local)
 	localEndTime := endTime.In(time.Local)
 
-	diff := localEndTime.Sub(localStartTime)
+	var diff time.Duration
+
+	if status != "completed" {
+		diff = time.Now().Sub(localEndTime)
+	} else {
+		diff = localEndTime.Sub(localStartTime)
+	}
 
 	if diff.Seconds() < 60 {
 		return fmt.Sprintf("%ds", int(diff.Seconds()))

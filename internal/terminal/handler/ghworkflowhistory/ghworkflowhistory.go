@@ -357,7 +357,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 			workflowRun.ActionName,
 			workflowRun.TriggeredBy,
 			workflowRun.StartedAt,
-			workflowRun.Conclusion,
+			workflowRun.Status,
 			workflowRun.Duration,
 		})
 	}
