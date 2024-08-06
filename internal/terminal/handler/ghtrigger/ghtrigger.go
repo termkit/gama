@@ -353,7 +353,7 @@ func (m *ModelGithubTrigger) View() string {
 	if m.triggerFocused {
 		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
 	} else {
-		baseStyle = baseStyle.BorderForeground(lipgloss.Color("130"))
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("#00aaff"))
 	}
 
 	var tableWidth int
@@ -523,8 +523,8 @@ func (m *ModelGithubTrigger) triggerButton() string {
 		Align(lipgloss.Center)
 
 	if m.triggerFocused {
-		button = button.BorderForeground(lipgloss.Color("130")).
-			Foreground(lipgloss.Color("130")).
+		button = button.BorderForeground(lipgloss.Color("#00aaff")).
+			Foreground(lipgloss.Color("#00aaff")).
 			BorderStyle(lipgloss.DoubleBorder())
 	}
 
