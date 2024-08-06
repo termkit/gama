@@ -163,6 +163,7 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	}
 
 	if len(triggerableWorkflows.TriggerableWorkflows) == 0 {
+		m.SelectedRepository.WorkflowName = ""
 		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] No triggerable workflow found.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 		return
 	}

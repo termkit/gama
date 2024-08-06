@@ -106,6 +106,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.SelectedRepository.WorkflowName == "" {
 		m.modelError.Reset()
 		m.modelError.SetDefaultMessage("No workflow selected.")
+		m.fillTableWithEmptyMessage()
 		return m, nil
 	}
 
