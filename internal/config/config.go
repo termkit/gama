@@ -2,16 +2,24 @@ package config
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/spf13/viper"
+	"time"
 )
 
 type Config struct {
 	Github    Github    `mapstructure:"github"`
 	Shortcuts Shortcuts `mapstructure:"keys"`
+	Settings  Settings  `mapstructure:"settings"`
+}
+
+type Settings struct {
+	LiveMode struct {
+		Enabled  bool          `mapstructure:"enabled"`
+		Interval time.Duration `mapstructure:"interval"`
+	} `mapstructure:"live_mode"`
 }
 
 type Github struct {
@@ -32,6 +40,7 @@ func LoadConfig() (*Config, error) {
 	var config = new(Config)
 	defer func() {
 		config = fillDefaultShortcuts(config)
+		config = fillDefaultSettings(config)
 	}()
 
 	setConfig()

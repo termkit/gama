@@ -9,3 +9,8 @@ keys:
   live_mode: ctrl+l
   enter: enter
   tab: tab
+
+settings:
+  live_mode:
+    enabled: true # to enable live mode at startup
+    interval: 15s  # interval to refresh the page

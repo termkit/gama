@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/termkit/gama/internal/config"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ type ModelGithubWorkflowHistory struct {
 	// current handler's properties
 	tableReady                 bool
 	liveMode                   bool
+	liveModeInterval           time.Duration
 	tableStyle                 lipgloss.Style
 	updateRound                int
 	selectedWorkflowID         int64
@@ -55,6 +57,11 @@ type ModelGithubWorkflowHistory struct {
 }
 
 func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		panic(fmt.Sprintf("failed to load config: %v", err))
+	}
+
 	var tableRowsWorkflowHistory []table.Row
 
 	tableWorkflowHistory := table.New(
@@ -85,6 +92,8 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase) *ModelGithubWorkf
 
 	return &ModelGithubWorkflowHistory{
 		Viewport:                   hdltypes.NewTerminalViewport(),
+		liveMode:                   cfg.Settings.LiveMode.Enabled,
+		liveModeInterval:           cfg.Settings.LiveMode.Interval,
 		Help:                       help.New(),
 		Keys:                       keys,
 		github:                     githubUseCase,
@@ -130,8 +139,7 @@ func (m *ModelGithubWorkflowHistory) ToggleLiveMode() {
 	// send UpdateWorkflowHistoryMsg to update the workflow history every 5 seconds with ticker
 	// send only if liveMode is true
 	go func() {
-		updateAfter := time.Second * 5
-		t := time.NewTicker(updateAfter)
+		t := time.NewTicker(m.liveModeInterval)
 		for {
 			select {
 			case <-t.C:
@@ -276,7 +284,6 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.Keys.Refresh):
-			m.tableReady = false
 			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 		case key.Matches(msg, m.Keys.LiveMode):
 			m.liveMode = !m.liveMode
@@ -290,7 +297,6 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UpdateWorkflowHistoryMsg:
 		go func() {
 			time.Sleep(msg.UpdateAfter)
-			m.tableReady = false
 			m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 		}()
 	case UpdateTableStyleMsg:
@@ -319,6 +325,7 @@ func (m *ModelGithubWorkflowHistory) sendChangeTableColorMessage(color string) {
 }
 
 func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
+	m.tableReady = false
 	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
