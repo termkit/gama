@@ -12,10 +12,11 @@ type keyMap struct {
 	LaunchTab teakey.Binding
 	Refresh   teakey.Binding
 	SwitchTab teakey.Binding
+	LiveMode  teakey.Binding
 }
 
 func (k keyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.SwitchTab, k.Refresh, k.LaunchTab}
+	return []teakey.Binding{k.SwitchTab, k.Refresh, k.LaunchTab, k.LiveMode}
 }
 
 func (k keyMap) FullHelp() [][]teakey.Binding {
@@ -23,6 +24,7 @@ func (k keyMap) FullHelp() [][]teakey.Binding {
 		{k.SwitchTab},
 		{k.Refresh},
 		{k.LaunchTab},
+		{k.LiveMode},
 	}
 }
 
@@ -42,6 +44,10 @@ var keys = func() keyMap {
 		LaunchTab: teakey.NewBinding(
 			teakey.WithKeys(cfg.Shortcuts.Enter),
 			teakey.WithHelp(cfg.Shortcuts.Enter, "Launch the selected option"),
+		),
+		LiveMode: teakey.NewBinding(
+			teakey.WithKeys(cfg.Shortcuts.LiveMode),
+			teakey.WithHelp(cfg.Shortcuts.LiveMode, "Toggle live mode"),
 		),
 		SwitchTab: teakey.NewBinding(
 			teakey.WithKeys(""), // help-only binding

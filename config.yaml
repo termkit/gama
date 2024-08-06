@@ -6,5 +6,6 @@ keys:
   switch_tab_left: shift+left
   quit: ctrl+c
   refresh: ctrl+r
+  live_mode: ctrl+l
   enter: enter
   tab: tab

@@ -24,6 +24,7 @@ type Shortcuts struct {
 	Quit           string `mapstructure:"quit"`
 	Refresh        string `mapstructure:"refresh"`
 	Enter          string `mapstructure:"enter"`
+	LiveMode       string `mapstructure:"live_mode"`
 	Tab            string `mapstructure:"tab"`
 }
 

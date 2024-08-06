@@ -25,11 +25,16 @@ func fillDefaultShortcuts(cfg *Config) *Config {
 	if tab == "" {
 		tab = defaultKeyMap.Tab
 	}
+	var liveMode = cfg.Shortcuts.LiveMode
+	if liveMode == "" {
+		liveMode = defaultKeyMap.LiveMode
+	}
 	cfg.Shortcuts = Shortcuts{
 		SwitchTabRight: switchTabRight,
 		SwitchTabLeft:  switchTabLeft,
 		Quit:           quit,
 		Refresh:        refresh,
+		LiveMode:       liveMode,
 		Enter:          enter,
 		Tab:            tab,
 	}
@@ -44,6 +49,7 @@ type defaultMap struct {
 	Refresh        string
 	Enter          string
 	Tab            string
+	LiveMode       string
 }
 
 var defaultKeyMap = defaultMap{
@@ -53,4 +59,5 @@ var defaultKeyMap = defaultMap{
 	Refresh:        "ctrl+r",
 	Enter:          "enter",
 	Tab:            "tab",
+	LiveMode:       "ctrl+l",
 }
