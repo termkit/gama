@@ -393,15 +393,15 @@ func (m *ModelGithubWorkflowHistory) View() string {
 
 	if widthDiff > 0 {
 		if m.updateRound%2 == 0 {
-			newTableColumns[0].Width += widthDiff - 16
+			newTableColumns[0].Width += widthDiff - 18
 		} else {
-			newTableColumns[1].Width += widthDiff - 16
+			newTableColumns[1].Width += widthDiff - 18
 		}
 		m.updateRound++
 		m.tableWorkflowHistory.SetColumns(newTableColumns)
 	}
 
-	m.tableWorkflowHistory.SetHeight(termHeight - 17)
+	m.tableWorkflowHistory.SetHeight(termHeight - 18)
 
 	doc := strings.Builder{}
 	doc.WriteString(m.tableStyle.Render(m.tableWorkflowHistory.View()))

@@ -223,9 +223,9 @@ func (m *ModelGithubRepository) View() string {
 	newTableColumns := tableColumnsGithubRepository
 	widthDiff := m.Viewport.Width - tableWidth
 	if widthDiff > 0 {
-		newTableColumns[0].Width += widthDiff - 12
+		newTableColumns[0].Width += widthDiff - 14
 		m.tableGithubRepository.SetColumns(newTableColumns)
-		m.tableGithubRepository.SetHeight(m.Viewport.Height - 19)
+		m.tableGithubRepository.SetHeight(m.Viewport.Height - 20)
 	}
 
 	doc := strings.Builder{}
@@ -306,7 +306,7 @@ func (m *ModelGithubRepository) viewSearchBar() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 4).MarginLeft(1)
+		Width(m.Viewport.Width - 6).MarginLeft(1)
 
 	// Build the options list
 	doc := strings.Builder{}

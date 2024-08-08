@@ -118,22 +118,16 @@ func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelInfo) View() string {
 	infoDoc := strings.Builder{}
 
-	ws := lipgloss.NewStyle().
-		BorderForeground(lipgloss.Color("39")).
-		Align(lipgloss.Center).
-		Border(lipgloss.RoundedBorder()).
-		Width(m.Viewport.Width - 4).MarginLeft(1)
-
 	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
 
 	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
 
 	docHeight := lipgloss.Height(infoDoc.String())
-	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 11
+	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 10
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 
-	return lipgloss.JoinVertical(lipgloss.Top, ws.Render(infoDoc.String()), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Center, infoDoc.String(), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {

@@ -147,16 +147,15 @@ func (h *Header) Update(msg tea.Msg) (*Header, tea.Cmd) {
 
 // View renders the Header.
 func (h *Header) View() string {
-	var titles string
-	titles += "BBEEE"
+	var titleLen int
 	for _, title := range h.commonHeaders {
-		titles += title.rawHeader
-		titles += "LLL RRR"
+		titleLen += len(title.rawHeader)
+		titleLen += title.activeStyle.GetPaddingLeft() + title.activeStyle.GetPaddingRight()
+		titleLen += 2 // for the border between titles
 	}
-	titleLen := len(titles)
 
 	var renderedTitles []string
-	renderedTitles = append(renderedTitles, " ")
+	renderedTitles = append(renderedTitles, "")
 	for i, title := range h.commonHeaders {
 		if h.modelSpirit.GetLockTabs() {
 			if i == 0 {
@@ -173,7 +172,13 @@ func (h *Header) View() string {
 		}
 	}
 
-	line := strings.Repeat("─", h.Viewport.Width-(titleLen)+7)
+	leftCorner := lipgloss.JoinVertical(lipgloss.Top, "╭", "│")
+	rightCorner := lipgloss.JoinVertical(lipgloss.Top, "╮", "│")
+	leftCorner = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render(leftCorner)
+	rightCorner = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render(rightCorner)
 
-	return lipgloss.JoinHorizontal(lipgloss.Center, append(renderedTitles, line)...)
+	line := strings.Repeat("─", h.Viewport.Width-(titleLen+2))
+	line = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render(line)
+
+	return lipgloss.JoinHorizontal(lipgloss.Bottom, leftCorner, lipgloss.JoinHorizontal(lipgloss.Center, append(renderedTitles, line)...), rightCorner)
 }

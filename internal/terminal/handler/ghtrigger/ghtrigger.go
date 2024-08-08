@@ -367,12 +367,12 @@ func (m *ModelGithubTrigger) View() string {
 		keyWidth := &newTableColumns[2].Width
 		valueWidth := &newTableColumns[4].Width
 
-		*valueWidth += widthDiff - 14
+		*valueWidth += widthDiff - 16
 		if *valueWidth%2 == 0 {
 			*keyWidth = *valueWidth / 2
 		}
 		m.tableTrigger.SetColumns(newTableColumns)
-		m.tableTrigger.SetHeight(m.Viewport.Height - 16)
+		m.tableTrigger.SetHeight(m.Viewport.Height - 17)
 	}
 
 	doc := strings.Builder{}
@@ -627,7 +627,7 @@ func (m *ModelGithubTrigger) emptySelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 15).MarginLeft(1)
+		Width(m.Viewport.Width - 18).MarginLeft(1)
 
 	// Build the options list
 	doc := strings.Builder{}
@@ -640,7 +640,7 @@ func (m *ModelGithubTrigger) inputSelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 15).MarginLeft(1)
+		Width(m.Viewport.Width - 18).MarginLeft(1)
 
 	return windowStyle.Render(m.textInput.View())
 }
@@ -652,7 +652,7 @@ func (m *ModelGithubTrigger) optionSelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 15).MarginLeft(1)
+		Width(m.Viewport.Width - 18).MarginLeft(1)
 
 	// Define styles for selected and unselected options
 	selectedOptionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Padding(0, 1)

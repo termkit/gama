@@ -123,5 +123,12 @@ func (s *Skeleton) Update(msg tea.Msg) (*Skeleton, tea.Cmd) {
 }
 
 func (s *Skeleton) View() string {
-	return lipgloss.JoinVertical(lipgloss.Top, s.header.View(), s.Pages[s.currentTab].View())
+	base := lipgloss.NewStyle().
+		BorderForeground(lipgloss.Color("39")).
+		Align(lipgloss.Center).
+		Border(lipgloss.RoundedBorder()).
+		BorderTop(false).
+		Width(s.Viewport.Width - 2)
+
+	return lipgloss.JoinVertical(lipgloss.Top, s.header.View(), base.Render(s.Pages[s.currentTab].View()))
 }
