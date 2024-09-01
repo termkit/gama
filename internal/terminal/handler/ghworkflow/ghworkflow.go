@@ -5,23 +5,22 @@ import (
 	"errors"
 	"fmt"
 	ts "github.com/termkit/gama/internal/terminal/style"
+	"github.com/termkit/skeleton"
 	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
-	"github.com/termkit/gama/internal/terminal/handler/ghtrigger"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 )
 
 type ModelGithubWorkflow struct {
+	skeleton *skeleton.Skeleton
 	// current handler's properties
 	syncTriggerableWorkflowsContext context.Context
 	cancelSyncTriggerableWorkflows  context.CancelFunc
@@ -39,15 +38,11 @@ type ModelGithubWorkflow struct {
 
 	// models
 	Help                     help.Model
-	Viewport                 *viewport.Model
-	list                     list.Model
 	tableTriggerableWorkflow table.Model
 	modelError               *hdlerror.ModelError
-
-	modelGithubTrigger *ghtrigger.ModelGithubTrigger
 }
 
-func SetupModelGithubWorkflow(githubUseCase gu.UseCase) *ModelGithubWorkflow {
+func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
 	var tableRowsTriggerableWorkflow []table.Row
 
 	tableTriggerableWorkflow := table.New(
@@ -69,10 +64,10 @@ func SetupModelGithubWorkflow(githubUseCase gu.UseCase) *ModelGithubWorkflow {
 		Bold(false)
 	tableTriggerableWorkflow.SetStyles(s)
 
-	modelError := hdlerror.SetupModelError()
+	modelError := hdlerror.SetupModelError(skeleton)
 
 	return &ModelGithubWorkflow{
-		Viewport:                        hdltypes.NewTerminalViewport(),
+		skeleton:                        skeleton,
 		Help:                            help.New(),
 		Keys:                            keys,
 		github:                          githubUseCase,
@@ -118,10 +113,10 @@ func (m *ModelGithubWorkflow) View() string {
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
 
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
-	termWidth := m.Viewport.Width
-	termHeight := m.Viewport.Height
+	termWidth := m.skeleton.GetTerminalWidth()
+	termHeight := m.skeleton.GetTerminalHeight()
 
 	var tableWidth int
 	for _, t := range tableColumnsWorkflow {

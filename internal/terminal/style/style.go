@@ -17,26 +17,3 @@ var (
 	WindowStyleSuccess  = WindowStyleGreen.Margin(0, 0, 0, 0).Padding(0, 2, 0, 2).Border(lipgloss.RoundedBorder())
 	WindowStyleDefault  = WindowStyleWhite.Margin(0, 0, 0, 0).Padding(0, 2, 0, 2).Border(lipgloss.RoundedBorder())
 )
-
-var (
-	TitleStyleActive = func() lipgloss.Style {
-		b := lipgloss.DoubleBorder()
-		b.Right = "├"
-		b.Left = "┤"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 2).BorderForeground(lipgloss.Color("205"))
-	}()
-
-	TitleStyleInactive = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Right = "├"
-		b.Left = "┤"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 2).BorderForeground(lipgloss.Color("255"))
-	}()
-
-	TitleStyleDisabled = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Right = "├"
-		b.Left = "┤"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 2).BorderForeground(lipgloss.Color("240")).Foreground(lipgloss.Color("240"))
-	}()
-)

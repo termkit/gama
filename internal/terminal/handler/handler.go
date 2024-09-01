@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"fmt"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlgithubrepo "github.com/termkit/gama/internal/terminal/handler/ghrepository"
@@ -10,80 +8,30 @@ import (
 	hdlWorkflow "github.com/termkit/gama/internal/terminal/handler/ghworkflow"
 	hdlworkflowhistory "github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
 	hdlinfo "github.com/termkit/gama/internal/terminal/handler/information"
-	hdlskeleton "github.com/termkit/gama/internal/terminal/handler/skeleton"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
-	ts "github.com/termkit/gama/internal/terminal/style"
 	pkgversion "github.com/termkit/gama/pkg/version"
+	"github.com/termkit/skeleton"
 )
 
-type model struct {
-	// models
-	viewport      *viewport.Model
-	modelSkeleton *hdlskeleton.Skeleton
-
-	// keymap
-	keys keyMap
-}
-
 func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Model {
-	skeleton := hdlskeleton.NewSkeleton()
+	s := skeleton.NewSkeleton()
 
-	skeleton.AddPage(hdlskeleton.Title{Title: "Info", Style: hdlskeleton.TitleStyle{
-		Active:   ts.TitleStyleActive,
-		Inactive: ts.TitleStyleInactive,
-	}}, hdlinfo.SetupModelInfo(githubUseCase, version))
+	s.AddPage("info", "Info", hdlinfo.SetupModelInfo(s, githubUseCase, version)).
+		AddPage("repository", "Repository", hdlgithubrepo.SetupModelGithubRepository(s, githubUseCase)).
+		AddPage("history", "Workflow History", hdlworkflowhistory.SetupModelGithubWorkflowHistory(s, githubUseCase)).
+		AddPage("workflow", "Workflow", hdlWorkflow.SetupModelGithubWorkflow(s, githubUseCase)).
+		AddPage("trigger", "Trigger", hdltrigger.SetupModelGithubTrigger(s, githubUseCase))
 
-	skeleton.AddPage(hdlskeleton.Title{Title: "Repository", Style: hdlskeleton.TitleStyle{
-		Active:   ts.TitleStyleActive,
-		Inactive: ts.TitleStyleInactive,
-	}}, hdlgithubrepo.SetupModelGithubRepository(githubUseCase))
+	s.SetBorderColor("49").SetActiveTabBorderColor("#ff0055")
 
-	skeleton.AddPage(hdlskeleton.Title{Title: "Workflow History", Style: hdlskeleton.TitleStyle{
-		Active:   ts.TitleStyleActive,
-		Inactive: ts.TitleStyleInactive,
-	}}, hdlworkflowhistory.SetupModelGithubWorkflowHistory(githubUseCase))
+	s.AddWidget("version", "development mode")
 
-	skeleton.AddPage(hdlskeleton.Title{Title: "Workflow", Style: hdlskeleton.TitleStyle{
-		Active:   ts.TitleStyleActive,
-		Inactive: ts.TitleStyleInactive,
-	}}, hdlWorkflow.SetupModelGithubWorkflow(githubUseCase))
+	s.SetTerminalViewportWidth(hdltypes.MinTerminalWidth)
+	s.SetTerminalViewportHeight(hdltypes.MinTerminalHeight)
 
-	skeleton.AddPage(hdlskeleton.Title{Title: "Trigger", Style: hdlskeleton.TitleStyle{
-		Active:   ts.TitleStyleActive,
-		Inactive: ts.TitleStyleInactive,
-	}}, hdltrigger.SetupModelGithubTrigger(githubUseCase))
+	s.KeyMap.SetKeyNextTab(keys.SwitchTabRight)
+	s.KeyMap.SetKeyPrevTab(keys.SwitchTabLeft)
+	s.KeyMap.SetKeyQuit(keys.Quit)
 
-	m := model{
-		viewport:      hdltypes.NewTerminalViewport(),
-		modelSkeleton: skeleton,
-		keys:          keys,
-	}
-
-	return &m
-}
-
-func (m *model) Init() tea.Cmd {
-	return tea.Batch(
-		tea.EnterAltScreen,
-		tea.SetWindowTitle("GitHub Actions Manager (GAMA)"),
-		m.modelSkeleton.Init(),
-	)
-}
-
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-
-	var cmd tea.Cmd
-	m.modelSkeleton, cmd = m.modelSkeleton.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
-}
-
-func (m *model) View() string {
-	if m.viewport.Width < hdltypes.MinTerminalWidth || m.viewport.Height < hdltypes.MinTerminalHeight {
-		return fmt.Sprintf("Terminal window is too small. Please resize to at least %dx%d.", hdltypes.MinTerminalWidth, hdltypes.MinTerminalHeight)
-	}
-
-	return m.modelSkeleton.View()
+	return s
 }

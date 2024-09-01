@@ -1,8 +1,6 @@
 package types
 
 import (
-	"github.com/charmbracelet/bubbles/viewport"
-
 	"sync"
 )
 
@@ -30,15 +28,3 @@ const (
 	MinTerminalWidth  = 102
 	MinTerminalHeight = 24
 )
-
-var (
-	onceViewport sync.Once
-	vp           *viewport.Model
-)
-
-func NewTerminalViewport() *viewport.Model {
-	onceViewport.Do(func() {
-		vp = &viewport.Model{Width: MinTerminalWidth, Height: MinTerminalHeight}
-	})
-	return vp
-}

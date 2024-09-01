@@ -7,22 +7,23 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
-	"github.com/termkit/gama/internal/terminal/handler/header"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/gama/pkg/workflow"
+	"github.com/termkit/skeleton"
 	"slices"
 	"strings"
 	"time"
 )
 
 type ModelGithubTrigger struct {
+	skeleton *skeleton.Skeleton
+
 	// current handler's properties
 	syncWorkflowContext    context.Context
 	cancelSyncWorkflow     context.CancelFunc
@@ -47,16 +48,13 @@ type ModelGithubTrigger struct {
 	Keys keyMap
 
 	// models
-	header *header.Header
-
 	Help         help.Model
-	Viewport     *viewport.Model
 	modelError   *hdlerror.ModelError
 	textInput    textinput.Model
 	tableTrigger table.Model
 }
 
-func SetupModelGithubTrigger(githubUseCase gu.UseCase) *ModelGithubTrigger {
+func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubTrigger {
 	var tableRowsTrigger []table.Row
 
 	tableTrigger := table.New(
@@ -82,10 +80,9 @@ func SetupModelGithubTrigger(githubUseCase gu.UseCase) *ModelGithubTrigger {
 	ti.Blur()
 	ti.CharLimit = 72
 
-	modelError := hdlerror.SetupModelError()
+	modelError := hdlerror.SetupModelError(skeleton)
 	return &ModelGithubTrigger{
-		Viewport:            hdltypes.NewTerminalViewport(),
-		header:              header.NewHeader(),
+		skeleton:            skeleton,
 		Help:                help.New(),
 		Keys:                keys,
 		github:              githubUseCase,
@@ -348,7 +345,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 
 func (m *ModelGithubTrigger) View() string {
 	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).MarginLeft(1)
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
 	if m.triggerFocused {
 		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
@@ -362,7 +359,7 @@ func (m *ModelGithubTrigger) View() string {
 	}
 
 	newTableColumns := tableColumnsTrigger
-	widthDiff := m.Viewport.Width - tableWidth
+	widthDiff := m.skeleton.GetTerminalWidth() - tableWidth
 	if widthDiff > 0 {
 		keyWidth := &newTableColumns[2].Width
 		valueWidth := &newTableColumns[4].Width
@@ -372,7 +369,7 @@ func (m *ModelGithubTrigger) View() string {
 			*keyWidth = *valueWidth / 2
 		}
 		m.tableTrigger.SetColumns(newTableColumns)
-		m.tableTrigger.SetHeight(m.Viewport.Height - 17)
+		m.tableTrigger.SetHeight(m.skeleton.GetTerminalHeight() - 17)
 	}
 
 	doc := strings.Builder{}
@@ -619,7 +616,7 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 	m.optionValues = nil          // reset option values
 	m.selectedRepositoryName = "" // reset selected repository name
 
-	m.header.SetCurrentTab(2) // switch tab to workflow history
+	m.skeleton.SetActivePage("history") // switch tab to workflow history
 }
 
 func (m *ModelGithubTrigger) emptySelector() string {
@@ -627,7 +624,7 @@ func (m *ModelGithubTrigger) emptySelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 18).MarginLeft(1)
+		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
 
 	// Build the options list
 	doc := strings.Builder{}
@@ -640,7 +637,7 @@ func (m *ModelGithubTrigger) inputSelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 18).MarginLeft(1)
+		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
 
 	return windowStyle.Render(m.textInput.View())
 }
@@ -652,7 +649,7 @@ func (m *ModelGithubTrigger) optionSelector() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 18).MarginLeft(1)
+		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
 
 	// Define styles for selected and unselected options
 	selectedOptionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Padding(0, 1)

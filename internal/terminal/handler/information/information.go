@@ -4,29 +4,25 @@ import (
 	"context"
 	"fmt"
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
-	"github.com/termkit/gama/internal/terminal/handler/spirit"
-	"github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	pkgversion "github.com/termkit/gama/pkg/version"
+	"github.com/termkit/skeleton"
 	"strings"
 )
 
 type ModelInfo struct {
-	version pkgversion.Version
+	skeleton *skeleton.Skeleton
+	version  pkgversion.Version
 
 	// use cases
 	github gu.UseCase
 
 	// models
-	modelSpirit *spirit.ModelSpirit
-
 	Help       help.Model
-	Viewport   *viewport.Model
 	modelError *hdlerror.ModelError
 
 	// keymap
@@ -58,17 +54,16 @@ var (
 	applicationDescription string
 )
 
-func SetupModelInfo(githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
-	modelError := hdlerror.SetupModelError()
+func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
+	modelError := hdlerror.SetupModelError(skeleton)
 
 	return &ModelInfo{
-		Viewport:    types.NewTerminalViewport(),
-		modelSpirit: spirit.NewSpirit(),
-		github:      githubUseCase,
-		version:     version,
-		Help:        help.New(),
-		Keys:        keys,
-		modelError:  &modelError,
+		skeleton:   skeleton,
+		github:     githubUseCase,
+		version:    version,
+		Help:       help.New(),
+		Keys:       keys,
+		modelError: &modelError,
 	}
 }
 
@@ -78,7 +73,9 @@ func (m *ModelInfo) Init() tea.Cmd {
 
 	go m.checkUpdates(context.Background())
 	go m.testConnection(context.Background())
-	return tea.Batch(m.modelError.Init(), m.handleSelfUpdate())
+
+	return tea.Batch(tea.EnterAltScreen, tea.SetWindowTitle("GitHub Actions Manager (GAMA)"),
+		m.modelError.Init(), m.handleSelfUpdate())
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
@@ -118,12 +115,12 @@ func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelInfo) View() string {
 	infoDoc := strings.Builder{}
 
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
 	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
 
 	docHeight := lipgloss.Height(infoDoc.String())
-	requiredNewlinesForPadding := m.Viewport.Height - docHeight - 10
+	requiredNewlinesForPadding := m.skeleton.GetTerminalHeight() - docHeight - 12
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 
@@ -133,21 +130,19 @@ func (m *ModelInfo) View() string {
 func (m *ModelInfo) testConnection(ctx context.Context) {
 	m.modelError.EnableSpinner()
 	m.modelError.SetProgressMessage("Checking your token...")
-	m.modelSpirit.SetLockTabs(true)
-
-	//time.Sleep(3 * time.Second)
+	m.skeleton.LockTabs()
 
 	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
 		m.modelError.SetError(err)
 		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")
-		m.modelSpirit.SetLockTabs(true)
+		m.skeleton.LockTabs()
 		return
 	}
 
 	m.modelError.Reset()
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
-	m.modelSpirit.SetLockTabs(false)
+	m.skeleton.UnlockTabs()
 	m.updateChan <- updateSelf{Done: true}
 }
 

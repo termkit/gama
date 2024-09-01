@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/termkit/gama/internal/github/domain"
@@ -18,11 +17,13 @@ import (
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/gama/pkg/browser"
+	"github.com/termkit/skeleton"
 	"strconv"
 	"strings"
 )
 
 type ModelGithubRepository struct {
+	skeleton *skeleton.Skeleton
 	// current handler's properties
 	syncRepositoriesContext context.Context
 	cancelSyncRepositories  context.CancelFunc
@@ -39,7 +40,6 @@ type ModelGithubRepository struct {
 
 	// models
 	Help                        help.Model
-	Viewport                    *viewport.Model
 	tableGithubRepository       table.Model
 	searchTableGithubRepository table.Model
 	modelError                  *hdlerror.ModelError
@@ -51,7 +51,7 @@ type ModelGithubRepository struct {
 	updateChan chan updateSelf
 }
 
-func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository {
+func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubRepository {
 	var tableRowsGithubRepository []table.Row
 
 	tableGithubRepository := table.New(
@@ -107,11 +107,11 @@ func SetupModelGithubRepository(githubUseCase gu.UseCase) *ModelGithubRepository
 	ti.ShowSuggestions = false // disable suggestions, it will be enabled future.
 
 	// setup models
-	modelError := hdlerror.SetupModelError()
+	modelError := hdlerror.SetupModelError(skeleton)
 	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubRepository{
-		Viewport:                hdltypes.NewTerminalViewport(),
+		skeleton:                skeleton,
 		Help:                    help.New(),
 		Keys:                    keys,
 		github:                  githubUseCase,
@@ -213,7 +213,7 @@ func (m *ModelGithubRepository) View() string {
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
 
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
 	var tableWidth int
 	for _, t := range tableColumnsGithubRepository {
@@ -221,11 +221,11 @@ func (m *ModelGithubRepository) View() string {
 	}
 
 	newTableColumns := tableColumnsGithubRepository
-	widthDiff := m.Viewport.Width - tableWidth
+	widthDiff := m.skeleton.GetTerminalWidth() - tableWidth
 	if widthDiff > 0 {
 		newTableColumns[0].Width += widthDiff - 14
 		m.tableGithubRepository.SetColumns(newTableColumns)
-		m.tableGithubRepository.SetHeight(m.Viewport.Height - 20)
+		m.tableGithubRepository.SetHeight(m.skeleton.GetTerminalHeight() - 20)
 	}
 
 	doc := strings.Builder{}
@@ -262,6 +262,8 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 		m.textInput.Blur()
 		return
 	}
+
+	m.skeleton.UpdateWidgetValue("repositories", fmt.Sprintf("Repository Count: %d", len(repositories.Repositories)))
 
 	tableRowsGithubRepository := make([]table.Row, 0, len(repositories.Repositories))
 	for _, repository := range repositories.Repositories {
@@ -306,7 +308,7 @@ func (m *ModelGithubRepository) viewSearchBar() string {
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
-		Width(m.Viewport.Width - 6).MarginLeft(1)
+		Width(m.skeleton.GetTerminalWidth() - 6).MarginLeft(1)
 
 	// Build the options list
 	doc := strings.Builder{}

@@ -5,12 +5,13 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	ts "github.com/termkit/gama/internal/terminal/style"
+	"github.com/termkit/skeleton"
 	"strings"
 )
 
 type ModelError struct {
+	skeleton *skeleton.Skeleton
 	// err is hold the error
 	err error
 
@@ -48,9 +49,10 @@ const (
 	MessageTypeSuccess MessageType = "success"
 )
 
-func SetupModelError() ModelError {
+func SetupModelError(skeleton *skeleton.Skeleton) ModelError {
 	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 	return ModelError{
+		skeleton:       skeleton,
 		spinner:        s,
 		err:            nil,
 		errorMessage:   "",
@@ -85,7 +87,7 @@ func (m *ModelError) Update(msg tea.Msg) (*ModelError, tea.Cmd) {
 
 func (m *ModelError) View() string {
 	var windowStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
-	width := hdltypes.NewTerminalViewport().Width - 4
+	width := m.skeleton.GetTerminalWidth() - 4
 	doc := strings.Builder{}
 
 	var s string

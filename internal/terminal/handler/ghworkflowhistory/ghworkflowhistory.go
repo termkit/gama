@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"github.com/termkit/gama/internal/config"
 	ts "github.com/termkit/gama/internal/terminal/style"
+	"github.com/termkit/skeleton"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
@@ -23,6 +23,7 @@ import (
 )
 
 type ModelGithubWorkflowHistory struct {
+	skeleton *skeleton.Skeleton
 	// current handler's properties
 	tableReady                 bool
 	liveMode                   bool
@@ -30,7 +31,6 @@ type ModelGithubWorkflowHistory struct {
 	tableStyle                 lipgloss.Style
 	updateRound                int
 	selectedWorkflowID         int64
-	isTableFocused             bool
 	lastRepository             string
 	syncWorkflowHistoryContext context.Context
 	cancelSyncWorkflowHistory  context.CancelFunc
@@ -47,7 +47,6 @@ type ModelGithubWorkflowHistory struct {
 
 	// models
 	Help                 help.Model
-	Viewport             *viewport.Model
 	tableWorkflowHistory table.Model
 	modelError           *hdlerror.ModelError
 
@@ -56,7 +55,7 @@ type ModelGithubWorkflowHistory struct {
 	blinkTableChan  chan UpdateTableStyleMsg
 }
 
-func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
+func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load config: %v", err))
@@ -87,11 +86,11 @@ func SetupModelGithubWorkflowHistory(githubUseCase gu.UseCase) *ModelGithubWorkf
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
 
-	modelError := hdlerror.SetupModelError()
+	modelError := hdlerror.SetupModelError(skeleton)
 	tabOptions := taboptions.NewOptions(&modelError)
 
 	return &ModelGithubWorkflowHistory{
-		Viewport:                   hdltypes.NewTerminalViewport(),
+		skeleton:                   skeleton,
 		liveMode:                   cfg.Settings.LiveMode.Enabled,
 		liveModeInterval:           cfg.Settings.LiveMode.Interval,
 		Help:                       help.New(),
@@ -378,10 +377,10 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.Viewport.Width - 4)
+	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
-	termWidth := m.Viewport.Width
-	termHeight := m.Viewport.Height
+	termWidth := m.skeleton.GetTerminalWidth()
+	termHeight := m.skeleton.GetTerminalHeight()
 
 	var tableWidth int
 	for _, t := range tableColumnsWorkflowHistory {
