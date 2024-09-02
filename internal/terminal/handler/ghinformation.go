@@ -97,9 +97,6 @@ func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case updateSelf:
-		//if msg.Done {
-		//	return m, nil
-		//}
 		if msg.RefreshTerminal {
 			m.modelError, cmd = m.modelError.Update(msg)
 			cmds = append(cmds, cmd)

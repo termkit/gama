@@ -148,6 +148,90 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 		m.SelfUpdater(),
 	)
 }
+func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.lastRepository != m.SelectedRepository.RepositoryName {
+		m.tableReady = false
+		m.cancelSyncWorkflowHistory() // cancel previous sync
+
+		m.lastRepository = m.SelectedRepository.RepositoryName
+
+		m.syncWorkflowHistoryContext, m.cancelSyncWorkflowHistory = context.WithCancel(context.Background())
+		go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+	}
+
+	if m.Workflows != nil {
+		m.selectedWorkflowID = m.Workflows[m.tableWorkflowHistory.Cursor()].ID
+	}
+
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.Keys.Refresh):
+			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+		case key.Matches(msg, m.Keys.LiveMode):
+			m.liveMode = !m.liveMode
+			if m.liveMode {
+				m.modelError.SetSuccessMessage("Live mode enabled")
+				m.skeleton.UpdateWidgetValue("live", "Live Mode: On")
+			} else {
+				m.modelError.SetSuccessMessage("Live mode disabled")
+				m.skeleton.UpdateWidgetValue("live", "Live Mode: Off")
+			}
+		}
+	case UpdateWorkflowHistoryMsg:
+		go func() {
+			time.Sleep(msg.UpdateAfter)
+			m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+		}()
+	}
+
+	cmds = append(cmds, m.SelfUpdater())
+
+	m.modelError, cmd = m.modelError.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m *ModelGithubWorkflowHistory) View() string {
+	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+
+	termWidth := m.skeleton.GetTerminalWidth()
+	termHeight := m.skeleton.GetTerminalHeight()
+
+	var tableWidth int
+	for _, t := range tableColumnsWorkflowHistory {
+		tableWidth += t.Width
+	}
+
+	newTableColumns := tableColumnsWorkflowHistory
+	widthDiff := termWidth - tableWidth
+
+	if widthDiff > 0 {
+		if m.updateRound%2 == 0 {
+			newTableColumns[0].Width += widthDiff - 18
+		} else {
+			newTableColumns[1].Width += widthDiff - 18
+		}
+		m.updateRound++
+		m.tableWorkflowHistory.SetColumns(newTableColumns)
+	}
+
+	m.tableWorkflowHistory.SetHeight(termHeight - 18)
+
+	doc := strings.Builder{}
+	doc.WriteString(m.tableStyle.Render(m.tableWorkflowHistory.View()))
+
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
+}
 
 func (m *ModelGithubWorkflowHistory) setupOptions() {
 	openInBrowser := func() {
@@ -220,59 +304,6 @@ func (m *ModelGithubWorkflowHistory) setupOptions() {
 	m.modelTabOptions.AddOption("Cancel workflow", cancelWorkflow)
 }
 
-func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.lastRepository != m.SelectedRepository.RepositoryName {
-		m.tableReady = false
-		m.cancelSyncWorkflowHistory() // cancel previous sync
-
-		m.lastRepository = m.SelectedRepository.RepositoryName
-
-		m.syncWorkflowHistoryContext, m.cancelSyncWorkflowHistory = context.WithCancel(context.Background())
-		go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
-	}
-
-	if m.Workflows != nil {
-		m.selectedWorkflowID = m.Workflows[m.tableWorkflowHistory.Cursor()].ID
-	}
-
-	var cmds []tea.Cmd
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.Keys.Refresh):
-			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
-		case key.Matches(msg, m.Keys.LiveMode):
-			m.liveMode = !m.liveMode
-			if m.liveMode {
-				m.modelError.SetSuccessMessage("Live mode enabled")
-				m.skeleton.UpdateWidgetValue("live", "Live Mode: On")
-			} else {
-				m.modelError.SetSuccessMessage("Live mode disabled")
-				m.skeleton.UpdateWidgetValue("live", "Live Mode: Off")
-			}
-		}
-	case UpdateWorkflowHistoryMsg:
-		go func() {
-			time.Sleep(msg.UpdateAfter)
-			m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
-		}()
-	}
-
-	cmds = append(cmds, m.SelfUpdater())
-
-	m.modelError, cmd = m.modelError.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
-}
-
 func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.tableReady = false
 	m.modelError.Reset()
@@ -324,38 +355,6 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	go m.Update(m) // update model
-}
-
-func (m *ModelGithubWorkflowHistory) View() string {
-	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
-
-	termWidth := m.skeleton.GetTerminalWidth()
-	termHeight := m.skeleton.GetTerminalHeight()
-
-	var tableWidth int
-	for _, t := range tableColumnsWorkflowHistory {
-		tableWidth += t.Width
-	}
-
-	newTableColumns := tableColumnsWorkflowHistory
-	widthDiff := termWidth - tableWidth
-
-	if widthDiff > 0 {
-		if m.updateRound%2 == 0 {
-			newTableColumns[0].Width += widthDiff - 18
-		} else {
-			newTableColumns[1].Width += widthDiff - 18
-		}
-		m.updateRound++
-		m.tableWorkflowHistory.SetColumns(newTableColumns)
-	}
-
-	m.tableWorkflowHistory.SetHeight(termHeight - 18)
-
-	doc := strings.Builder{}
-	doc.WriteString(m.tableStyle.Render(m.tableWorkflowHistory.View()))
-
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubWorkflowHistory) ViewStatus() string {

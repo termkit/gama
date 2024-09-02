@@ -125,18 +125,6 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 	}
 }
 
-func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
-	return func() tea.Msg {
-		go func() {
-			select {
-			case _ = <-m.updateChan:
-				m.updateChan <- updateSelf{}
-			}
-		}()
-		return <-m.updateChan
-	}
-}
-
 func (m *ModelGithubRepository) Init() tea.Cmd {
 	openInBrowser := func() {
 		m.modelError.SetProgressMessage("Opening in browser...")
@@ -228,6 +216,12 @@ func (m *ModelGithubRepository) View() string {
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
 
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
+}
+
+func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.updateChan
+	}
 }
 
 func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {

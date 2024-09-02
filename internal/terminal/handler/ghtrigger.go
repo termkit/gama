@@ -189,6 +189,52 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *ModelGithubTrigger) View() string {
+	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).MarginLeft(1)
+	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+
+	if m.triggerFocused {
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
+	} else {
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("#3b698f"))
+	}
+
+	var tableWidth int
+	for _, t := range tableColumnsTrigger {
+		tableWidth += t.Width
+	}
+
+	newTableColumns := tableColumnsTrigger
+	widthDiff := m.skeleton.GetTerminalWidth() - tableWidth
+	if widthDiff > 0 {
+		keyWidth := &newTableColumns[2].Width
+		valueWidth := &newTableColumns[4].Width
+
+		*valueWidth += widthDiff - 16
+		if *valueWidth%2 == 0 {
+			*keyWidth = *valueWidth / 2
+		}
+		m.tableTrigger.SetColumns(newTableColumns)
+		m.tableTrigger.SetHeight(m.skeleton.GetTerminalHeight() - 17)
+	}
+
+	doc := strings.Builder{}
+	doc.WriteString(baseStyle.Render(m.tableTrigger.View()))
+
+	var selectedRow = m.tableTrigger.SelectedRow()
+	var selector = m.emptySelector()
+	if len(m.tableTrigger.Rows()) > 0 {
+		if selectedRow[1] == "input" {
+			selector = m.inputSelector()
+		} else {
+			selector = m.optionSelector()
+		}
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(),
+		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
+}
+
 func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
 	var selectedRow = m.tableTrigger.SelectedRow()
 
@@ -339,52 +385,6 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 			}
 		}
 	}
-}
-
-func (m *ModelGithubTrigger) View() string {
-	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).MarginLeft(1)
-	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
-
-	if m.triggerFocused {
-		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
-	} else {
-		baseStyle = baseStyle.BorderForeground(lipgloss.Color("#3b698f"))
-	}
-
-	var tableWidth int
-	for _, t := range tableColumnsTrigger {
-		tableWidth += t.Width
-	}
-
-	newTableColumns := tableColumnsTrigger
-	widthDiff := m.skeleton.GetTerminalWidth() - tableWidth
-	if widthDiff > 0 {
-		keyWidth := &newTableColumns[2].Width
-		valueWidth := &newTableColumns[4].Width
-
-		*valueWidth += widthDiff - 16
-		if *valueWidth%2 == 0 {
-			*keyWidth = *valueWidth / 2
-		}
-		m.tableTrigger.SetColumns(newTableColumns)
-		m.tableTrigger.SetHeight(m.skeleton.GetTerminalHeight() - 17)
-	}
-
-	doc := strings.Builder{}
-	doc.WriteString(baseStyle.Render(m.tableTrigger.View()))
-
-	var selectedRow = m.tableTrigger.SelectedRow()
-	var selector = m.emptySelector()
-	if len(m.tableTrigger.Rows()) > 0 {
-		if selectedRow[1] == "input" {
-			selector = m.inputSelector()
-		} else {
-			selector = m.optionSelector()
-		}
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(),
-		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
