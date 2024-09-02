@@ -105,37 +105,6 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 	}
 }
 
-type UpdateWorkflowHistoryMsg struct {
-	UpdateAfter time.Duration
-}
-
-func (m *ModelGithubWorkflowHistory) SelfUpdater() tea.Cmd {
-	return func() tea.Msg {
-		select {
-		case o := <-m.updateSelfChan:
-			return o
-		default:
-			return nil
-		}
-	}
-}
-
-func (m *ModelGithubWorkflowHistory) ToggleLiveMode() {
-	// send UpdateWorkflowHistoryMsg to update the workflow history every 5 seconds with ticker
-	// send only if liveMode is true
-	go func() {
-		t := time.NewTicker(m.liveModeInterval)
-		for {
-			select {
-			case <-t.C:
-				if m.liveMode {
-					m.updateSelfChan <- UpdateWorkflowHistoryMsg{UpdateAfter: time.Nanosecond}
-				}
-			}
-		}
-	}()
-}
-
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	m.setupOptions()
 	m.ToggleLiveMode()
@@ -231,6 +200,37 @@ func (m *ModelGithubWorkflowHistory) View() string {
 	doc.WriteString(m.tableStyle.Render(m.tableWorkflowHistory.View()))
 
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
+}
+
+type UpdateWorkflowHistoryMsg struct {
+	UpdateAfter time.Duration
+}
+
+func (m *ModelGithubWorkflowHistory) SelfUpdater() tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case o := <-m.updateSelfChan:
+			return o
+		default:
+			return nil
+		}
+	}
+}
+
+func (m *ModelGithubWorkflowHistory) ToggleLiveMode() {
+	// send UpdateWorkflowHistoryMsg to update the workflow history every 5 seconds with ticker
+	// send only if liveMode is true
+	go func() {
+		t := time.NewTicker(m.liveModeInterval)
+		for {
+			select {
+			case <-t.C:
+				if m.liveMode {
+					m.updateSelfChan <- UpdateWorkflowHistoryMsg{UpdateAfter: time.Nanosecond}
+				}
+			}
+		}
+	}()
 }
 
 func (m *ModelGithubWorkflowHistory) setupOptions() {
