@@ -168,9 +168,6 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", tea.KeyEnter.String():
 			if m.triggerFocused && m.isTriggerable {
 				go m.triggerWorkflow()
-				return m, func() tea.Msg {
-					return UpdateWorkflowHistoryMsg{UpdateAfter: time.Second * 5}
-				}
 			}
 		}
 	}
@@ -484,8 +481,6 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 		m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
 			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	}
-
-	go m.Update(m) // update model
 }
 
 func (m *ModelGithubTrigger) fillTableWithEmptyMessage() {
@@ -614,7 +609,8 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 	m.optionValues = nil          // reset option values
 	m.selectedRepositoryName = "" // reset selected repository name
 
-	m.skeleton.SetActivePage("history") // switch tab to workflow history
+	UpdateWorkflowHistory(time.Second * 5) // update workflow history
+	m.skeleton.SetActivePage("history")    // switch tab to workflow history
 }
 
 func (m *ModelGithubTrigger) emptySelector() string {
