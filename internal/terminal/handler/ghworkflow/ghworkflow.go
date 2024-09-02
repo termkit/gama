@@ -55,7 +55,7 @@ func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseC
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(lipgloss.Color("#3b698f")).
 		BorderBottom(true).
 		Bold(false)
 	s.Selected = s.Selected.
@@ -111,7 +111,7 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelGithubWorkflow) View() string {
 	var style = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
+		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
 
 	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 

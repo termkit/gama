@@ -211,7 +211,7 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ModelGithubRepository) View() string {
 	var baseStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
+		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
 
 	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
@@ -307,6 +307,7 @@ func (m *ModelGithubRepository) viewSearchBar() string {
 	// Define window style
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
 		Width(m.skeleton.GetTerminalWidth() - 6).MarginLeft(1)
 

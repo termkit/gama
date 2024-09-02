@@ -52,7 +52,6 @@ type ModelGithubWorkflowHistory struct {
 
 	modelTabOptions *taboptions.Options
 	updateSelfChan  chan UpdateWorkflowHistoryMsg
-	blinkTableChan  chan UpdateTableStyleMsg
 }
 
 func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
@@ -84,7 +83,7 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 
 	var tableStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).MarginLeft(1)
+		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
 
 	modelError := hdlerror.SetupModelError(skeleton)
 	tabOptions := taboptions.NewOptions(&modelError)
@@ -103,7 +102,6 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 		syncWorkflowHistoryContext: context.Background(),
 		cancelSyncWorkflowHistory:  func() {},
 		updateSelfChan:             make(chan UpdateWorkflowHistoryMsg),
-		blinkTableChan:             make(chan UpdateTableStyleMsg),
 		tableStyle:                 tableStyle,
 	}
 }
@@ -116,17 +114,6 @@ func (m *ModelGithubWorkflowHistory) SelfUpdater() tea.Cmd {
 	return func() tea.Msg {
 		select {
 		case o := <-m.updateSelfChan:
-			return o
-		default:
-			return nil
-		}
-	}
-}
-
-func (m *ModelGithubWorkflowHistory) TableUpdater() tea.Cmd {
-	return func() tea.Msg {
-		select {
-		case o := <-m.blinkTableChan:
 			return o
 		default:
 			return nil
@@ -150,37 +137,9 @@ func (m *ModelGithubWorkflowHistory) ToggleLiveMode() {
 	}()
 }
 
-type UpdateTableStyleMsg struct {
-	Style lipgloss.Style
-}
-
-func (m *ModelGithubWorkflowHistory) BlinkTable() {
-	// send UpdateTableStyleMsg to update the table style every 1 second with ticker
-	go func() {
-		updateAfter := time.Second * 1
-		t := time.NewTicker(updateAfter)
-
-		var red bool
-		for {
-			select {
-			case <-t.C:
-				if m.liveMode {
-					if red {
-						m.sendChangeTableColorMessage("112")
-					} else {
-						m.sendChangeTableColorMessage("#00aaff")
-					}
-					red = !red
-				}
-			}
-		}
-	}()
-}
-
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	m.setupOptions()
 	m.ToggleLiveMode()
-	m.BlinkTable()
 	return tea.Batch(
 		m.modelTabOptions.Init(),
 		func() tea.Msg {
@@ -288,9 +247,10 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.liveMode = !m.liveMode
 			if m.liveMode {
 				m.modelError.SetSuccessMessage("Live mode enabled")
+				m.skeleton.UpdateWidgetValue("live", "Live Mode: On")
 			} else {
 				m.modelError.SetSuccessMessage("Live mode disabled")
-				m.sendChangeTableColorMessage("240")
+				m.skeleton.UpdateWidgetValue("live", "Live Mode: Off")
 			}
 		}
 	case UpdateWorkflowHistoryMsg:
@@ -298,12 +258,9 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			time.Sleep(msg.UpdateAfter)
 			m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 		}()
-	case UpdateTableStyleMsg:
-		m.tableStyle = msg.Style
 	}
 
 	cmds = append(cmds, m.SelfUpdater())
-	cmds = append(cmds, m.TableUpdater())
 
 	m.modelError, cmd = m.modelError.Update(msg)
 	cmds = append(cmds, cmd)
@@ -315,12 +272,6 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
-}
-
-func (m *ModelGithubWorkflowHistory) sendChangeTableColorMessage(color string) {
-	go func() {
-		m.blinkTableChan <- UpdateTableStyleMsg{Style: m.tableStyle.BorderForeground(lipgloss.Color(color))}
-	}()
 }
 
 func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {

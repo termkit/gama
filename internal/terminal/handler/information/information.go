@@ -117,6 +117,12 @@ func (m *ModelInfo) View() string {
 
 	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
+	requiredNewLinesForCenter := m.skeleton.GetTerminalHeight()/2 - 11
+	if requiredNewLinesForCenter < 0 {
+		requiredNewLinesForCenter = 0
+	}
+	infoDoc.WriteString(strings.Repeat("\n", requiredNewLinesForCenter))
+
 	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
 
 	docHeight := lipgloss.Height(infoDoc.String())

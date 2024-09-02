@@ -350,7 +350,7 @@ func (m *ModelGithubTrigger) View() string {
 	if m.triggerFocused {
 		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))
 	} else {
-		baseStyle = baseStyle.BorderForeground(lipgloss.Color("#00aaff"))
+		baseStyle = baseStyle.BorderForeground(lipgloss.Color("#3b698f"))
 	}
 
 	var tableWidth int
@@ -520,8 +520,8 @@ func (m *ModelGithubTrigger) triggerButton() string {
 		Align(lipgloss.Center)
 
 	if m.triggerFocused {
-		button = button.BorderForeground(lipgloss.Color("#00aaff")).
-			Foreground(lipgloss.Color("#00aaff")).
+		button = button.BorderForeground(lipgloss.Color("#399adb")).
+			Foreground(lipgloss.Color("#399adb")).
 			BorderStyle(lipgloss.DoubleBorder())
 	}
 
@@ -623,6 +623,7 @@ func (m *ModelGithubTrigger) emptySelector() string {
 	// Define window style
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
 		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
 
@@ -636,6 +637,7 @@ func (m *ModelGithubTrigger) inputSelector() string {
 	// Define window style
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
 		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
 
@@ -648,6 +650,7 @@ func (m *ModelGithubTrigger) optionSelector() string {
 	// Define window style
 	windowStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
 		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
 
