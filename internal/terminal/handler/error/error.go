@@ -73,16 +73,14 @@ func (m *ModelError) Update(msg tea.Msg) (*ModelError, tea.Cmd) {
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
-
-		cmds = append(cmds, m.SelfUpdater())
 	case UpdateSelf:
 		if msg.InProgress {
 			m.spinner, cmd = m.spinner.Update(m.spinner.Tick())
 			cmds = append(cmds, cmd)
 		}
-
-		cmds = append(cmds, m.SelfUpdater())
 	}
+
+	cmds = append(cmds, m.SelfUpdater())
 
 	return m, tea.Batch(cmds...)
 }
@@ -122,7 +120,12 @@ func (m *ModelError) View() string {
 
 func (m *ModelError) SelfUpdater() tea.Cmd {
 	return func() tea.Msg {
-		return <-m.updateChan
+		select {
+		case o := <-m.updateChan:
+			return o
+		default:
+			return nil
+		}
 	}
 }
 

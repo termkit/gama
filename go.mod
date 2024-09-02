@@ -2,10 +2,6 @@ module github.com/termkit/gama
 
 go 1.22.6
 
-replace (
-	github.com/termkit/skeleton => ../skeleton
-)
-
 require (
 	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/charmbracelet/bubbles v0.19.0
