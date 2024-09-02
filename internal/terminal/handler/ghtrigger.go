@@ -1,4 +1,4 @@
-package ghtrigger
+package handler
 
 import (
 	"context"
@@ -11,9 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
-	"github.com/termkit/gama/internal/terminal/handler/ghworkflowhistory"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
-	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/gama/pkg/workflow"
 	"github.com/termkit/skeleton"
 	"slices"
@@ -45,7 +43,7 @@ type ModelGithubTrigger struct {
 	github gu.UseCase
 
 	// keymap
-	Keys keyMap
+	Keys githubTriggerKeyMap
 
 	// models
 	Help         help.Model
@@ -84,7 +82,7 @@ func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCa
 	return &ModelGithubTrigger{
 		skeleton:            skeleton,
 		Help:                help.New(),
-		Keys:                keys,
+		Keys:                githubTriggerKeys,
 		github:              githubUseCase,
 		SelectedRepository:  hdltypes.NewSelectedRepository(),
 		modelError:          &modelError,
@@ -171,7 +169,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.triggerFocused && m.isTriggerable {
 				go m.triggerWorkflow()
 				return m, func() tea.Msg {
-					return ghworkflowhistory.UpdateWorkflowHistoryMsg{UpdateAfter: time.Second * 5}
+					return UpdateWorkflowHistoryMsg{UpdateAfter: time.Second * 5}
 				}
 			}
 		}
@@ -345,7 +343,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 
 func (m *ModelGithubTrigger) View() string {
 	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).MarginLeft(1)
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
 	if m.triggerFocused {
 		baseStyle = baseStyle.BorderForeground(lipgloss.Color("240"))

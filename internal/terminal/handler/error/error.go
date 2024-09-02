@@ -5,7 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	ts "github.com/termkit/gama/internal/terminal/style"
+	ts "github.com/termkit/gama/internal/terminal/handler/types"
 	"github.com/termkit/skeleton"
 	"strings"
 )

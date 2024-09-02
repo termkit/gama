@@ -1,10 +1,9 @@
-package ghworkflow
+package handler
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/skeleton"
 	"sort"
 	"strings"
@@ -34,7 +33,7 @@ type ModelGithubWorkflow struct {
 	github gu.UseCase
 
 	// keymap
-	Keys keyMap
+	Keys githubWorkflowKeyMap
 
 	// models
 	Help                     help.Model
@@ -69,7 +68,7 @@ func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseC
 	return &ModelGithubWorkflow{
 		skeleton:                        skeleton,
 		Help:                            help.New(),
-		Keys:                            keys,
+		Keys:                            githubWorkflowKeys,
 		github:                          githubUseCase,
 		modelError:                      &modelError,
 		tableTriggerableWorkflow:        tableTriggerableWorkflow,
@@ -113,7 +112,7 @@ func (m *ModelGithubWorkflow) View() string {
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
 
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
 	termWidth := m.skeleton.GetTerminalWidth()
 	termHeight := m.skeleton.GetTerminalHeight()

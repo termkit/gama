@@ -1,11 +1,10 @@
-package ghworkflowhistory
+package handler
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/termkit/gama/internal/config"
-	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/skeleton"
 	"strings"
 	"time"
@@ -43,7 +42,7 @@ type ModelGithubWorkflowHistory struct {
 	github gu.UseCase
 
 	// keymap
-	Keys keyMap
+	Keys githubWorkflowHistoryKeyMap
 
 	// models
 	Help                 help.Model
@@ -93,7 +92,7 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 		liveMode:                   cfg.Settings.LiveMode.Enabled,
 		liveModeInterval:           cfg.Settings.LiveMode.Interval,
 		Help:                       help.New(),
-		Keys:                       keys,
+		Keys:                       githubWorkflowHistoryKeys,
 		github:                     githubUseCase,
 		tableWorkflowHistory:       tableWorkflowHistory,
 		modelError:                 &modelError,
@@ -328,7 +327,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
 	termWidth := m.skeleton.GetTerminalWidth()
 	termHeight := m.skeleton.GetTerminalHeight()

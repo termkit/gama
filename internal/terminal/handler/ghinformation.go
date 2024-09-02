@@ -1,4 +1,4 @@
-package information
+package handler
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
-	ts "github.com/termkit/gama/internal/terminal/style"
+	ts "github.com/termkit/gama/internal/terminal/handler/types"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"github.com/termkit/skeleton"
 	"strings"
@@ -26,7 +26,7 @@ type ModelInfo struct {
 	modelError *hdlerror.ModelError
 
 	// keymap
-	Keys keyMap
+	Keys githubInformationKeyMap
 
 	updateChan chan updateSelf
 }
@@ -62,7 +62,7 @@ func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, versi
 		github:     githubUseCase,
 		version:    version,
 		Help:       help.New(),
-		Keys:       keys,
+		Keys:       githubInformationKeys,
 		modelError: &modelError,
 	}
 }

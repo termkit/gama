@@ -1,4 +1,4 @@
-package ghrepository
+package handler
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
 	"github.com/termkit/gama/internal/terminal/handler/taboptions"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
-	ts "github.com/termkit/gama/internal/terminal/style"
 	"github.com/termkit/gama/pkg/browser"
 	"github.com/termkit/skeleton"
 	"strconv"
@@ -36,7 +35,7 @@ type ModelGithubRepository struct {
 	github gu.UseCase
 
 	// keymap
-	Keys keyMap
+	Keys githubRepositoryKeyMap
 
 	// models
 	Help                        help.Model
@@ -113,7 +112,7 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 	return &ModelGithubRepository{
 		skeleton:                skeleton,
 		Help:                    help.New(),
-		Keys:                    keys,
+		Keys:                    githubRepositoryKeys,
 		github:                  githubUseCase,
 		tableGithubRepository:   tableGithubRepository,
 		modelError:              &modelError,
@@ -124,9 +123,6 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 		cancelSyncRepositories:  func() {},
 		updateChan:              make(chan updateSelf),
 	}
-}
-
-type updateSelf struct {
 }
 
 func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
@@ -213,7 +209,7 @@ func (m *ModelGithubRepository) View() string {
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
 
-	helpWindowStyle := ts.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
 
 	var tableWidth int
 	for _, t := range tableColumnsGithubRepository {
