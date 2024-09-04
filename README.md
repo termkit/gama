@@ -56,8 +56,6 @@ GITHUB_TOKEN="$(gh auth token)" gama
 
 This will skip needing to generate a token via the GitHub website.
 
-**NOTE: You may still need to generate a token via the GUI if you run into errors**
-
 ## Build & Installation
 
 ### Using Docker
