@@ -48,6 +48,14 @@ Alternatively, you can use an environment variable:
 GITHUB_TOKEN="<your github token>" gama
 ```
 
+If you have the [GitHub CLI](https://cli.github.com/) installed, you automatically insert the var via:
+
+```bash
+GITHUB_TOKEN="$(gh auth token)" gama
+```
+
+This will skip needing to generate a token via the GitHub website.
+
 ## Build & Installation
 
 ### Using Docker
