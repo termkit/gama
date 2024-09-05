@@ -20,7 +20,6 @@ func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Mod
 
 	s.SetBorderColor("#ff0055").SetActiveTabBorderColor("#ff0055").SetInactiveTabBorderColor("#82636f").SetWidgetBorderColor("#ff0055")
 
-	//s.AddWidget("version", "development mode")
 	time.Sleep(100 * time.Millisecond)
 	s.AddWidget("repositories", "Repository Count: 0")
 	time.Sleep(100 * time.Millisecond)

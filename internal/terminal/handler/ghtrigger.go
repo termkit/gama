@@ -397,6 +397,8 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 }
 
 func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
+	defer m.selfUpdate()
+
 	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow contents...",
@@ -493,8 +495,6 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 		m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
 			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	}
-
-	m.selfUpdate()
 }
 
 func (m *ModelGithubTrigger) fillTableWithEmptyMessage() {
@@ -613,6 +613,7 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 		m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName, m.selectedWorkflow))
 
 	time.Sleep(1 * time.Second)
+	m.selfUpdate()
 	m.modelError.SetProgressMessage("Switching to workflow history tab...")
 	time.Sleep(1500 * time.Millisecond)
 
@@ -692,8 +693,4 @@ func (m *ModelGithubTrigger) sortTableItemsByName() {
 		return strings.Compare(a[2], b[2])
 	})
 	m.tableTrigger.SetRows(rows)
-}
-
-func (m *ModelGithubTrigger) ViewStatus() string {
-	return m.modelError.View()
 }

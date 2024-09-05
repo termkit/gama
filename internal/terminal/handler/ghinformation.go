@@ -149,7 +149,3 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
 	m.skeleton.UnlockTabs()
 }
-
-func (m *ModelInfo) ViewStatus() string {
-	return m.modelError.View()
-}

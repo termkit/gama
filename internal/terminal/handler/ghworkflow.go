@@ -150,7 +150,7 @@ func (m *ModelGithubWorkflow) View() string {
 	doc.WriteString(style.Render(m.tableTriggerableWorkflow.View()))
 	doc.WriteString("\n\n\n")
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
@@ -210,8 +210,4 @@ func (m *ModelGithubWorkflow) handleTableInputs(_ context.Context) {
 	if len(rows) > 0 && len(selectedRow) > 0 {
 		m.SelectedRepository.WorkflowName = selectedRow[1]
 	}
-}
-
-func (m *ModelGithubWorkflow) ViewStatus() string {
-	return m.modelError.View()
 }

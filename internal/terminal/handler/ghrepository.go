@@ -221,7 +221,7 @@ func (m *ModelGithubRepository) View() string {
 	doc := strings.Builder{}
 	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View(), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
@@ -319,17 +319,6 @@ func (m *ModelGithubRepository) viewSearchBar() string {
 	return windowStyle.Render(doc.String())
 }
 
-func (m *ModelGithubRepository) updateSearchBarSuggestions() {
-	m.textInput.SetSuggestions([]string{})
-
-	var suggestions = make([]string, 0, len(m.tableGithubRepository.Rows()))
-	for _, r := range m.tableGithubRepository.Rows() {
-		suggestions = append(suggestions, r[0])
-	}
-
-	m.textInput.SetSuggestions(suggestions)
-}
-
 func (m *ModelGithubRepository) updateTableRowsBySearchBar() {
 	var tableRowsGithubRepository = make([]table.Row, 0, len(m.tableGithubRepository.Rows()))
 
@@ -365,8 +354,4 @@ func (m *ModelGithubRepository) isCharAndSymbol(r []rune) bool {
 	}
 
 	return false
-}
-
-func (m *ModelGithubRepository) ViewStatus() string {
-	return m.modelError.View()
 }

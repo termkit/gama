@@ -224,7 +224,7 @@ func (m *ModelGithubWorkflowHistory) View() string {
 	doc := strings.Builder{}
 	doc.WriteString(m.tableStyle.Render(m.tableWorkflowHistory.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View(), m.ViewStatus(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View(), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubWorkflowHistory) SelfUpdater() tea.Cmd {
@@ -371,8 +371,4 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.tableWorkflowHistory.SetCursor(0)
 	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-}
-
-func (m *ModelGithubWorkflowHistory) ViewStatus() string {
-	return m.modelError.View()
 }
