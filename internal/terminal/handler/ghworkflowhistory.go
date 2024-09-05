@@ -130,9 +130,6 @@ func (m *ModelGithubWorkflowHistory) selfListen() tea.Cmd {
 	}
 }
 
-type selfUpdateMsg struct {
-}
-
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	m.setupOptions()
 	m.ToggleLiveMode()
@@ -323,6 +320,8 @@ func (m *ModelGithubWorkflowHistory) ToggleLiveMode() {
 	}()
 }
 func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
+	defer m.selfUpdate()
+
 	m.tableReady = false
 	m.modelError.Reset()
 	m.modelError.SetProgressMessage(
@@ -372,7 +371,6 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.tableWorkflowHistory.SetCursor(0)
 	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-	m.selfUpdate()
 }
 
 func (m *ModelGithubWorkflowHistory) ViewStatus() string {

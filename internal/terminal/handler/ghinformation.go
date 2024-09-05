@@ -28,12 +28,7 @@ type ModelInfo struct {
 	// keymap
 	Keys githubInformationKeyMap
 
-	updateChan chan updateSelf
-}
-
-type updateSelf struct {
-	RefreshTerminal bool
-	Done            bool
+	updateSelfChan chan selfUpdateMsg
 }
 
 const (
@@ -67,6 +62,16 @@ func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, versi
 	}
 }
 
+func (m *ModelInfo) selfUpdate() {
+	m.updateSelfChan <- selfUpdateMsg{}
+}
+
+func (m *ModelInfo) selfListen() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.updateSelfChan
+	}
+}
+
 func (m *ModelInfo) Init() tea.Cmd {
 	currentVersion = m.version.CurrentVersion()
 	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", currentVersion)
@@ -74,25 +79,17 @@ func (m *ModelInfo) Init() tea.Cmd {
 	go m.checkUpdates(context.Background())
 	go m.testConnection(context.Background())
 
-	return tea.Batch(tea.EnterAltScreen, tea.SetWindowTitle("GitHub Actions Manager (GAMA)"), m.handleSelfUpdate())
-}
-
-func (m *ModelInfo) checkUpdates(ctx context.Context) {
-	isUpdateAvailable, version, err := m.version.IsUpdateAvailable(ctx)
-	if err != nil {
-		m.modelError.SetError(err)
-		m.modelError.SetErrorMessage("failed to check updates")
-		newVersionAvailableMsg = fmt.Sprintf("failed to check updates.\nPlease visit: %s", releaseURL)
-		return
-	}
-
-	if isUpdateAvailable {
-		newVersionAvailableMsg = fmt.Sprintf("New version available: %s\nPlease visit: %s", version, releaseURL)
-	}
+	return tea.Batch(tea.EnterAltScreen, tea.SetWindowTitle("GitHub Actions Manager (GAMA)"), m.selfListen())
 }
 
 func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case selfUpdateMsg:
+		_ = msg
+		cmds = append(cmds, m.selfListen())
+	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -118,7 +115,25 @@ func (m *ModelInfo) View() string {
 	return lipgloss.JoinVertical(lipgloss.Center, infoDoc.String(), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
+func (m *ModelInfo) checkUpdates(ctx context.Context) {
+	defer m.selfUpdate()
+
+	isUpdateAvailable, version, err := m.version.IsUpdateAvailable(ctx)
+	if err != nil {
+		m.modelError.SetError(err)
+		m.modelError.SetErrorMessage("failed to check updates")
+		newVersionAvailableMsg = fmt.Sprintf("failed to check updates.\nPlease visit: %s", releaseURL)
+		return
+	}
+
+	if isUpdateAvailable {
+		newVersionAvailableMsg = fmt.Sprintf("New version available: %s\nPlease visit: %s", version, releaseURL)
+	}
+}
+
 func (m *ModelInfo) testConnection(ctx context.Context) {
+	defer m.selfUpdate()
+
 	m.modelError.SetProgressMessage("Checking your token...")
 	m.skeleton.LockTabs()
 
@@ -133,23 +148,6 @@ func (m *ModelInfo) testConnection(ctx context.Context) {
 	m.modelError.Reset()
 	m.modelError.SetSuccessMessage("Welcome to GAMA!")
 	m.skeleton.UnlockTabs()
-	m.updateChan <- updateSelf{Done: true}
-}
-
-func (m *ModelInfo) handleSelfUpdate() tea.Cmd {
-	return func() tea.Msg {
-		go func() {
-			select {
-			case o := <-m.updateChan:
-				if o.Done {
-					m.updateChan <- updateSelf{Done: true}
-				} else {
-					m.updateChan <- updateSelf{RefreshTerminal: true}
-				}
-			}
-		}()
-		return <-m.updateChan
-	}
 }
 
 func (m *ModelInfo) ViewStatus() string {

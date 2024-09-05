@@ -623,7 +623,7 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 	m.optionValues = nil          // reset option values
 	m.selectedRepositoryName = "" // reset selected repository name
 
-	UpdateWorkflowHistory(time.Second * 5) // update workflow history
+	UpdateWorkflowHistory(time.Second * 3) // update workflow history
 	m.skeleton.SetActivePage("history")    // switch tab to workflow history
 }
 

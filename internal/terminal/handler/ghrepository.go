@@ -47,7 +47,7 @@ type ModelGithubRepository struct {
 
 	textInput textinput.Model
 
-	updateChan chan updateSelf
+	updateSelfChan chan selfUpdateMsg
 }
 
 func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubRepository {
@@ -121,7 +121,17 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 		textInput:               ti,
 		syncRepositoriesContext: context.Background(),
 		cancelSyncRepositories:  func() {},
-		updateChan:              make(chan updateSelf),
+		updateSelfChan:          make(chan selfUpdateMsg),
+	}
+}
+
+func (m *ModelGithubRepository) selfUpdate() {
+	m.updateSelfChan <- selfUpdateMsg{}
+}
+
+func (m *ModelGithubRepository) selfListen() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.updateSelfChan
 	}
 }
 
@@ -165,7 +175,7 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchTableGithubRepository.GotoTop()
 			m.searchTableGithubRepository.SetCursor(0)
 		}
-	case updateSelf:
+	case selfUpdateMsg:
 		cmds = append(cmds, m.SelfUpdater())
 	}
 
@@ -216,11 +226,13 @@ func (m *ModelGithubRepository) View() string {
 
 func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
 	return func() tea.Msg {
-		return <-m.updateChan
+		return <-m.updateSelfChan
 	}
 }
 
 func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
+	defer m.selfUpdate()
+
 	m.modelError.Reset() // reset previous errors
 	m.modelTabOptions.SetStatus(taboptions.OptionWait)
 	m.modelError.SetProgressMessage("Fetching repositories...")
@@ -268,8 +280,6 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	//m.updateSearchBarSuggestions()
 	m.textInput.Focus()
 	m.modelError.SetSuccessMessage("Repositories fetched")
-
-	m.updateChan <- updateSelf{}
 }
 
 func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
