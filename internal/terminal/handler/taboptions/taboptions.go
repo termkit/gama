@@ -7,14 +7,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	hdlerror "github.com/termkit/gama/internal/terminal/handler/status"
 )
 
 type Options struct {
 	Style lipgloss.Style
 
-	modelError         *hdlerror.ModelError
-	previousModelError hdlerror.ModelError
+	modelError         *hdlerror.ModelStatus
+	previousModelError hdlerror.ModelStatus
 	modelLock          bool
 
 	status OptionStatus
@@ -48,7 +48,7 @@ func (o OptionStatus) String() string {
 	return string(o)
 }
 
-func NewOptions(modelError *hdlerror.ModelError) *Options {
+func NewOptions(modelError *hdlerror.ModelStatus) *Options {
 	var b = lipgloss.RoundedBorder()
 	b.Right = "├"
 	b.Left = "┤"

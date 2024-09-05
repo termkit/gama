@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
-	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/status"
 	ts "github.com/termkit/gama/internal/terminal/handler/types"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"github.com/termkit/skeleton"
@@ -22,11 +22,11 @@ type ModelInfo struct {
 	github gu.UseCase
 
 	// models
-	Help       help.Model
-	modelError *hdlerror.ModelError
+	help   help.Model
+	status *status.ModelStatus
 
 	// keymap
-	Keys githubInformationKeyMap
+	keys githubInformationKeyMap
 
 	updateSelfChan chan selfUpdateMsg
 }
@@ -50,15 +50,15 @@ var (
 )
 
 func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
-	modelError := hdlerror.SetupModelError(skeleton)
+	modelError := status.SetupModelStatus(skeleton)
 
 	return &ModelInfo{
-		skeleton:   skeleton,
-		github:     githubUseCase,
-		version:    version,
-		Help:       help.New(),
-		Keys:       githubInformationKeys,
-		modelError: &modelError,
+		skeleton: skeleton,
+		github:   githubUseCase,
+		version:  version,
+		help:     help.New(),
+		keys:     githubInformationKeys,
+		status:   &modelError,
 	}
 }
 
@@ -112,7 +112,7 @@ func (m *ModelInfo) View() string {
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 
-	return lipgloss.JoinVertical(lipgloss.Center, infoDoc.String(), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Center, infoDoc.String(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
@@ -120,8 +120,8 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 
 	isUpdateAvailable, version, err := m.version.IsUpdateAvailable(ctx)
 	if err != nil {
-		m.modelError.SetError(err)
-		m.modelError.SetErrorMessage("failed to check updates")
+		m.status.SetError(err)
+		m.status.SetErrorMessage("failed to check updates")
 		newVersionAvailableMsg = fmt.Sprintf("failed to check updates.\nPlease visit: %s", releaseURL)
 		return
 	}
@@ -134,18 +134,18 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 func (m *ModelInfo) testConnection(ctx context.Context) {
 	defer m.selfUpdate()
 
-	m.modelError.SetProgressMessage("Checking your token...")
+	m.status.SetProgressMessage("Checking your token...")
 	m.skeleton.LockTabs()
 
 	_, err := m.github.GetAuthUser(ctx)
 	if err != nil {
-		m.modelError.SetError(err)
-		m.modelError.SetErrorMessage("failed to test connection, please check your token&permission")
+		m.status.SetError(err)
+		m.status.SetErrorMessage("failed to test connection, please check your token&permission")
 		m.skeleton.LockTabs()
 		return
 	}
 
-	m.modelError.Reset()
-	m.modelError.SetSuccessMessage("Welcome to GAMA!")
+	m.status.Reset()
+	m.status.SetSuccessMessage("Welcome to GAMA!")
 	m.skeleton.UnlockTabs()
 }

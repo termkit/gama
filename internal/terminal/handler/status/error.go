@@ -1,4 +1,4 @@
-package error
+package status
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type ModelError struct {
+type ModelStatus struct {
 	skeleton *skeleton.Skeleton
 	// err is hold the error
 	err error
@@ -41,15 +41,15 @@ const (
 	MessageTypeSuccess MessageType = "success"
 )
 
-func SetupModelError(skeleton *skeleton.Skeleton) ModelError {
-	return ModelError{
+func SetupModelStatus(skeleton *skeleton.Skeleton) ModelStatus {
+	return ModelStatus{
 		skeleton:     skeleton,
 		err:          nil,
 		errorMessage: "",
 	}
 }
 
-func (m *ModelError) View() string {
+func (m *ModelStatus) View() string {
 	var windowStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
 	width := m.skeleton.GetTerminalWidth() - 4
 	doc := strings.Builder{}
@@ -75,66 +75,66 @@ func (m *ModelError) View() string {
 	return doc.String()
 }
 
-func (m *ModelError) SetError(err error) {
+func (m *ModelStatus) SetError(err error) {
 	m.err = err
 }
 
-func (m *ModelError) SetErrorMessage(message string) {
+func (m *ModelStatus) SetErrorMessage(message string) {
 	m.errorMessage = message
 }
 
-func (m *ModelError) SetProgressMessage(message string) {
+func (m *ModelStatus) SetProgressMessage(message string) {
 	m.messageType = MessageTypeProgress
 	m.message = message
 }
 
-func (m *ModelError) SetSuccessMessage(message string) {
+func (m *ModelStatus) SetSuccessMessage(message string) {
 	m.messageType = MessageTypeSuccess
 	m.message = message
 }
 
-func (m *ModelError) SetDefaultMessage(message string) {
+func (m *ModelStatus) SetDefaultMessage(message string) {
 	m.messageType = MessageTypeDefault
 	m.message = message
 }
 
-func (m *ModelError) GetError() error {
+func (m *ModelStatus) GetError() error {
 	return m.err
 }
 
-func (m *ModelError) GetErrorMessage() string {
+func (m *ModelStatus) GetErrorMessage() string {
 	return m.errorMessage
 }
 
-func (m *ModelError) GetMessage() string {
+func (m *ModelStatus) GetMessage() string {
 	return m.message
 }
 
-func (m *ModelError) ResetError() {
+func (m *ModelStatus) ResetError() {
 	m.err = nil
 	m.errorMessage = ""
 }
 
-func (m *ModelError) ResetMessage() {
+func (m *ModelStatus) ResetMessage() {
 	m.message = ""
 }
 
-func (m *ModelError) Reset() {
+func (m *ModelStatus) Reset() {
 	m.ResetError()
 	m.ResetMessage()
 }
 
-func (m *ModelError) HaveError() bool {
+func (m *ModelStatus) HaveError() bool {
 	return m.err != nil
 }
 
-func (m *ModelError) viewError() string {
+func (m *ModelStatus) viewError() string {
 	doc := strings.Builder{}
 	doc.WriteString(fmt.Sprintf("Error [%v]: %s", m.err, m.errorMessage))
 	return doc.String()
 }
 
-func (m *ModelError) viewMessage() string {
+func (m *ModelStatus) viewMessage() string {
 	doc := strings.Builder{}
 	doc.WriteString(m.message)
 	return doc.String()

@@ -10,7 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
-	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/status"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	"github.com/termkit/gama/pkg/workflow"
 	"github.com/termkit/skeleton"
@@ -37,7 +37,7 @@ type ModelGithubTrigger struct {
 	triggerFocused         bool
 
 	// shared properties
-	SelectedRepository *hdltypes.SelectedRepository
+	selectedRepository *hdltypes.SelectedRepository
 
 	// use cases
 	github gu.UseCase
@@ -46,8 +46,8 @@ type ModelGithubTrigger struct {
 	Keys githubTriggerKeyMap
 
 	// models
-	Help         help.Model
-	modelError   *hdlerror.ModelError
+	help         help.Model
+	status       *status.ModelStatus
 	textInput    textinput.Model
 	tableTrigger table.Model
 
@@ -80,14 +80,14 @@ func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCa
 	ti.Blur()
 	ti.CharLimit = 72
 
-	modelError := hdlerror.SetupModelError(skeleton)
+	modelError := status.SetupModelStatus(skeleton)
 	return &ModelGithubTrigger{
 		skeleton:            skeleton,
-		Help:                help.New(),
+		help:                help.New(),
 		Keys:                githubTriggerKeys,
 		github:              githubUseCase,
-		SelectedRepository:  hdltypes.NewSelectedRepository(),
-		modelError:          &modelError,
+		selectedRepository:  hdltypes.NewSelectedRepository(),
+		status:              &modelError,
 		tableTrigger:        tableTrigger,
 		textInput:           ti,
 		syncWorkflowContext: context.Background(),
@@ -111,22 +111,22 @@ func (m *ModelGithubTrigger) Init() tea.Cmd {
 }
 
 func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.SelectedRepository.WorkflowName == "" {
-		m.modelError.Reset()
-		m.modelError.SetDefaultMessage("No workflow selected.")
+	if m.selectedRepository.WorkflowName == "" {
+		m.status.Reset()
+		m.status.SetDefaultMessage("No workflow selected.")
 		m.fillTableWithEmptyMessage()
 		return m, nil
 	}
 
-	if m.SelectedRepository.WorkflowName != "" && (m.SelectedRepository.WorkflowName != m.selectedWorkflow || m.SelectedRepository.RepositoryName != m.selectedRepositoryName) {
+	if m.selectedRepository.WorkflowName != "" && (m.selectedRepository.WorkflowName != m.selectedWorkflow || m.selectedRepository.RepositoryName != m.selectedRepositoryName) {
 		m.tableReady = false
 		m.isTriggerable = false
 		m.triggerFocused = false
 
 		m.cancelSyncWorkflow() // cancel previous sync workflow
 
-		m.selectedWorkflow = m.SelectedRepository.WorkflowName
-		m.selectedRepositoryName = m.SelectedRepository.RepositoryName
+		m.selectedWorkflow = m.selectedRepository.WorkflowName
+		m.selectedRepositoryName = m.selectedRepository.RepositoryName
 		m.syncWorkflowContext, m.cancelSyncWorkflow = context.WithCancel(context.Background())
 
 		go m.syncWorkflowContent(m.syncWorkflowContext)
@@ -241,7 +241,7 @@ func (m *ModelGithubTrigger) View() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top, doc.String(),
-		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()), m.modelError.View(), helpWindowStyle.Render(m.ViewHelp()))
+		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
@@ -399,30 +399,30 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 	defer m.selfUpdate()
 
-	m.modelError.Reset()
-	m.modelError.SetProgressMessage(
+	m.status.Reset()
+	m.status.SetProgressMessage(
 		fmt.Sprintf("[%s@%s] Fetching workflow contents...",
-			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+			m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
 
 	// reset table rows
 	m.tableTrigger.SetRows([]table.Row{})
 
 	workflowContent, err := m.github.InspectWorkflow(ctx, gu.InspectWorkflowInput{
-		Repository:   m.SelectedRepository.RepositoryName,
-		Branch:       m.SelectedRepository.BranchName,
+		Repository:   m.selectedRepository.RepositoryName,
+		Branch:       m.selectedRepository.BranchName,
 		WorkflowFile: m.selectedWorkflow,
 	})
 	if errors.Is(err, context.Canceled) {
 		return
 	} else if err != nil {
-		m.modelError.SetError(err)
-		m.modelError.SetErrorMessage("Workflow contents cannot be fetched")
+		m.status.SetError(err)
+		m.status.SetErrorMessage("Workflow contents cannot be fetched")
 		return
 	}
 
 	if workflowContent.Workflow == nil {
-		m.modelError.SetError(errors.New("workflow contents cannot be empty"))
-		m.modelError.SetErrorMessage("You have no workflow contents")
+		m.status.SetError(errors.New("workflow contents cannot be empty"))
+		m.status.SetErrorMessage("You have no workflow contents")
 		return
 	}
 
@@ -489,11 +489,11 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 		len(workflowContent.Workflow.Choices) == 0 &&
 		len(workflowContent.Workflow.Inputs) == 0 {
 		m.fillTableWithEmptyMessage()
-		m.modelError.SetDefaultMessage(fmt.Sprintf("[%s@%s] Workflow doesn't contain options but still triggerable",
-			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+		m.status.SetDefaultMessage(fmt.Sprintf("[%s@%s] Workflow doesn't contain options but still triggerable",
+			m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
 	} else {
-		m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
-			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
+		m.status.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
+			m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
 	}
 }
 
@@ -513,7 +513,7 @@ func (m *ModelGithubTrigger) fillTableWithEmptyMessage() {
 func (m *ModelGithubTrigger) showInformationIfAnyEmptyValue() {
 	for _, row := range m.tableTrigger.Rows() {
 		if row[4] == "" {
-			m.modelError.SetDefaultMessage("Info: You have empty values. These values uses their default values.")
+			m.status.SetDefaultMessage("Info: You have empty values. These values uses their default values.")
 			return
 		}
 	}
@@ -537,8 +537,8 @@ func (m *ModelGithubTrigger) triggerButton() string {
 
 func (m *ModelGithubTrigger) fillEmptyValuesWithDefault() {
 	if m.workflowContent == nil {
-		m.modelError.SetError(errors.New("workflow contents cannot be empty"))
-		m.modelError.SetErrorMessage("You have no workflow contents")
+		m.status.SetError(errors.New("workflow contents cannot be empty"))
+		m.status.SetErrorMessage("You have no workflow contents")
 		return
 	}
 
@@ -581,40 +581,40 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 		m.fillEmptyValuesWithDefault()
 	}
 
-	m.modelError.SetProgressMessage(
+	m.status.SetProgressMessage(
 		fmt.Sprintf("[%s@%s]:[%s] Triggering workflow...",
-			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName, m.selectedWorkflow))
+			m.selectedRepository.RepositoryName, m.selectedRepository.BranchName, m.selectedWorkflow))
 
 	if m.workflowContent == nil {
-		m.modelError.SetErrorMessage("Workflow contents cannot be empty")
+		m.status.SetErrorMessage("Workflow contents cannot be empty")
 		return
 	}
 
 	content, err := m.workflowContent.ToJson()
 	if err != nil {
-		m.modelError.SetError(err)
-		m.modelError.SetErrorMessage("Workflow contents cannot be converted to JSON")
+		m.status.SetError(err)
+		m.status.SetErrorMessage("Workflow contents cannot be converted to JSON")
 		return
 	}
 
 	_, err = m.github.TriggerWorkflow(context.Background(), gu.TriggerWorkflowInput{
-		Repository:   m.SelectedRepository.RepositoryName,
-		Branch:       m.SelectedRepository.BranchName,
+		Repository:   m.selectedRepository.RepositoryName,
+		Branch:       m.selectedRepository.BranchName,
 		WorkflowFile: m.selectedWorkflow,
 		Content:      content,
 	})
 	if err != nil {
-		m.modelError.SetError(err)
-		m.modelError.SetErrorMessage("Workflow cannot be triggered")
+		m.status.SetError(err)
+		m.status.SetErrorMessage("Workflow cannot be triggered")
 		return
 	}
 
-	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s]:[%s] Workflow triggered.",
-		m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName, m.selectedWorkflow))
+	m.status.SetSuccessMessage(fmt.Sprintf("[%s@%s]:[%s] Workflow triggered.",
+		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName, m.selectedWorkflow))
 
 	time.Sleep(1 * time.Second)
 	m.selfUpdate()
-	m.modelError.SetProgressMessage("Switching to workflow history tab...")
+	m.status.SetProgressMessage("Switching to workflow history tab...")
 	time.Sleep(1500 * time.Millisecond)
 
 	// move these operations under new function named "resetTabSettings"

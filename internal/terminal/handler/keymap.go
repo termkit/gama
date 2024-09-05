@@ -75,7 +75,7 @@ var githubInformationKeys = func() githubInformationKeyMap {
 }()
 
 func (m *ModelInfo) ViewHelp() string {
-	return m.Help.View(m.Keys)
+	return m.help.View(m.keys)
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +120,7 @@ var githubRepositoryKeys = func() githubRepositoryKeyMap {
 }()
 
 func (m *ModelGithubRepository) ViewHelp() string {
-	return m.Help.View(m.Keys)
+	return m.help.View(m.Keys)
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ var githubWorkflowHistoryKeys = func() githubWorkflowHistoryKeyMap {
 }()
 
 func (m *ModelGithubWorkflowHistory) ViewHelp() string {
-	return m.Help.View(m.Keys)
+	return m.Help.View(m.keys)
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +204,7 @@ var githubWorkflowKeys = func() githubWorkflowKeyMap {
 }()
 
 func (m *ModelGithubWorkflow) ViewHelp() string {
-	return m.Help.View(m.Keys)
+	return m.help.View(m.keys)
 }
 
 // ---------------------------------------------------------------------------
@@ -255,5 +255,5 @@ var githubTriggerKeys = func() githubTriggerKeyMap {
 }()
 
 func (m *ModelGithubTrigger) ViewHelp() string {
-	return m.Help.View(m.Keys)
+	return m.help.View(m.Keys)
 }
