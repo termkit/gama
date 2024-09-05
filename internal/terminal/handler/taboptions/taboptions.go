@@ -79,9 +79,7 @@ func NewOptions(modelError *hdlerror.ModelError) *Options {
 }
 
 func (o *Options) Init() tea.Cmd {
-	return func() tea.Msg {
-		return o.modelError.Init()
-	}
+	return nil
 }
 
 func (o *Options) Update(msg tea.Msg) (*Options, tea.Cmd) {

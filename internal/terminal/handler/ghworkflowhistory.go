@@ -50,6 +50,8 @@ type ModelGithubWorkflowHistory struct {
 	modelError           *hdlerror.ModelError
 
 	modelTabOptions *taboptions.Options
+
+	updateSelfChan chan any
 }
 
 type workflowHistoryUpdateMsg struct {
@@ -114,7 +116,21 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 		syncWorkflowHistoryContext: context.Background(),
 		cancelSyncWorkflowHistory:  func() {},
 		tableStyle:                 tableStyle,
+		updateSelfChan:             make(chan any),
 	}
+}
+
+func (m *ModelGithubWorkflowHistory) selfUpdate() {
+	m.updateSelfChan <- selfUpdateMsg{}
+}
+
+func (m *ModelGithubWorkflowHistory) selfListen() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.updateSelfChan
+	}
+}
+
+type selfUpdateMsg struct {
 }
 
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
@@ -125,8 +141,8 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 		func() tea.Msg {
 			return workflowHistoryUpdateMsg{UpdateAfter: time.Second * 1}
 		},
-		m.modelError.Init(),
 		m.SelfUpdater(),
+		m.selfListen(),
 	)
 }
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -151,6 +167,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.Keys.Refresh):
 			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+			cmds = append(cmds, m.SelfUpdater())
 		case key.Matches(msg, m.Keys.LiveMode):
 			m.liveMode = !m.liveMode
 			if m.liveMode {
@@ -166,12 +183,11 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			time.Sleep(msg.UpdateAfter)
 			m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 		}()
+		cmds = append(cmds, m.SelfUpdater())
+	case selfUpdateMsg:
+		// do nothing
+		cmds = append(cmds, m.selfListen())
 	}
-
-	cmds = append(cmds, m.SelfUpdater())
-
-	m.modelError, cmd = m.modelError.Update(msg)
-	cmds = append(cmds, cmd)
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
 	cmds = append(cmds, cmd)
@@ -356,7 +372,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	m.tableWorkflowHistory.SetCursor(0)
 	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 	m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
-	go m.Update(m) // update model
+	m.selfUpdate()
 }
 
 func (m *ModelGithubWorkflowHistory) ViewStatus() string {

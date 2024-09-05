@@ -74,8 +74,7 @@ func (m *ModelInfo) Init() tea.Cmd {
 	go m.checkUpdates(context.Background())
 	go m.testConnection(context.Background())
 
-	return tea.Batch(tea.EnterAltScreen, tea.SetWindowTitle("GitHub Actions Manager (GAMA)"),
-		m.modelError.Init(), m.handleSelfUpdate())
+	return tea.Batch(tea.EnterAltScreen, tea.SetWindowTitle("GitHub Actions Manager (GAMA)"), m.handleSelfUpdate())
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
@@ -94,17 +93,6 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 
 func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case updateSelf:
-		if msg.RefreshTerminal {
-			m.modelError, cmd = m.modelError.Update(msg)
-			cmds = append(cmds, cmd)
-		}
-	}
-
-	m.modelError, cmd = m.modelError.Update(msg)
-	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -131,7 +119,6 @@ func (m *ModelInfo) View() string {
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {
-	m.modelError.EnableSpinner()
 	m.modelError.SetProgressMessage("Checking your token...")
 	m.skeleton.LockTabs()
 

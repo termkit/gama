@@ -39,6 +39,8 @@ type ModelGithubWorkflow struct {
 	Help                     help.Model
 	tableTriggerableWorkflow table.Model
 	modelError               *hdlerror.ModelError
+
+	updateSelfChan chan any
 }
 
 func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
@@ -75,16 +77,33 @@ func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseC
 		SelectedRepository:              hdltypes.NewSelectedRepository(),
 		syncTriggerableWorkflowsContext: context.Background(),
 		cancelSyncTriggerableWorkflows:  func() {},
+		updateSelfChan:                  make(chan any),
+	}
+}
+
+func (m *ModelGithubWorkflow) selfUpdate() {
+	m.updateSelfChan <- selfUpdateMsg{}
+}
+
+func (m *ModelGithubWorkflow) selfListen() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.updateSelfChan
 	}
 }
 
 func (m *ModelGithubWorkflow) Init() tea.Cmd {
-	return tea.Batch(m.modelError.Init())
+	return tea.Batch(m.selfListen())
 }
 
 func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case selfUpdateMsg:
+		_ = msg
+		cmds = append(cmds, m.selfListen())
+	}
 
 	if m.lastRepository != m.SelectedRepository.RepositoryName {
 		m.tableReady = false               // reset table ready status
@@ -95,9 +114,6 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		go m.syncTriggerableWorkflows(m.syncTriggerableWorkflowsContext)
 	}
-
-	m.modelError, cmd = m.modelError.Update(msg)
-	cmds = append(cmds, cmd)
 
 	m.tableTriggerableWorkflow, cmd = m.tableTriggerableWorkflow.Update(msg)
 	cmds = append(cmds, cmd)
@@ -138,6 +154,8 @@ func (m *ModelGithubWorkflow) View() string {
 }
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
+	defer m.selfUpdate()
+
 	m.modelError.Reset()
 	m.modelError.SetProgressMessage(fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 

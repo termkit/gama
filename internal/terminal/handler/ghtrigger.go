@@ -50,6 +50,8 @@ type ModelGithubTrigger struct {
 	modelError   *hdlerror.ModelError
 	textInput    textinput.Model
 	tableTrigger table.Model
+
+	updateSelfChan chan any
 }
 
 func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubTrigger {
@@ -90,11 +92,22 @@ func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCa
 		textInput:           ti,
 		syncWorkflowContext: context.Background(),
 		cancelSyncWorkflow:  func() {},
+		updateSelfChan:      make(chan any),
+	}
+}
+
+func (m *ModelGithubTrigger) selfUpdate() {
+	m.updateSelfChan <- selfUpdateMsg{}
+}
+
+func (m *ModelGithubTrigger) selfListen() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.updateSelfChan
 	}
 }
 
 func (m *ModelGithubTrigger) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, m.modelError.Init())
+	return tea.Batch(textinput.Blink, m.selfListen())
 }
 
 func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -170,10 +183,9 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				go m.triggerWorkflow()
 			}
 		}
+	case selfUpdateMsg:
+		cmds = append(cmds, m.selfListen())
 	}
-
-	m.modelError, cmd = m.modelError.Update(msg)
-	cmds = append(cmds, cmd)
 
 	m.tableTrigger, cmd = m.tableTrigger.Update(msg)
 	cmds = append(cmds, cmd)
@@ -481,6 +493,8 @@ func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
 		m.modelError.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow contents fetched.",
 			m.SelectedRepository.RepositoryName, m.SelectedRepository.BranchName))
 	}
+
+	m.selfUpdate()
 }
 
 func (m *ModelGithubTrigger) fillTableWithEmptyMessage() {

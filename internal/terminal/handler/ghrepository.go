@@ -140,7 +140,6 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 	}
 
 	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
-	m.modelError.Init()
 	go m.syncRepositories(m.syncRepositoriesContext)
 	return tea.Batch(m.modelTabOptions.Init(), m.SelfUpdater())
 }
@@ -169,9 +168,6 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case updateSelf:
 		cmds = append(cmds, m.SelfUpdater())
 	}
-
-	m.modelError, cmd = m.modelError.Update(msg)
-	cmds = append(cmds, cmd)
 
 	m.textInput, cmd = m.textInput.Update(textInputMsg)
 	cmds = append(cmds, cmd)
