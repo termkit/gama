@@ -80,14 +80,14 @@ func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCa
 	ti.Blur()
 	ti.CharLimit = 72
 
-	modelError := status.SetupModelStatus(skeleton)
+	modelStatus := status.SetupModelStatus(skeleton)
 	return &ModelGithubTrigger{
 		skeleton:            skeleton,
 		help:                help.New(),
 		Keys:                githubTriggerKeys,
 		github:              githubUseCase,
 		selectedRepository:  hdltypes.NewSelectedRepository(),
-		status:              &modelError,
+		status:              &modelStatus,
 		tableTrigger:        tableTrigger,
 		textInput:           ti,
 		syncWorkflowContext: context.Background(),
@@ -227,9 +227,6 @@ func (m *ModelGithubTrigger) View() string {
 		m.tableTrigger.SetHeight(m.skeleton.GetTerminalHeight() - 17)
 	}
 
-	doc := strings.Builder{}
-	doc.WriteString(baseStyle.Render(m.tableTrigger.View()))
-
 	var selectedRow = m.tableTrigger.SelectedRow()
 	var selector = m.emptySelector()
 	if len(m.tableTrigger.Rows()) > 0 {
@@ -240,8 +237,9 @@ func (m *ModelGithubTrigger) View() string {
 		}
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(),
-		lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Top,
+		baseStyle.Render(m.tableTrigger.View()), lipgloss.JoinHorizontal(lipgloss.Top, selector, m.triggerButton()),
+		m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
@@ -636,10 +634,7 @@ func (m *ModelGithubTrigger) emptySelector() string {
 		Padding(0, 1).
 		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
 
-	// Build the options list
-	doc := strings.Builder{}
-
-	return windowStyle.Render(doc.String())
+	return windowStyle.Render("")
 }
 
 func (m *ModelGithubTrigger) inputSelector() string {
@@ -667,9 +662,6 @@ func (m *ModelGithubTrigger) optionSelector() string {
 	selectedOptionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Padding(0, 1)
 	unselectedOptionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("140")).Padding(0, 1)
 
-	// Build the options list
-	doc := strings.Builder{}
-
 	var processedValues []string
 	for i, option := range m.optionValues {
 		if i == m.optionCursor {
@@ -679,12 +671,7 @@ func (m *ModelGithubTrigger) optionSelector() string {
 		}
 	}
 
-	horizontal := lipgloss.JoinHorizontal(lipgloss.Left, processedValues...)
-
-	doc.WriteString(horizontal)
-
-	// Apply window style to the entire list
-	return windowStyle.Render(doc.String())
+	return windowStyle.Render(lipgloss.JoinHorizontal(lipgloss.Left, processedValues...))
 }
 
 func (m *ModelGithubTrigger) sortTableItemsByName() {

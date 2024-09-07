@@ -106,8 +106,8 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 	ti.ShowSuggestions = false // disable suggestions, it will be enabled future.
 
 	// setup models
-	modelError := status.SetupModelStatus(skeleton)
-	tabOptions := taboptions.NewOptions(&modelError)
+	modelStatus := status.SetupModelStatus(skeleton)
+	tabOptions := taboptions.NewOptions(&modelStatus)
 
 	return &ModelGithubRepository{
 		skeleton:                skeleton,
@@ -115,7 +115,7 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 		Keys:                    githubRepositoryKeys,
 		github:                  githubUseCase,
 		tableGithubRepository:   tableGithubRepository,
-		status:                  &modelError,
+		status:                  &modelStatus,
 		selectedRepository:      hdltypes.NewSelectedRepository(),
 		modelTabOptions:         tabOptions,
 		textInput:               ti,
@@ -218,10 +218,9 @@ func (m *ModelGithubRepository) View() string {
 		m.tableGithubRepository.SetHeight(m.skeleton.GetTerminalHeight() - 20)
 	}
 
-	doc := strings.Builder{}
-	doc.WriteString(baseStyle.Render(m.tableGithubRepository.View()))
-
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.viewSearchBar(), m.modelTabOptions.View(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Top,
+		baseStyle.Render(m.tableGithubRepository.View()), m.viewSearchBar(),
+		m.modelTabOptions.View(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
@@ -277,7 +276,6 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	m.searchTableGithubRepository.SetCursor(0)
 
 	m.tableReady = true
-	//m.updateSearchBarSuggestions()
 	m.textInput.Focus()
 	m.status.SetSuccessMessage("Repositories fetched")
 }
@@ -307,16 +305,11 @@ func (m *ModelGithubRepository) viewSearchBar() string {
 		Padding(0, 1).
 		Width(m.skeleton.GetTerminalWidth() - 6).MarginLeft(1)
 
-	// Build the options list
-	doc := strings.Builder{}
-
 	if len(m.textInput.Value()) > 0 {
 		windowStyle = windowStyle.BorderForeground(lipgloss.Color("39"))
 	}
 
-	doc.WriteString(m.textInput.View())
-
-	return windowStyle.Render(doc.String())
+	return windowStyle.Render(m.textInput.View())
 }
 
 func (m *ModelGithubRepository) updateTableRowsBySearchBar() {

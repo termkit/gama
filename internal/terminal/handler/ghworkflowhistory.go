@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/termkit/gama/internal/config"
 	"github.com/termkit/skeleton"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -97,8 +96,8 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
 
-	modelError := status.SetupModelStatus(skeleton)
-	tabOptions := taboptions.NewOptions(&modelError)
+	modelStatus := status.SetupModelStatus(skeleton)
+	tabOptions := taboptions.NewOptions(&modelStatus)
 
 	githubWorkflowHistoryUpdateChan = make(chan workflowHistoryUpdateMsg)
 
@@ -110,7 +109,7 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 		keys:                       githubWorkflowHistoryKeys,
 		github:                     githubUseCase,
 		tableWorkflowHistory:       tableWorkflowHistory,
-		status:                     &modelError,
+		status:                     &modelStatus,
 		selectedRepository:         hdltypes.NewSelectedRepository(),
 		modelTabOptions:            tabOptions,
 		syncWorkflowHistoryContext: context.Background(),
@@ -221,10 +220,9 @@ func (m *ModelGithubWorkflowHistory) View() string {
 
 	m.tableWorkflowHistory.SetHeight(termHeight - 18)
 
-	doc := strings.Builder{}
-	doc.WriteString(m.tableStyle.Render(m.tableWorkflowHistory.View()))
-
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.modelTabOptions.View(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
+	return lipgloss.JoinVertical(lipgloss.Top,
+		m.tableStyle.Render(m.tableWorkflowHistory.View()), m.modelTabOptions.View(),
+		m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
 func (m *ModelGithubWorkflowHistory) SelfUpdater() tea.Cmd {

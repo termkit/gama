@@ -16,7 +16,13 @@ import (
 
 type ModelInfo struct {
 	skeleton *skeleton.Skeleton
-	version  pkgversion.Version
+
+	logo                   string
+	releaseURL             string
+	newVersionAvailableMsg string
+	applicationDescription string
+
+	version pkgversion.Version
 
 	// use cases
 	github gu.UseCase
@@ -31,34 +37,30 @@ type ModelInfo struct {
 	updateSelfChan chan selfUpdateMsg
 }
 
-const (
-	releaseURL = "https://github.com/termkit/gama/releases"
+func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
+	modelStatus := status.SetupModelStatus(skeleton)
 
-	applicationName = `
+	const (
+		releaseURL = "https://github.com/termkit/gama/releases"
+
+		applicationName = `
  ..|'''.|      |     '||    ||'     |     
 .|'     '     |||     |||  |||     |||    
 ||    ....   |  ||    |'|..'||    |  ||   
 '|.    ||   .''''|.   | '|' ||   .''''|.  
 ''|...'|  .|.  .||. .|. | .||. .|.  .||.
 `
-)
-
-var (
-	currentVersion         string
-	newVersionAvailableMsg string
-	applicationDescription string
-)
-
-func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
-	modelError := status.SetupModelStatus(skeleton)
+	)
 
 	return &ModelInfo{
-		skeleton: skeleton,
-		github:   githubUseCase,
-		version:  version,
-		help:     help.New(),
-		keys:     githubInformationKeys,
-		status:   &modelError,
+		skeleton:   skeleton,
+		releaseURL: releaseURL,
+		logo:       applicationName,
+		github:     githubUseCase,
+		version:    version,
+		help:       help.New(),
+		keys:       githubInformationKeys,
+		status:     &modelStatus,
 	}
 }
 
@@ -73,8 +75,7 @@ func (m *ModelInfo) selfListen() tea.Cmd {
 }
 
 func (m *ModelInfo) Init() tea.Cmd {
-	currentVersion = m.version.CurrentVersion()
-	applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", currentVersion)
+	m.applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", m.version.CurrentVersion())
 
 	go m.checkUpdates(context.Background())
 	go m.testConnection(context.Background())
@@ -103,12 +104,11 @@ func (m *ModelInfo) View() string {
 	if requiredNewLinesForCenter < 0 {
 		requiredNewLinesForCenter = 0
 	}
+
 	infoDoc.WriteString(strings.Repeat("\n", requiredNewLinesForCenter))
+	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, m.logo, m.applicationDescription, m.newVersionAvailableMsg))
 
-	infoDoc.WriteString(lipgloss.JoinVertical(lipgloss.Center, applicationName, applicationDescription, newVersionAvailableMsg))
-
-	docHeight := lipgloss.Height(infoDoc.String())
-	requiredNewlinesForPadding := m.skeleton.GetTerminalHeight() - docHeight - 12
+	requiredNewlinesForPadding := m.skeleton.GetTerminalHeight() - lipgloss.Height(infoDoc.String()) - 12
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 
@@ -122,12 +122,12 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 	if err != nil {
 		m.status.SetError(err)
 		m.status.SetErrorMessage("failed to check updates")
-		newVersionAvailableMsg = fmt.Sprintf("failed to check updates.\nPlease visit: %s", releaseURL)
+		m.newVersionAvailableMsg = fmt.Sprintf("failed to check updates.\nPlease visit: %s", m.releaseURL)
 		return
 	}
 
 	if isUpdateAvailable {
-		newVersionAvailableMsg = fmt.Sprintf("New version available: %s\nPlease visit: %s", version, releaseURL)
+		m.newVersionAvailableMsg = fmt.Sprintf("New version available: %s\nPlease visit: %s", version, m.releaseURL)
 	}
 }
 

@@ -65,14 +65,14 @@ func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseC
 		Bold(false)
 	tableTriggerableWorkflow.SetStyles(s)
 
-	modelError := status.SetupModelStatus(skeleton)
+	modelStatus := status.SetupModelStatus(skeleton)
 
 	return &ModelGithubWorkflow{
 		skeleton:                        skeleton,
 		help:                            help.New(),
 		keys:                            githubWorkflowKeys,
 		github:                          githubUseCase,
-		status:                          &modelError,
+		status:                          &modelStatus,
 		tableTriggerableWorkflow:        tableTriggerableWorkflow,
 		selectedRepository:              hdltypes.NewSelectedRepository(),
 		syncTriggerableWorkflowsContext: context.Background(),
