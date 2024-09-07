@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/termkit/gama/internal/config"
-	pkgversion "github.com/termkit/gama/pkg/version"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/termkit/gama/internal/config"
 	gr "github.com/termkit/gama/internal/github/repository"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	th "github.com/termkit/gama/internal/terminal/handler"
+	pkgversion "github.com/termkit/gama/pkg/version"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (

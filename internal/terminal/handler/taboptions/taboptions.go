@@ -7,17 +7,17 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	hdlerror "github.com/termkit/gama/internal/terminal/handler/error"
+	"github.com/termkit/gama/internal/terminal/handler/status"
 )
 
 type Options struct {
 	Style lipgloss.Style
 
-	modelError         *hdlerror.ModelError
-	previousModelError hdlerror.ModelError
-	modelLock          bool
+	status         *status.ModelStatus
+	previousStatus status.ModelStatus
+	modelLock      bool
 
-	status OptionStatus
+	optionStatus OptionStatus
 
 	options       []string
 	optionsAction []string
@@ -48,7 +48,7 @@ func (o OptionStatus) String() string {
 	return string(o)
 }
 
-func NewOptions(modelError *hdlerror.ModelError) *Options {
+func NewOptions(modelStatus *status.ModelStatus) *Options {
 	var b = lipgloss.RoundedBorder()
 	b.Right = "├"
 	b.Left = "┤"
@@ -73,80 +73,19 @@ func NewOptions(modelError *hdlerror.ModelError) *Options {
 		options:         initialOptions,
 		optionsAction:   initialOptionsAction,
 		optionsWithFunc: optionsWithFunc,
-		status:          OptionWait,
-		modelError:      modelError,
+		optionStatus:    OptionWait,
+		status:          modelStatus,
 	}
-}
-
-func (o *Options) SetStatus(status OptionStatus) {
-	o.status = status
-	o.options[0] = status.String()
-	o.optionsAction[0] = status.String()
-}
-
-func (o *Options) AddOption(option string, action func()) {
-	var optionWithNumber string
-	var optionNumber = len(o.options)
-	optionWithNumber = fmt.Sprintf("%d) %s", optionNumber, option)
-	o.options = append(o.options, optionWithNumber)
-	o.optionsAction = append(o.optionsAction, optionWithNumber)
-	o.optionsWithFunc[optionNumber] = action
-}
-
-func (o *Options) getOptionMessage() string {
-	option := o.options[o.cursor]
-	option = strings.TrimPrefix(option, fmt.Sprintf("%d) ", o.cursor))
-	return option
-}
-
-func (o *Options) showAreYouSure() {
-	if !o.modelLock {
-		o.previousModelError = *o.modelError
-		o.modelLock = true
-	}
-	o.modelError.Reset()
-	o.modelError.SetProgressMessage(fmt.Sprintf("Are you sure you want to %s?", o.getOptionMessage()))
-}
-
-func (o *Options) switchToPreviousError() {
-	if o.modelLock {
-		return
-	}
-	*o.modelError = o.previousModelError
-}
-
-func (o *Options) executeOption() {
-	go o.optionsWithFunc[o.cursor]()
-	o.cursor = 0
-	o.timer = -1
 }
 
 func (o *Options) Init() tea.Cmd {
 	return nil
 }
 
-func (o *Options) resetOptionsWithOriginal() {
-	if o.isTabSelected {
-		return
-	}
-	o.isTabSelected = true
-	o.timer = 3
-	for o.timer >= 0 {
-		o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
-		time.Sleep(1 * time.Second)
-		o.timer--
-	}
-	o.modelLock = false
-	o.switchToPreviousError()
-	o.optionsAction[0] = string(OptionIdle)
-	o.cursor = 0
-	o.isTabSelected = false
-}
-
-func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (o *Options) Update(msg tea.Msg) (*Options, tea.Cmd) {
 	var cmd tea.Cmd
 
-	if o.status == OptionWait || o.status == OptionNone {
+	if o.optionStatus == OptionWait || o.optionStatus == OptionNone {
 		return o, cmd
 	}
 
@@ -169,21 +108,14 @@ func (o *Options) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return o, cmd
 }
 
-func (o *Options) updateCursor(cursor int) {
-	if cursor < len(o.options) {
-		o.cursor = cursor
-		o.showAreYouSure()
-		go o.resetOptionsWithOriginal()
-	}
-}
-
 func (o *Options) View() string {
 	var style = o.Style.Foreground(lipgloss.Color("15"))
 
 	var opts []string
+	opts = append(opts, " ")
 
 	for i, option := range o.optionsAction {
-		switch o.status {
+		switch o.optionStatus {
 		case OptionWait:
 			style = style.BorderForeground(lipgloss.Color("208"))
 		case OptionNone:
@@ -201,4 +133,73 @@ func (o *Options) View() string {
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, opts...)
+}
+
+func (o *Options) resetOptionsWithOriginal() {
+	if o.isTabSelected {
+		return
+	}
+	o.isTabSelected = true
+	o.timer = 3
+	for o.timer >= 0 {
+		o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
+		time.Sleep(1 * time.Second)
+		o.timer--
+	}
+	o.modelLock = false
+	o.switchToPreviousError()
+	o.optionsAction[0] = string(OptionIdle)
+	o.cursor = 0
+	o.isTabSelected = false
+}
+
+func (o *Options) updateCursor(cursor int) {
+	if cursor < len(o.options) {
+		o.cursor = cursor
+		o.showAreYouSure()
+		go o.resetOptionsWithOriginal()
+	}
+}
+
+func (o *Options) SetStatus(status OptionStatus) {
+	o.optionStatus = status
+	o.options[0] = status.String()
+	o.optionsAction[0] = status.String()
+}
+
+func (o *Options) AddOption(option string, action func()) {
+	var optionWithNumber string
+	var optionNumber = len(o.options)
+	optionWithNumber = fmt.Sprintf("%d) %s", optionNumber, option)
+	o.options = append(o.options, optionWithNumber)
+	o.optionsAction = append(o.optionsAction, optionWithNumber)
+	o.optionsWithFunc[optionNumber] = action
+}
+
+func (o *Options) getOptionMessage() string {
+	option := o.options[o.cursor]
+	option = strings.TrimPrefix(option, fmt.Sprintf("%d) ", o.cursor))
+	return option
+}
+
+func (o *Options) showAreYouSure() {
+	if !o.modelLock {
+		o.previousStatus = *o.status
+		o.modelLock = true
+	}
+	o.status.Reset()
+	o.status.SetProgressMessage(fmt.Sprintf("Are you sure you want to %s?", o.getOptionMessage()))
+}
+
+func (o *Options) switchToPreviousError() {
+	if o.modelLock {
+		return
+	}
+	*o.status = o.previousStatus
+}
+
+func (o *Options) executeOption() {
+	go o.optionsWithFunc[o.cursor]()
+	o.cursor = 0
+	o.timer = -1
 }
