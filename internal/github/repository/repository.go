@@ -261,20 +261,6 @@ func (r *Repo) InspectWorkflowContent(ctx context.Context, repository string, br
 	return decodedContent, nil
 }
 
-//func (r *Repo) GetWorkflowRun(ctx context.Context, repository string, runID int64) (GithubWorkflowRun, error) {
-//	// Get a workflow run for the given repository and runID
-//	var workflowRun GithubWorkflowRun
-//	err := r.do(ctx, nil, &workflowRun, requestOptions{
-//		method:      http.MethodGet,
-//		path:        []string{"repos",repository,"actions","runs",strconv.FormatInt(runID, 10)},
-//	})
-//	if err != nil {
-//		return GithubWorkflowRun{}, err
-//	}
-//
-//	return workflowRun, nil
-//}
-
 func (r *Repo) getWorkflowFile(ctx context.Context, repository string, path string) (string, error) {
 	// Get the content of the workflow file
 	var githubFile githubFile

@@ -220,16 +220,17 @@ func (u useCase) getDuration(startTime time.Time, endTime time.Time, status stri
 	var diff time.Duration
 
 	if status != "completed" {
-		diff = time.Now().Sub(localEndTime)
+		diff = time.Since(localStartTime)
 	} else {
 		diff = localEndTime.Sub(localStartTime)
 	}
 
-	if diff.Seconds() < 60 {
+	switch {
+	case diff.Seconds() < 60:
 		return fmt.Sprintf("%ds", int(diff.Seconds()))
-	} else if diff.Seconds() < 3600 {
+	case diff.Seconds() < 3600:
 		return fmt.Sprintf("%dm %ds", int(diff.Minutes()), int(diff.Seconds())%60)
-	} else {
+	default:
 		return fmt.Sprintf("%dh %dm %ds", int(diff.Hours()), int(diff.Minutes())%60, int(diff.Seconds())%60)
 	}
 }

@@ -55,7 +55,7 @@ func ParseWorkflow(content py.WorkflowContent) (*Workflow, error) {
 	}
 
 	for key, value := range content.On.WorkflowDispatch.Inputs {
-		if value.JSONContent != nil && len(value.JSONContent) > 0 {
+		if len(value.JSONContent) > 0 {
 			var keyValue []KeyValue
 			for k, v := range value.JSONContent {
 				keyValue = append(keyValue, KeyValue{
