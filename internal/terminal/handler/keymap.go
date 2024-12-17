@@ -82,19 +82,17 @@ func (m *ModelInfo) ViewHelp() string {
 
 type githubRepositoryKeyMap struct {
 	Refresh   teakey.Binding
-	LaunchTab teakey.Binding
 	SwitchTab teakey.Binding
 }
 
 func (k githubRepositoryKeyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.SwitchTab, k.Refresh, k.LaunchTab}
+	return []teakey.Binding{k.SwitchTab, k.Refresh}
 }
 
 func (k githubRepositoryKeyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.SwitchTab},
 		{k.Refresh},
-		{k.LaunchTab},
 	}
 }
 
@@ -107,10 +105,6 @@ var githubRepositoryKeys = func() githubRepositoryKeyMap {
 		Refresh: teakey.NewBinding(
 			teakey.WithKeys(cfg.Shortcuts.Refresh),
 			teakey.WithHelp(cfg.Shortcuts.Refresh, "Refresh list"),
-		),
-		LaunchTab: teakey.NewBinding(
-			teakey.WithKeys(cfg.Shortcuts.Enter),
-			teakey.WithHelp(cfg.Shortcuts.Enter, "Launch the selected option"),
 		),
 		SwitchTab: teakey.NewBinding(
 			teakey.WithKeys(""), // help-only binding
@@ -126,21 +120,19 @@ func (m *ModelGithubRepository) ViewHelp() string {
 // ---------------------------------------------------------------------------
 
 type githubWorkflowHistoryKeyMap struct {
-	LaunchTab teakey.Binding
 	Refresh   teakey.Binding
 	SwitchTab teakey.Binding
 	LiveMode  teakey.Binding
 }
 
 func (k githubWorkflowHistoryKeyMap) ShortHelp() []teakey.Binding {
-	return []teakey.Binding{k.SwitchTab, k.Refresh, k.LaunchTab, k.LiveMode}
+	return []teakey.Binding{k.SwitchTab, k.Refresh, k.LiveMode}
 }
 
 func (k githubWorkflowHistoryKeyMap) FullHelp() [][]teakey.Binding {
 	return [][]teakey.Binding{
 		{k.SwitchTab},
 		{k.Refresh},
-		{k.LaunchTab},
 		{k.LiveMode},
 	}
 }
@@ -154,10 +146,6 @@ var githubWorkflowHistoryKeys = func() githubWorkflowHistoryKeyMap {
 		Refresh: teakey.NewBinding(
 			teakey.WithKeys(cfg.Shortcuts.Refresh),
 			teakey.WithHelp(cfg.Shortcuts.Refresh, "Refresh list"),
-		),
-		LaunchTab: teakey.NewBinding(
-			teakey.WithKeys(cfg.Shortcuts.Enter),
-			teakey.WithHelp(cfg.Shortcuts.Enter, "Launch the selected option"),
 		),
 		LiveMode: teakey.NewBinding(
 			teakey.WithKeys(cfg.Shortcuts.LiveMode),
