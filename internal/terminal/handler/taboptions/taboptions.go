@@ -183,12 +183,19 @@ func (o *Options) getOptionMessage() string {
 }
 
 func (o *Options) showAreYouSure() {
+	var yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Blink(true)
+
 	if !o.modelLock {
 		o.previousStatus = *o.status
 		o.modelLock = true
 	}
 	o.status.Reset()
-	o.status.SetProgressMessage(fmt.Sprintf("Are you sure you want to %s?", o.getOptionMessage()))
+	o.status.SetProgressMessage(fmt.Sprintf(
+		"Are you sure you want to %s? %s",
+		o.getOptionMessage(),
+		yellowStyle.Render("[ Press Enter ]"),
+	))
+
 }
 
 func (o *Options) switchToPreviousError() {
