@@ -23,11 +23,6 @@ type ModelStatus struct {
 	messageType MessageType
 }
 
-type UpdateSelf struct {
-	Message    string
-	InProgress bool
-}
-
 type MessageType string
 
 const (

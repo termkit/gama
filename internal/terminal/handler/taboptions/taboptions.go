@@ -2,6 +2,7 @@ package taboptions
 
 import (
 	"fmt"
+	"github.com/termkit/skeleton"
 	"strings"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 )
 
 type Options struct {
+	skeleton *skeleton.Skeleton
+
 	Style lipgloss.Style
 
 	status         *status.ModelStatus
@@ -48,7 +51,7 @@ func (o OptionStatus) String() string {
 	return string(o)
 }
 
-func NewOptions(modelStatus *status.ModelStatus) *Options {
+func NewOptions(sk *skeleton.Skeleton, modelStatus *status.ModelStatus) *Options {
 	var b = lipgloss.RoundedBorder()
 	b.Right = "├"
 	b.Left = "┤"
@@ -69,6 +72,7 @@ func NewOptions(modelStatus *status.ModelStatus) *Options {
 	optionsWithFunc[0] = func() {} // NO OPERATION
 
 	return &Options{
+		skeleton:        sk,
 		Style:           OptionsStyle,
 		options:         initialOptions,
 		optionsAction:   initialOptionsAction,
@@ -145,6 +149,7 @@ func (o *Options) resetOptionsWithOriginal() {
 		o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
 		time.Sleep(1 * time.Second)
 		o.timer--
+		o.skeleton.TriggerUpdate()
 	}
 	o.modelLock = false
 	o.switchToPreviousError()

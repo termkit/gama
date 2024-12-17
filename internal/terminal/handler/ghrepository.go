@@ -46,11 +46,9 @@ type ModelGithubRepository struct {
 	modelTabOptions *taboptions.Options
 
 	textInput textinput.Model
-
-	updateSelfChan chan selfUpdateMsg
 }
 
-func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubRepository {
+func SetupModelGithubRepository(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubRepository {
 	var tableRowsGithubRepository []table.Row
 
 	tableGithubRepository := table.New(
@@ -101,16 +99,16 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 
 	ti := textinput.New()
 	ti.Blur()
-	ti.CharLimit = 72
+	ti.CharLimit = 128
 	ti.Placeholder = "Type to search repository"
 	ti.ShowSuggestions = false // disable suggestions, it will be enabled future.
 
 	// setup models
-	modelStatus := status.SetupModelStatus(skeleton)
-	tabOptions := taboptions.NewOptions(&modelStatus)
+	modelStatus := status.SetupModelStatus(sk)
+	tabOptions := taboptions.NewOptions(sk, &modelStatus)
 
 	return &ModelGithubRepository{
-		skeleton:                skeleton,
+		skeleton:                sk,
 		help:                    help.New(),
 		Keys:                    githubRepositoryKeys,
 		github:                  githubUseCase,
@@ -121,17 +119,6 @@ func SetupModelGithubRepository(skeleton *skeleton.Skeleton, githubUseCase gu.Us
 		textInput:               ti,
 		syncRepositoriesContext: context.Background(),
 		cancelSyncRepositories:  func() {},
-		updateSelfChan:          make(chan selfUpdateMsg),
-	}
-}
-
-func (m *ModelGithubRepository) selfUpdate() {
-	m.updateSelfChan <- selfUpdateMsg{}
-}
-
-func (m *ModelGithubRepository) selfListen() tea.Cmd {
-	return func() tea.Msg {
-		return <-m.updateSelfChan
 	}
 }
 
@@ -150,8 +137,10 @@ func (m *ModelGithubRepository) Init() tea.Cmd {
 	}
 
 	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
+
 	go m.syncRepositories(m.syncRepositoriesContext)
-	return tea.Batch(m.modelTabOptions.Init(), m.SelfUpdater())
+
+	return tea.Batch(m.modelTabOptions.Init())
 }
 
 func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -175,8 +164,6 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchTableGithubRepository.GotoTop()
 			m.searchTableGithubRepository.SetCursor(0)
 		}
-	case selfUpdateMsg:
-		cmds = append(cmds, m.SelfUpdater())
 	}
 
 	m.textInput, cmd = m.textInput.Update(textInputMsg)
@@ -190,10 +177,10 @@ func (m *ModelGithubRepository) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.searchTableGithubRepository, cmd = m.searchTableGithubRepository.Update(msg)
 	cmds = append(cmds, cmd)
 
+	m.handleTableInputs(m.syncRepositoriesContext)
+
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
 	cmds = append(cmds, cmd)
-
-	m.handleTableInputs(m.syncRepositoriesContext)
 
 	return m, tea.Batch(cmds...)
 }
@@ -223,14 +210,9 @@ func (m *ModelGithubRepository) View() string {
 		m.modelTabOptions.View(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
 
-func (m *ModelGithubRepository) SelfUpdater() tea.Cmd {
-	return func() tea.Msg {
-		return <-m.updateSelfChan
-	}
-}
-
 func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
-	defer m.selfUpdate()
+	defer m.skeleton.TriggerUpdate()
+	defer m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 
 	m.status.Reset() // reset previous errors
 	m.modelTabOptions.SetStatus(taboptions.OptionWait)
@@ -293,8 +275,6 @@ func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
 		m.selectedRepository.RepositoryName = selectedRow[0]
 		m.selectedRepository.BranchName = selectedRow[1]
 	}
-
-	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
 }
 
 func (m *ModelGithubRepository) viewSearchBar() string {

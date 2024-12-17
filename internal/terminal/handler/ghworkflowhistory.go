@@ -49,23 +49,13 @@ type ModelGithubWorkflowHistory struct {
 	status               *status.ModelStatus
 
 	modelTabOptions *taboptions.Options
-
-	updateSelfChan chan any
 }
 
 type workflowHistoryUpdateMsg struct {
 	UpdateAfter time.Duration
 }
 
-var githubWorkflowHistoryUpdateChan = make(chan workflowHistoryUpdateMsg)
-
-func UpdateWorkflowHistory(timeAfter time.Duration) {
-	go func() {
-		githubWorkflowHistoryUpdateChan <- workflowHistoryUpdateMsg{UpdateAfter: timeAfter}
-	}()
-}
-
-func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
+func SetupModelGithubWorkflowHistory(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load config: %v", err))
@@ -96,13 +86,11 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
 
-	modelStatus := status.SetupModelStatus(skeleton)
-	tabOptions := taboptions.NewOptions(&modelStatus)
-
-	githubWorkflowHistoryUpdateChan = make(chan workflowHistoryUpdateMsg)
+	modelStatus := status.SetupModelStatus(sk)
+	tabOptions := taboptions.NewOptions(sk, &modelStatus)
 
 	return &ModelGithubWorkflowHistory{
-		skeleton:                   skeleton,
+		skeleton:                   sk,
 		liveMode:                   cfg.Settings.LiveMode.Enabled,
 		liveModeInterval:           cfg.Settings.LiveMode.Interval,
 		Help:                       help.New(),
@@ -115,31 +103,13 @@ func SetupModelGithubWorkflowHistory(skeleton *skeleton.Skeleton, githubUseCase 
 		syncWorkflowHistoryContext: context.Background(),
 		cancelSyncWorkflowHistory:  func() {},
 		tableStyle:                 tableStyle,
-		updateSelfChan:             make(chan any),
-	}
-}
-
-func (m *ModelGithubWorkflowHistory) selfUpdate() {
-	m.updateSelfChan <- selfUpdateMsg{}
-}
-
-func (m *ModelGithubWorkflowHistory) selfListen() tea.Cmd {
-	return func() tea.Msg {
-		return <-m.updateSelfChan
 	}
 }
 
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	m.setupOptions()
 	m.ToggleLiveMode()
-	return tea.Batch(
-		m.modelTabOptions.Init(),
-		func() tea.Msg {
-			return workflowHistoryUpdateMsg{UpdateAfter: time.Second * 1}
-		},
-		m.SelfUpdater(),
-		m.selfListen(),
-	)
+	return tea.Batch(m.modelTabOptions.Init())
 }
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.lastRepository != m.selectedRepository.RepositoryName {
@@ -163,7 +133,6 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keys.Refresh):
 			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
-			cmds = append(cmds, m.SelfUpdater())
 		case key.Matches(msg, m.keys.LiveMode):
 			m.liveMode = !m.liveMode
 			if m.liveMode {
@@ -178,11 +147,8 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		go func() {
 			time.Sleep(msg.UpdateAfter)
 			m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+			m.skeleton.TriggerUpdate()
 		}()
-		cmds = append(cmds, m.SelfUpdater())
-	case selfUpdateMsg:
-		// do nothing
-		cmds = append(cmds, m.selfListen())
 	}
 
 	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
@@ -218,17 +184,11 @@ func (m *ModelGithubWorkflowHistory) View() string {
 		m.tableWorkflowHistory.SetColumns(newTableColumns)
 	}
 
-	m.tableWorkflowHistory.SetHeight(termHeight - 18)
+	m.tableWorkflowHistory.SetHeight(termHeight - 17)
 
 	return lipgloss.JoinVertical(lipgloss.Top,
 		m.tableStyle.Render(m.tableWorkflowHistory.View()), m.modelTabOptions.View(),
 		m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
-}
-
-func (m *ModelGithubWorkflowHistory) SelfUpdater() tea.Cmd {
-	return func() tea.Msg {
-		return <-githubWorkflowHistoryUpdateChan
-	}
 }
 
 func (m *ModelGithubWorkflowHistory) setupOptions() {
@@ -311,19 +271,20 @@ func (m *ModelGithubWorkflowHistory) ToggleLiveMode() {
 			select {
 			case <-t.C:
 				if m.liveMode {
-					githubWorkflowHistoryUpdateChan <- workflowHistoryUpdateMsg{UpdateAfter: time.Nanosecond}
+					m.skeleton.TriggerUpdateWithMsg(workflowHistoryUpdateMsg{UpdateAfter: time.Nanosecond})
 				}
 			}
 		}
 	}()
 }
+
 func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
-	defer m.selfUpdate()
+	defer m.skeleton.TriggerUpdate()
 
 	m.tableReady = false
 	m.status.Reset()
-	m.status.SetProgressMessage(
-		fmt.Sprintf("[%s@%s] Fetching workflow history...", m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+	m.status.SetProgressMessage(fmt.Sprintf("[%s@%s] Fetching workflow history...",
+		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
 	m.modelTabOptions.SetStatus(taboptions.OptionWait)
 
 	// delete all rows

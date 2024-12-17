@@ -39,11 +39,9 @@ type ModelGithubWorkflow struct {
 	help                     help.Model
 	tableTriggerableWorkflow table.Model
 	status                   *status.ModelStatus
-
-	updateSelfChan chan any
 }
 
-func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
+func SetupModelGithubWorkflow(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
 	var tableRowsTriggerableWorkflow []table.Row
 
 	tableTriggerableWorkflow := table.New(
@@ -65,10 +63,10 @@ func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseC
 		Bold(false)
 	tableTriggerableWorkflow.SetStyles(s)
 
-	modelStatus := status.SetupModelStatus(skeleton)
+	modelStatus := status.SetupModelStatus(sk)
 
 	return &ModelGithubWorkflow{
-		skeleton:                        skeleton,
+		skeleton:                        sk,
 		help:                            help.New(),
 		keys:                            githubWorkflowKeys,
 		github:                          githubUseCase,
@@ -77,33 +75,16 @@ func SetupModelGithubWorkflow(skeleton *skeleton.Skeleton, githubUseCase gu.UseC
 		selectedRepository:              hdltypes.NewSelectedRepository(),
 		syncTriggerableWorkflowsContext: context.Background(),
 		cancelSyncTriggerableWorkflows:  func() {},
-		updateSelfChan:                  make(chan any),
-	}
-}
-
-func (m *ModelGithubWorkflow) selfUpdate() {
-	m.updateSelfChan <- selfUpdateMsg{}
-}
-
-func (m *ModelGithubWorkflow) selfListen() tea.Cmd {
-	return func() tea.Msg {
-		return <-m.updateSelfChan
 	}
 }
 
 func (m *ModelGithubWorkflow) Init() tea.Cmd {
-	return tea.Batch(m.selfListen())
+	return nil
 }
 
 func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case selfUpdateMsg:
-		_ = msg
-		cmds = append(cmds, m.selfListen())
-	}
 
 	if m.lastRepository != m.selectedRepository.RepositoryName {
 		m.tableReady = false               // reset table ready status
@@ -154,7 +135,7 @@ func (m *ModelGithubWorkflow) View() string {
 }
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
-	defer m.selfUpdate()
+	defer m.skeleton.TriggerUpdate()
 
 	m.status.Reset()
 	m.status.SetProgressMessage(fmt.Sprintf("[%s@%s] Fetching triggerable workflows...", m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))

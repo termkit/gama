@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	gu "github.com/termkit/gama/internal/github/usecase"
@@ -33,12 +34,10 @@ type ModelInfo struct {
 
 	// keymap
 	keys githubInformationKeyMap
-
-	updateSelfChan chan selfUpdateMsg
 }
 
-func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
-	modelStatus := status.SetupModelStatus(skeleton)
+func SetupModelInfo(sk *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
+	modelStatus := status.SetupModelStatus(sk)
 
 	const (
 		releaseURL = "https://github.com/termkit/gama/releases"
@@ -53,7 +52,7 @@ func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, versi
 	)
 
 	return &ModelInfo{
-		skeleton:   skeleton,
+		skeleton:   sk,
 		releaseURL: releaseURL,
 		logo:       applicationName,
 		github:     githubUseCase,
@@ -64,35 +63,25 @@ func SetupModelInfo(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase, versi
 	}
 }
 
-func (m *ModelInfo) selfUpdate() {
-	m.updateSelfChan <- selfUpdateMsg{}
-}
-
-func (m *ModelInfo) selfListen() tea.Cmd {
-	return func() tea.Msg {
-		return <-m.updateSelfChan
-	}
-}
-
 func (m *ModelInfo) Init() tea.Cmd {
 	m.applicationDescription = fmt.Sprintf("Github Actions Manager (%s)", m.version.CurrentVersion())
 
 	go m.checkUpdates(context.Background())
 	go m.testConnection(context.Background())
 
-	return tea.Batch(tea.EnterAltScreen, tea.SetWindowTitle("GitHub Actions Manager (GAMA)"), m.selfListen())
+	return tea.Batch(tea.EnterAltScreen, tea.SetWindowTitle("GitHub Actions Manager (GAMA)"))
 }
 
 func (m *ModelInfo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-
 	switch msg := msg.(type) {
-	case selfUpdateMsg:
-		_ = msg
-		cmds = append(cmds, m.selfListen())
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.keys.Quit):
+			return m, tea.Quit
+		}
 	}
 
-	return m, tea.Batch(cmds...)
+	return m, nil
 }
 
 func (m *ModelInfo) View() string {
@@ -112,11 +101,13 @@ func (m *ModelInfo) View() string {
 
 	infoDoc.WriteString(strings.Repeat("\n", max(0, requiredNewlinesForPadding)))
 
-	return lipgloss.JoinVertical(lipgloss.Center, infoDoc.String(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
+	str := lipgloss.JoinVertical(lipgloss.Center, infoDoc.String(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
+
+	return str
 }
 
 func (m *ModelInfo) checkUpdates(ctx context.Context) {
-	defer m.selfUpdate()
+	defer m.skeleton.TriggerUpdate()
 
 	isUpdateAvailable, version, err := m.version.IsUpdateAvailable(ctx)
 	if err != nil {
@@ -132,7 +123,7 @@ func (m *ModelInfo) checkUpdates(ctx context.Context) {
 }
 
 func (m *ModelInfo) testConnection(ctx context.Context) {
-	defer m.selfUpdate()
+	defer m.skeleton.TriggerUpdate()
 
 	m.status.SetProgressMessage("Checking your token...")
 	m.skeleton.LockTabs()

@@ -50,11 +50,9 @@ type ModelGithubTrigger struct {
 	status       *status.ModelStatus
 	textInput    textinput.Model
 	tableTrigger table.Model
-
-	updateSelfChan chan any
 }
 
-func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubTrigger {
+func SetupModelGithubTrigger(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubTrigger {
 	var tableRowsTrigger []table.Row
 
 	tableTrigger := table.New(
@@ -80,9 +78,9 @@ func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCa
 	ti.Blur()
 	ti.CharLimit = 72
 
-	modelStatus := status.SetupModelStatus(skeleton)
+	modelStatus := status.SetupModelStatus(sk)
 	return &ModelGithubTrigger{
-		skeleton:            skeleton,
+		skeleton:            sk,
 		help:                help.New(),
 		Keys:                githubTriggerKeys,
 		github:              githubUseCase,
@@ -92,22 +90,11 @@ func SetupModelGithubTrigger(skeleton *skeleton.Skeleton, githubUseCase gu.UseCa
 		textInput:           ti,
 		syncWorkflowContext: context.Background(),
 		cancelSyncWorkflow:  func() {},
-		updateSelfChan:      make(chan any),
-	}
-}
-
-func (m *ModelGithubTrigger) selfUpdate() {
-	m.updateSelfChan <- selfUpdateMsg{}
-}
-
-func (m *ModelGithubTrigger) selfListen() tea.Cmd {
-	return func() tea.Msg {
-		return <-m.updateSelfChan
 	}
 }
 
 func (m *ModelGithubTrigger) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, m.selfListen())
+	return tea.Batch(textinput.Blink)
 }
 
 func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -183,8 +170,6 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				go m.triggerWorkflow()
 			}
 		}
-	case selfUpdateMsg:
-		cmds = append(cmds, m.selfListen())
 	}
 
 	m.tableTrigger, cmd = m.tableTrigger.Update(msg)
@@ -395,7 +380,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 }
 
 func (m *ModelGithubTrigger) syncWorkflowContent(ctx context.Context) {
-	defer m.selfUpdate()
+	defer m.skeleton.TriggerUpdate()
 
 	m.status.Reset()
 	m.status.SetProgressMessage(
@@ -579,9 +564,8 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 		m.fillEmptyValuesWithDefault()
 	}
 
-	m.status.SetProgressMessage(
-		fmt.Sprintf("[%s@%s]:[%s] Triggering workflow...",
-			m.selectedRepository.RepositoryName, m.selectedRepository.BranchName, m.selectedWorkflow))
+	m.status.SetProgressMessage(fmt.Sprintf("[%s@%s]:[%s] Triggering workflow...",
+		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName, m.selectedWorkflow))
 
 	if m.workflowContent == nil {
 		m.status.SetErrorMessage("Workflow contents cannot be empty")
@@ -610,10 +594,9 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 	m.status.SetSuccessMessage(fmt.Sprintf("[%s@%s]:[%s] Workflow triggered.",
 		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName, m.selectedWorkflow))
 
-	time.Sleep(1 * time.Second)
-	m.selfUpdate()
+	m.skeleton.TriggerUpdate()
 	m.status.SetProgressMessage("Switching to workflow history tab...")
-	time.Sleep(1500 * time.Millisecond)
+	time.Sleep(2000 * time.Millisecond)
 
 	// move these operations under new function named "resetTabSettings"
 	m.workflowContent = nil       // reset workflow content
@@ -622,8 +605,8 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 	m.optionValues = nil          // reset option values
 	m.selectedRepositoryName = "" // reset selected repository name
 
-	UpdateWorkflowHistory(time.Second * 3) // update workflow history
-	m.skeleton.SetActivePage("history")    // switch tab to workflow history
+	m.skeleton.TriggerUpdateWithMsg(workflowHistoryUpdateMsg{time.Second * 3}) // update workflow history
+	m.skeleton.SetActivePage("history")                                        // switch tab to workflow history
 }
 
 func (m *ModelGithubTrigger) emptySelector() string {
