@@ -2,8 +2,6 @@ module github.com/termkit/gama
 
 go 1.23
 
-replace github.com/termkit/skeleton => ../skeleton
-
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/charmbracelet/bubbles v0.20.0
@@ -11,11 +9,9 @@ require (
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	//github.com/termkit/skeleton v0.1.2
+	github.com/termkit/skeleton v0.1.3
 	gopkg.in/yaml.v3 v3.0.1
 )
-
-require github.com/termkit/skeleton v0.0.0-00010101000000-000000000000
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
