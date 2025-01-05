@@ -31,6 +31,23 @@ type ListRepositoriesOutput struct {
 	Repositories []GithubRepository
 }
 
+// ------------------------------------------------------------
+
+type GetRepositoryBranchesInput struct {
+	Repository string
+}
+
+type GetRepositoryBranchesOutput struct {
+	Branches []GithubBranch
+}
+
+type GithubBranch struct {
+	Name      string
+	IsDefault bool
+}
+
+// ------------------------------------------------------------
+
 type GithubRepository struct {
 	Name          string
 	Private       bool

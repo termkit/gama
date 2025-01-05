@@ -75,6 +75,42 @@ func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInp
 	}, errors.Join(resultErrs...)
 }
 
+func (u useCase) GetRepositoryBranches(ctx context.Context, input GetRepositoryBranchesInput) (*GetRepositoryBranchesOutput, error) {
+	// Get Repository to get the default branch
+	repository, err := u.githubRepository.GetRepository(ctx, input.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	var mainBranch = repository.DefaultBranch
+
+	branches, err := u.githubRepository.ListBranches(ctx, input.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(branches) == 0 {
+		return &GetRepositoryBranchesOutput{}, nil
+	}
+
+	var result = []GithubBranch{
+		{
+			Name:      mainBranch,
+			IsDefault: true,
+		},
+	}
+
+	for _, branch := range branches {
+		result = append(result, GithubBranch{
+			Name: branch.Name,
+		})
+	}
+
+	return &GetRepositoryBranchesOutput{
+		Branches: result,
+	}, nil
+}
+
 func (u useCase) workerListRepositories(ctx context.Context, repository gr.GithubRepository, results chan<- GithubRepository, errs chan<- error) {
 	getWorkflows, err := u.githubRepository.GetWorkflows(ctx, repository.FullName)
 	if err != nil {

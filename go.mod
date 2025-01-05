@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	github.com/termkit/skeleton v0.1.3
+	github.com/termkit/skeleton v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

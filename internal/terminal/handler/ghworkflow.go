@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/termkit/skeleton"
-	"sort"
-	"strings"
-
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/termkit/gama/internal/terminal/handler/status"
 	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
+	"github.com/termkit/skeleton"
+	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -25,6 +25,7 @@ type ModelGithubWorkflow struct {
 	cancelSyncTriggerableWorkflows  context.CancelFunc
 	tableReady                      bool
 	lastRepository                  string
+	mainBranch                      string
 
 	// shared properties
 	selectedRepository *hdltypes.SelectedRepository
@@ -39,6 +40,7 @@ type ModelGithubWorkflow struct {
 	help                     help.Model
 	tableTriggerableWorkflow table.Model
 	status                   *status.ModelStatus
+	textInput                textinput.Model
 }
 
 func SetupModelGithubWorkflow(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
@@ -63,6 +65,21 @@ func SetupModelGithubWorkflow(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *
 		Bold(false)
 	tableTriggerableWorkflow.SetStyles(s)
 
+	tableTriggerableWorkflow.KeyMap = table.KeyMap{
+		LineUp: key.NewBinding(
+			key.WithKeys("up"),
+		),
+		LineDown: key.NewBinding(
+			key.WithKeys("down"),
+		),
+	}
+
+	ti := textinput.New()
+	ti.Focus()
+	ti.CharLimit = 128
+	ti.Placeholder = "Type to switch branch"
+	ti.ShowSuggestions = true
+
 	modelStatus := status.SetupModelStatus(sk)
 
 	return &ModelGithubWorkflow{
@@ -75,6 +92,7 @@ func SetupModelGithubWorkflow(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *
 		selectedRepository:              hdltypes.NewSelectedRepository(),
 		syncTriggerableWorkflowsContext: context.Background(),
 		cancelSyncTriggerableWorkflows:  func() {},
+		textInput:                       ti,
 	}
 }
 
@@ -92,9 +110,37 @@ func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncTriggerableWorkflowsContext, m.cancelSyncTriggerableWorkflows = context.WithCancel(context.Background())
 
 		m.lastRepository = m.selectedRepository.RepositoryName
+		m.mainBranch = m.selectedRepository.BranchName
 
 		go m.syncTriggerableWorkflows(m.syncTriggerableWorkflowsContext)
+		go m.syncBranches(m.syncTriggerableWorkflowsContext)
 	}
+
+	var selectedBranch = m.textInput.Value()
+	if selectedBranch != "" {
+		var isBranchExist bool
+		for _, branch := range m.textInput.AvailableSuggestions() {
+			if branch == selectedBranch {
+				isBranchExist = true
+				m.selectedRepository.BranchName = selectedBranch
+				break
+			}
+		}
+
+		if !isBranchExist {
+			m.status.SetErrorMessage(fmt.Sprintf("Branch %s is not exist", selectedBranch))
+			m.skeleton.LockTabsToTheRight()
+		} else {
+			m.skeleton.UnlockTabs()
+		}
+	}
+	if selectedBranch == "" {
+		m.selectedRepository.BranchName = m.mainBranch
+		m.skeleton.UnlockTabs()
+	}
+
+	m.textInput, cmd = m.textInput.Update(msg)
+	cmds = append(cmds, cmd)
 
 	m.tableTriggerableWorkflow, cmd = m.tableTriggerableWorkflow.Update(msg)
 	cmds = append(cmds, cmd)
@@ -127,11 +173,28 @@ func (m *ModelGithubWorkflow) View() string {
 		m.tableTriggerableWorkflow.SetHeight(termHeight - 17)
 	}
 
-	doc := strings.Builder{}
-	doc.WriteString(style.Render(m.tableTriggerableWorkflow.View()))
-	doc.WriteString("\n\n\n")
+	return lipgloss.JoinVertical(lipgloss.Top,
+		style.Render(m.tableTriggerableWorkflow.View()),
+		m.viewSearchBar(),
+		m.status.View(),
+		helpWindowStyle.Render(m.ViewHelp()),
+	)
+}
 
-	return lipgloss.JoinVertical(lipgloss.Top, doc.String(), m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
+func (m *ModelGithubWorkflow) viewSearchBar() string {
+	// Define window style
+	windowStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#3b698f")).
+		Padding(0, 1).
+		Width(m.skeleton.GetTerminalWidth() - 6).MarginLeft(1)
+
+	if len(m.textInput.AvailableSuggestions()) > 0 && m.textInput.Value() == "" {
+		var mainBranch = m.mainBranch
+		m.textInput.Placeholder = "Type to switch branch (default: " + mainBranch + ")"
+	}
+
+	return windowStyle.Render(m.textInput.View())
 }
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
@@ -175,8 +238,45 @@ func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 
 	m.tableTriggerableWorkflow.SetRows(tableRowsTriggerableWorkflow)
 
+	if len(tableRowsTriggerableWorkflow) > 0 {
+		m.tableTriggerableWorkflow.SetCursor(0)
+	}
+
 	m.tableReady = true
 	m.status.SetSuccessMessage(fmt.Sprintf("[%s@%s] Triggerable workflows fetched.", m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+}
+
+func (m *ModelGithubWorkflow) syncBranches(ctx context.Context) {
+	defer m.skeleton.TriggerUpdate()
+
+	m.status.Reset()
+	m.status.SetProgressMessage(fmt.Sprintf("[%s] Fetching branches...", m.selectedRepository.RepositoryName))
+
+	branches, err := m.github.GetRepositoryBranches(ctx, gu.GetRepositoryBranchesInput{
+		Repository: m.selectedRepository.RepositoryName,
+	})
+	if errors.Is(err, context.Canceled) {
+		return
+	} else if err != nil {
+		m.status.SetError(err)
+		m.status.SetErrorMessage("Branches cannot be listed")
+		return
+	}
+
+	if branches == nil || len(branches.Branches) == 0 {
+		m.selectedRepository.BranchName = ""
+		m.status.SetDefaultMessage(fmt.Sprintf("[%s] No branches found.", m.selectedRepository.RepositoryName))
+		return
+	}
+
+	var bs = make([]string, len(branches.Branches))
+	for i, branch := range branches.Branches {
+		bs[i] = branch.Name
+	}
+
+	m.textInput.SetSuggestions(bs)
+
+	m.status.SetSuccessMessage(fmt.Sprintf("[%s] Branches fetched.", m.selectedRepository.RepositoryName))
 }
 
 func (m *ModelGithubWorkflow) handleTableInputs(_ context.Context) {

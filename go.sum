@@ -82,6 +82,8 @@ github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 github.com/termkit/skeleton v0.1.3 h1:XiCqLDQXhtU4LhrgDKYHaPFRumngLPs9ssebL8WXHVI=
 github.com/termkit/skeleton v0.1.3/go.mod h1:KjHXehkpVm8i3pli9PTG+Lat2PrUBsw6QQe5kbgYXHs=
+github.com/termkit/skeleton v0.2.0 h1:Nbs7i5+vsouK25Gl4+vuMB1/7jokZ77HN2wV1IYgpBQ=
+github.com/termkit/skeleton v0.2.0/go.mod h1:KjHXehkpVm8i3pli9PTG+Lat2PrUBsw6QQe5kbgYXHs=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=
 go.uber.org/multierr v1.11.0/go.mod h1:20+QtiLqy0Nd6FdQB9TLXag12DsQkrbs3htMFfDN80Y=
 golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e h1:4qufH0hlUYs6AO6XmZC3GqfDPGSXHVXUFR6OND+iJX4=

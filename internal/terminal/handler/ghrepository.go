@@ -274,6 +274,18 @@ func (m *ModelGithubRepository) handleTableInputs(_ context.Context) {
 	if len(selectedRow) > 0 && selectedRow[0] != "" {
 		m.selectedRepository.RepositoryName = selectedRow[0]
 		m.selectedRepository.BranchName = selectedRow[1]
+
+		workflowCount := selectedRow[3]
+		if workflowCount != "" {
+			count, _ := strconv.Atoi(workflowCount)
+			if count == 0 {
+				m.skeleton.LockTab("workflow")
+				m.skeleton.LockTab("trigger")
+			} else {
+				m.skeleton.UnlockTab("workflow")
+				m.skeleton.UnlockTab("trigger")
+			}
+		}
 	}
 }
 

@@ -307,7 +307,7 @@ func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 
 	if len(workflowHistory.Workflows) == 0 {
 		m.modelTabOptions.SetStatus(taboptions.OptionNone)
-		m.status.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflows found.", m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+		m.status.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflow history found.", m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
 		return
 	}
 
