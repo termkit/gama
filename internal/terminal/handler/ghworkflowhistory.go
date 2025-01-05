@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/termkit/gama/internal/config"
-	"github.com/termkit/skeleton"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -13,47 +11,57 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/termkit/gama/internal/config"
 	gu "github.com/termkit/gama/internal/github/usecase"
-	"github.com/termkit/gama/internal/terminal/handler/status"
-	"github.com/termkit/gama/internal/terminal/handler/taboptions"
-	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	"github.com/termkit/gama/pkg/browser"
+	"github.com/termkit/skeleton"
 )
 
+// -----------------------------------------------------------------------------
+// Model Definition
+// -----------------------------------------------------------------------------
+
 type ModelGithubWorkflowHistory struct {
+	// Core dependencies
 	skeleton *skeleton.Skeleton
-	// current handler's properties
-	tableReady                 bool
-	liveMode                   bool
-	liveModeInterval           time.Duration
-	tableStyle                 lipgloss.Style
-	updateRound                int
-	selectedWorkflowID         int64
-	lastRepository             string
+	github   gu.UseCase
+
+	// UI Components
+	Help                 help.Model
+	keys                 githubWorkflowHistoryKeyMap
+	tableWorkflowHistory table.Model
+	status               *ModelStatus
+	modelTabOptions      *ModelTabOptions
+
+	// Table state
+	tableReady     bool
+	tableStyle     lipgloss.Style
+	updateRound    int
+	workflows      []gu.Workflow
+	lastRepository string
+
+	// Live mode state
+	liveMode         bool
+	liveModeInterval time.Duration
+
+	// Workflow state
+	selectedWorkflowID int64
+
+	// Context management
 	syncWorkflowHistoryContext context.Context
 	cancelSyncWorkflowHistory  context.CancelFunc
-	workflows                  []gu.Workflow
 
-	// shared properties
-	selectedRepository *hdltypes.SelectedRepository
-
-	// use cases
-	github gu.UseCase
-
-	// keymap
-	keys githubWorkflowHistoryKeyMap
-
-	// models
-	Help                 help.Model
-	tableWorkflowHistory table.Model
-	status               *status.ModelStatus
-
-	modelTabOptions *taboptions.Options
+	// Shared state
+	selectedRepository *SelectedRepository
 }
 
 type workflowHistoryUpdateMsg struct {
 	UpdateAfter time.Duration
 }
+
+// -----------------------------------------------------------------------------
+// Constructor & Initialization
+// -----------------------------------------------------------------------------
 
 func SetupModelGithubWorkflowHistory(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
 	cfg, err := config.LoadConfig()
@@ -61,15 +69,48 @@ func SetupModelGithubWorkflowHistory(sk *skeleton.Skeleton, githubUseCase gu.Use
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
-	var tableRowsWorkflowHistory []table.Row
+	m := &ModelGithubWorkflowHistory{
+		// Initialize core dependencies
+		skeleton: sk,
+		github:   githubUseCase,
 
-	tableWorkflowHistory := table.New(
+		// Initialize UI components
+		Help:            help.New(),
+		keys:            githubWorkflowHistoryKeys,
+		status:          SetupModelStatus(sk),
+		modelTabOptions: NewOptions(sk, SetupModelStatus(sk)),
+
+		// Initialize state
+		selectedRepository:         NewSelectedRepository(),
+		syncWorkflowHistoryContext: context.Background(),
+		cancelSyncWorkflowHistory:  func() {},
+		liveMode:                   cfg.Settings.LiveMode.Enabled,
+		liveModeInterval:           cfg.Settings.LiveMode.Interval,
+		tableStyle:                 setupTableStyle(),
+	}
+
+	// Setup table
+	m.tableWorkflowHistory = setupWorkflowHistoryTable()
+
+	return m
+}
+
+func setupTableStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#3b698f")).
+		MarginLeft(1)
+}
+
+func setupWorkflowHistoryTable() table.Model {
+	t := table.New(
 		table.WithColumns(tableColumnsWorkflowHistory),
-		table.WithRows(tableRowsWorkflowHistory),
+		table.WithRows([]table.Row{}),
 		table.WithFocused(true),
 		table.WithHeight(7),
 	)
 
+	// Apply styles
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
@@ -80,89 +121,270 @@ func SetupModelGithubWorkflowHistory(sk *skeleton.Skeleton, githubUseCase gu.Use
 		Foreground(lipgloss.Color("229")).
 		Background(lipgloss.Color("57")).
 		Bold(false)
-	tableWorkflowHistory.SetStyles(s)
+	t.SetStyles(s)
 
-	var tableStyle = lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("#3b698f")).MarginLeft(1)
-
-	modelStatus := status.SetupModelStatus(sk)
-	tabOptions := taboptions.NewOptions(sk, &modelStatus)
-
-	return &ModelGithubWorkflowHistory{
-		skeleton:                   sk,
-		liveMode:                   cfg.Settings.LiveMode.Enabled,
-		liveModeInterval:           cfg.Settings.LiveMode.Interval,
-		Help:                       help.New(),
-		keys:                       githubWorkflowHistoryKeys,
-		github:                     githubUseCase,
-		tableWorkflowHistory:       tableWorkflowHistory,
-		status:                     &modelStatus,
-		selectedRepository:         hdltypes.NewSelectedRepository(),
-		modelTabOptions:            tabOptions,
-		syncWorkflowHistoryContext: context.Background(),
-		cancelSyncWorkflowHistory:  func() {},
-		tableStyle:                 tableStyle,
+	t.KeyMap = table.KeyMap{
+		LineUp:     key.NewBinding(key.WithKeys("up"), key.WithHelp("↑", "up")),
+		LineDown:   key.NewBinding(key.WithKeys("down"), key.WithHelp("↓", "down")),
+		PageUp:     key.NewBinding(key.WithKeys("pgup"), key.WithHelp("pgup", "page up")),
+		PageDown:   key.NewBinding(key.WithKeys("pgdown"), key.WithHelp("pgdn", "page down")),
+		GotoTop:    key.NewBinding(key.WithKeys("home"), key.WithHelp("home", "go to start")),
+		GotoBottom: key.NewBinding(key.WithKeys("end"), key.WithHelp("end", "go to end")),
 	}
+
+	return t
 }
+
+// -----------------------------------------------------------------------------
+// Bubbletea Model Implementation
+// -----------------------------------------------------------------------------
 
 func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 	m.setupOptions()
-	m.ToggleLiveMode()
+	m.startLiveMode()
 	return tea.Batch(m.modelTabOptions.Init())
 }
+
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.lastRepository != m.selectedRepository.RepositoryName {
-		m.tableReady = false
-		m.cancelSyncWorkflowHistory() // cancel previous sync
-
-		m.lastRepository = m.selectedRepository.RepositoryName
-
-		m.syncWorkflowHistoryContext, m.cancelSyncWorkflowHistory = context.WithCancel(context.Background())
-		go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+	// Handle repository changes
+	if cmd := m.handleRepositoryChange(); cmd != nil {
+		return m, cmd
 	}
 
-	if m.workflows != nil {
-		m.selectedWorkflowID = m.workflows[m.tableWorkflowHistory.Cursor()].ID
+	cursor := m.tableWorkflowHistory.Cursor()
+	if m.workflows != nil && cursor >= 0 && cursor < len(m.workflows) {
+		m.selectedWorkflowID = m.workflows[cursor].ID
 	}
 
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
+
+	// Handle different message types
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.keys.Refresh):
-			go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
-		case key.Matches(msg, m.keys.LiveMode):
-			m.liveMode = !m.liveMode
-			if m.liveMode {
-				m.status.SetSuccessMessage("Live mode enabled")
-				m.skeleton.UpdateWidgetValue("live", "Live Mode: On")
-			} else {
-				m.status.SetSuccessMessage("Live mode disabled")
-				m.skeleton.UpdateWidgetValue("live", "Live Mode: Off")
-			}
+		cmd = m.handleKeyMsg(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 	case workflowHistoryUpdateMsg:
-		go func() {
-			time.Sleep(msg.UpdateAfter)
-			m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
-			m.skeleton.TriggerUpdate()
-		}()
+		cmd = m.handleUpdateMsg(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
 
-	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
-	cmds = append(cmds, cmd)
+	// Update UI components
+	if cmd = m.updateUIComponents(msg); cmd != nil {
+		cmds = append(cmds, cmd)
+	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m *ModelGithubWorkflowHistory) View() string {
-	helpWindowStyle := hdltypes.WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+	return lipgloss.JoinVertical(lipgloss.Top,
+		m.renderTable(),
+		m.modelTabOptions.View(),
+		m.status.View(),
+		m.renderHelp(),
+	)
+}
 
+// -----------------------------------------------------------------------------
+// Event Handlers
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflowHistory) handleKeyMsg(msg tea.KeyMsg) tea.Cmd {
+	switch {
+	case key.Matches(msg, m.keys.Refresh):
+		go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+		return nil
+	case key.Matches(msg, m.keys.LiveMode):
+		return m.toggleLiveMode()
+	}
+	return nil
+}
+
+func (m *ModelGithubWorkflowHistory) handleUpdateMsg(msg workflowHistoryUpdateMsg) tea.Cmd {
+	go func() {
+		time.Sleep(msg.UpdateAfter)
+		m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+		m.skeleton.TriggerUpdate()
+	}()
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// Live Mode Management
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflowHistory) startLiveMode() {
+	go func() {
+		for range time.NewTicker(m.liveModeInterval).C {
+			if m.liveMode {
+				m.skeleton.TriggerUpdateWithMsg(workflowHistoryUpdateMsg{UpdateAfter: time.Nanosecond})
+			}
+		}
+	}()
+}
+
+func (m *ModelGithubWorkflowHistory) toggleLiveMode() tea.Cmd {
+	m.liveMode = !m.liveMode
+	if m.liveMode {
+		m.status.SetSuccessMessage("Live mode enabled")
+		m.skeleton.UpdateWidgetValue("live", "Live Mode: On")
+	} else {
+		m.status.SetSuccessMessage("Live mode disabled")
+		m.skeleton.UpdateWidgetValue("live", "Live Mode: Off")
+	}
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// Repository Change Handling
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflowHistory) handleRepositoryChange() tea.Cmd {
+	if m.lastRepository == m.selectedRepository.RepositoryName {
+		return nil
+	}
+
+	if m.cancelSyncWorkflowHistory != nil {
+		m.cancelSyncWorkflowHistory()
+	}
+
+	m.lastRepository = m.selectedRepository.RepositoryName
+	m.syncWorkflowHistoryContext, m.cancelSyncWorkflowHistory = context.WithCancel(context.Background())
+
+	go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// Workflow History Sync
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
+	defer m.skeleton.TriggerUpdate()
+
+	m.initializeSyncState()
+	workflowHistory, err := m.fetchWorkflowHistory(ctx)
+	if err != nil {
+		return
+	}
+
+	m.processWorkflowHistory(workflowHistory)
+}
+
+func (m *ModelGithubWorkflowHistory) initializeSyncState() {
+	m.tableReady = false
+	m.status.Reset()
+	m.status.SetProgressMessage(fmt.Sprintf("[%s@%s] Fetching workflow history...",
+		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+	m.modelTabOptions.SetStatus(StatusWait)
+	m.clearWorkflowHistory()
+}
+
+func (m *ModelGithubWorkflowHistory) clearWorkflowHistory() {
+	m.tableWorkflowHistory.SetRows([]table.Row{})
+	m.workflows = nil
+}
+
+func (m *ModelGithubWorkflowHistory) fetchWorkflowHistory(ctx context.Context) (*gu.GetWorkflowHistoryOutput, error) {
+	history, err := m.github.GetWorkflowHistory(ctx, gu.GetWorkflowHistoryInput{
+		Repository: m.selectedRepository.RepositoryName,
+		Branch:     m.selectedRepository.BranchName,
+	})
+
+	if err != nil {
+		if !errors.Is(err, context.Canceled) {
+			m.status.SetError(err)
+			m.status.SetErrorMessage("Workflow history cannot be listed")
+		}
+		return nil, err
+	}
+
+	return history, nil
+}
+
+// -----------------------------------------------------------------------------
+// Workflow History Processing
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflowHistory) processWorkflowHistory(history *gu.GetWorkflowHistoryOutput) {
+	if len(history.Workflows) == 0 {
+		m.handleEmptyWorkflowHistory()
+		return
+	}
+
+	m.workflows = history.Workflows
+	m.updateWorkflowTable()
+	m.finalizeUpdate()
+}
+
+func (m *ModelGithubWorkflowHistory) handleEmptyWorkflowHistory() {
+	m.modelTabOptions.SetStatus(StatusNone)
+	m.status.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflow history found.",
+		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+}
+
+func (m *ModelGithubWorkflowHistory) updateWorkflowTable() {
+	rows := make([]table.Row, 0, len(m.workflows))
+	for _, workflow := range m.workflows {
+		rows = append(rows, table.Row{
+			workflow.WorkflowName,
+			workflow.ActionName,
+			workflow.TriggeredBy,
+			workflow.StartedAt,
+			workflow.Status,
+			workflow.Duration,
+		})
+	}
+	m.tableWorkflowHistory.SetRows(rows)
+}
+
+func (m *ModelGithubWorkflowHistory) finalizeUpdate() {
+	m.tableReady = true
+	m.tableWorkflowHistory.SetCursor(0)
+	m.modelTabOptions.SetStatus(StatusIdle)
+	m.status.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.",
+		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+}
+
+// -----------------------------------------------------------------------------
+// UI Component Updates
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflowHistory) updateUIComponents(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	// Update table and handle navigation
+	m.tableWorkflowHistory, cmd = m.tableWorkflowHistory.Update(msg)
+	cmds = append(cmds, cmd)
+
+	// Update tab options
+	m.modelTabOptions, cmd = m.modelTabOptions.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return tea.Batch(cmds...)
+}
+
+// -----------------------------------------------------------------------------
+// UI Rendering
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflowHistory) renderTable() string {
+	m.updateTableDimensions()
+	return m.tableStyle.Render(m.tableWorkflowHistory.View())
+}
+
+func (m *ModelGithubWorkflowHistory) renderHelp() string {
+	helpStyle := WindowStyleHelp.Width(m.skeleton.GetTerminalWidth() - 4)
+	return helpStyle.Render(m.ViewHelp())
+}
+
+func (m *ModelGithubWorkflowHistory) updateTableDimensions() {
 	termWidth := m.skeleton.GetTerminalWidth()
 	termHeight := m.skeleton.GetTerminalHeight()
 
@@ -185,149 +407,81 @@ func (m *ModelGithubWorkflowHistory) View() string {
 	}
 
 	m.tableWorkflowHistory.SetHeight(termHeight - 17)
-
-	return lipgloss.JoinVertical(lipgloss.Top,
-		m.tableStyle.Render(m.tableWorkflowHistory.View()), m.modelTabOptions.View(),
-		m.status.View(), helpWindowStyle.Render(m.ViewHelp()))
 }
+
+// -----------------------------------------------------------------------------
+// Option Management
+// -----------------------------------------------------------------------------
 
 func (m *ModelGithubWorkflowHistory) setupOptions() {
-	openInBrowser := func() {
-		m.status.SetProgressMessage("Opening in browser...")
-
-		var selectedWorkflow = fmt.Sprintf("https://github.com/%s/actions/runs/%d", m.selectedRepository.RepositoryName, m.selectedWorkflowID)
-
-		err := browser.OpenInBrowser(selectedWorkflow)
-		if err != nil {
-			m.status.SetError(err)
-			m.status.SetErrorMessage("Failed to open in browser")
-			return
-		}
-		m.status.SetSuccessMessage("Opened in browser")
-	}
-
-	reRunFailedJobs := func() {
-		m.status.SetProgressMessage("Re-running failed jobs...")
-
-		_, err := m.github.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
-			Repository: m.selectedRepository.RepositoryName,
-			WorkflowID: m.selectedWorkflowID,
-		})
-
-		if err != nil {
-			m.status.SetError(err)
-			m.status.SetErrorMessage("Failed to re-run failed jobs")
-			return
-		}
-
-		m.status.SetSuccessMessage("Re-ran failed jobs")
-	}
-
-	reRunWorkflow := func() {
-		m.status.SetProgressMessage("Re-running workflow...")
-
-		_, err := m.github.ReRunWorkflow(context.Background(), gu.ReRunWorkflowInput{
-			Repository: m.selectedRepository.RepositoryName,
-			WorkflowID: m.selectedWorkflowID,
-		})
-
-		if err != nil {
-			m.status.SetError(err)
-			m.status.SetErrorMessage("Failed to re-run workflow")
-			return
-		}
-
-		m.status.SetSuccessMessage("Re-ran workflow")
-	}
-
-	cancelWorkflow := func() {
-		m.status.SetProgressMessage("Canceling workflow...")
-
-		_, err := m.github.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
-			Repository: m.selectedRepository.RepositoryName,
-			WorkflowID: m.selectedWorkflowID,
-		})
-
-		if err != nil {
-			m.status.SetError(err)
-			m.status.SetErrorMessage("Failed to cancel workflow")
-			return
-		}
-
-		m.status.SetSuccessMessage("Canceled workflow")
-	}
-	m.modelTabOptions.AddOption("Open in browser", openInBrowser)
-	m.modelTabOptions.AddOption("Rerun failed jobs", reRunFailedJobs)
-	m.modelTabOptions.AddOption("Rerun workflow", reRunWorkflow)
-	m.modelTabOptions.AddOption("Cancel workflow", cancelWorkflow)
+	m.modelTabOptions.AddOption("Open in browser", m.openInBrowser)
+	m.modelTabOptions.AddOption("Rerun failed jobs", m.rerunFailedJobs)
+	m.modelTabOptions.AddOption("Rerun workflow", m.rerunWorkflow)
+	m.modelTabOptions.AddOption("Cancel workflow", m.cancelWorkflow)
 }
 
-func (m *ModelGithubWorkflowHistory) ToggleLiveMode() {
-	// send UpdateWorkflowHistoryMsg to update the workflow history every 5 seconds with ticker
-	// send only if liveMode is true
-	go func() {
-		t := time.NewTicker(m.liveModeInterval)
-		for {
-			select {
-			case <-t.C:
-				if m.liveMode {
-					m.skeleton.TriggerUpdateWithMsg(workflowHistoryUpdateMsg{UpdateAfter: time.Nanosecond})
-				}
-			}
-		}
-	}()
-}
+func (m *ModelGithubWorkflowHistory) openInBrowser() {
+	m.status.SetProgressMessage("Opening in browser...")
 
-func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
-	defer m.skeleton.TriggerUpdate()
+	url := fmt.Sprintf("https://github.com/%s/actions/runs/%d",
+		m.selectedRepository.RepositoryName,
+		m.selectedWorkflowID)
 
-	m.tableReady = false
-	m.status.Reset()
-	m.status.SetProgressMessage(fmt.Sprintf("[%s@%s] Fetching workflow history...",
-		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
-	m.modelTabOptions.SetStatus(taboptions.OptionWait)
-
-	// delete all rows
-	m.tableWorkflowHistory.SetRows([]table.Row{})
-
-	// delete old workflows
-	m.workflows = nil
-
-	workflowHistory, err := m.github.GetWorkflowHistory(ctx, gu.GetWorkflowHistoryInput{
-		Repository: m.selectedRepository.RepositoryName,
-		Branch:     m.selectedRepository.BranchName,
-	})
-	if errors.Is(err, context.Canceled) {
-		return
-	} else if err != nil {
+	if err := browser.OpenInBrowser(url); err != nil {
 		m.status.SetError(err)
-		m.status.SetErrorMessage("Workflow history cannot be listed")
+		m.status.SetErrorMessage("Failed to open in browser")
+		return
+	}
+	m.status.SetSuccessMessage("Opened in browser")
+}
+
+func (m *ModelGithubWorkflowHistory) rerunFailedJobs() {
+	m.status.SetProgressMessage("Re-running failed jobs...")
+
+	_, err := m.github.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
+		Repository: m.selectedRepository.RepositoryName,
+		WorkflowID: m.selectedWorkflowID,
+	})
+
+	if err != nil {
+		m.status.SetError(err)
+		m.status.SetErrorMessage("Failed to re-run failed jobs")
 		return
 	}
 
-	if len(workflowHistory.Workflows) == 0 {
-		m.modelTabOptions.SetStatus(taboptions.OptionNone)
-		m.status.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflow history found.", m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+	m.status.SetSuccessMessage("Re-ran failed jobs")
+}
+
+func (m *ModelGithubWorkflowHistory) rerunWorkflow() {
+	m.status.SetProgressMessage("Re-running workflow...")
+
+	_, err := m.github.ReRunWorkflow(context.Background(), gu.ReRunWorkflowInput{
+		Repository: m.selectedRepository.RepositoryName,
+		WorkflowID: m.selectedWorkflowID,
+	})
+
+	if err != nil {
+		m.status.SetError(err)
+		m.status.SetErrorMessage("Failed to re-run workflow")
 		return
 	}
 
-	m.workflows = workflowHistory.Workflows
+	m.status.SetSuccessMessage("Re-ran workflow")
+}
 
-	var tableRowsWorkflowHistory []table.Row
-	for _, workflowRun := range m.workflows {
-		tableRowsWorkflowHistory = append(tableRowsWorkflowHistory, table.Row{
-			workflowRun.WorkflowName,
-			workflowRun.ActionName,
-			workflowRun.TriggeredBy,
-			workflowRun.StartedAt,
-			workflowRun.Status,
-			workflowRun.Duration,
-		})
+func (m *ModelGithubWorkflowHistory) cancelWorkflow() {
+	m.status.SetProgressMessage("Canceling workflow...")
+
+	_, err := m.github.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
+		Repository: m.selectedRepository.RepositoryName,
+		WorkflowID: m.selectedWorkflowID,
+	})
+
+	if err != nil {
+		m.status.SetError(err)
+		m.status.SetErrorMessage("Failed to cancel workflow")
+		return
 	}
 
-	m.tableReady = true
-	m.tableWorkflowHistory.SetRows(tableRowsWorkflowHistory)
-	m.tableWorkflowHistory.SetCursor(0)
-	m.modelTabOptions.SetStatus(taboptions.OptionIdle)
-	m.status.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.", m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+	m.status.SetSuccessMessage("Canceled workflow")
 }

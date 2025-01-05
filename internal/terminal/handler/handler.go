@@ -5,7 +5,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/termkit/gama/internal/config"
 	gu "github.com/termkit/gama/internal/github/usecase"
-	hdltypes "github.com/termkit/gama/internal/terminal/handler/types"
 	pkgversion "github.com/termkit/gama/pkg/version"
 	"github.com/termkit/skeleton"
 )
@@ -32,8 +31,8 @@ func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Mod
 		s.AddWidget("live", "Live Mode: Off")
 	}
 
-	s.SetTerminalViewportWidth(hdltypes.MinTerminalWidth)
-	s.SetTerminalViewportHeight(hdltypes.MinTerminalHeight)
+	s.SetTerminalViewportWidth(MinTerminalWidth)
+	s.SetTerminalViewportHeight(MinTerminalHeight)
 
 	s.KeyMap.SetKeyNextTab(handlerKeys.SwitchTabRight)
 	s.KeyMap.SetKeyPrevTab(handlerKeys.SwitchTabLeft)

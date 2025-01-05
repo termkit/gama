@@ -1,11 +1,11 @@
-package status
+package handler
 
 import (
 	"fmt"
-	"github.com/charmbracelet/lipgloss"
-	ts "github.com/termkit/gama/internal/terminal/handler/types"
-	"github.com/termkit/skeleton"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/termkit/skeleton"
 )
 
 type ModelStatus struct {
@@ -36,8 +36,8 @@ const (
 	MessageTypeSuccess MessageType = "success"
 )
 
-func SetupModelStatus(skeleton *skeleton.Skeleton) ModelStatus {
-	return ModelStatus{
+func SetupModelStatus(skeleton *skeleton.Skeleton) *ModelStatus {
+	return &ModelStatus{
 		skeleton:     skeleton,
 		err:          nil,
 		errorMessage: "",
@@ -50,20 +50,20 @@ func (m *ModelStatus) View() string {
 	doc := strings.Builder{}
 
 	if m.HaveError() {
-		windowStyle = ts.WindowStyleError.Width(width)
+		windowStyle = WindowStyleError.Width(width)
 		doc.WriteString(windowStyle.Render(m.viewError()))
 		return lipgloss.JoinHorizontal(lipgloss.Top, doc.String())
 	}
 
 	switch m.messageType {
 	case MessageTypeDefault:
-		windowStyle = ts.WindowStyleDefault.Width(width)
+		windowStyle = WindowStyleDefault.Width(width)
 	case MessageTypeProgress:
-		windowStyle = ts.WindowStyleProgress.Width(width)
+		windowStyle = WindowStyleProgress.Width(width)
 	case MessageTypeSuccess:
-		windowStyle = ts.WindowStyleSuccess.Width(width)
+		windowStyle = WindowStyleSuccess.Width(width)
 	default:
-		windowStyle = ts.WindowStyleDefault.Width(width)
+		windowStyle = WindowStyleDefault.Width(width)
 	}
 
 	doc.WriteString(windowStyle.Render(m.viewMessage()))

@@ -1,23 +1,23 @@
-package taboptions
+package handler
 
 import (
 	"fmt"
-	"github.com/termkit/skeleton"
 	"strings"
 	"time"
 
+	"github.com/termkit/skeleton"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/termkit/gama/internal/terminal/handler/status"
 )
 
-type Options struct {
+type ModelTabOptions struct {
 	skeleton *skeleton.Skeleton
 
 	Style lipgloss.Style
 
-	status         *status.ModelStatus
-	previousStatus status.ModelStatus
+	status         *ModelStatus
+	previousStatus ModelStatus
 	modelLock      bool
 
 	optionStatus OptionStatus
@@ -37,21 +37,21 @@ type Options struct {
 type OptionStatus string
 
 const (
-	// OptionIdle is for when the options are ready to use
-	OptionIdle OptionStatus = "Idle"
+	// StatusIdle is for when the options are ready to use
+	StatusIdle OptionStatus = "Idle"
 
-	// OptionWait is for when the options are not ready to use
-	OptionWait OptionStatus = "Wait"
+	// StatusWait is for when the options are not ready to use
+	StatusWait OptionStatus = "Wait"
 
-	// OptionNone is for when the options are not usable
-	OptionNone OptionStatus = "None"
+	// StatusNone is for when the options are not usable
+	StatusNone OptionStatus = "None"
 )
 
 func (o OptionStatus) String() string {
 	return string(o)
 }
 
-func NewOptions(sk *skeleton.Skeleton, modelStatus *status.ModelStatus) *Options {
+func NewOptions(sk *skeleton.Skeleton, modelStatus *ModelStatus) *ModelTabOptions {
 	var b = lipgloss.RoundedBorder()
 	b.Right = "├"
 	b.Left = "┤"
@@ -62,34 +62,34 @@ func NewOptions(sk *skeleton.Skeleton, modelStatus *status.ModelStatus) *Options
 		Border(b)
 
 	var initialOptions = []string{
-		OptionWait.String(),
+		StatusWait.String(),
 	}
 	var initialOptionsAction = []string{
-		OptionWait.String(),
+		StatusWait.String(),
 	}
 
 	optionsWithFunc := make(map[int]func())
 	optionsWithFunc[0] = func() {} // NO OPERATION
 
-	return &Options{
+	return &ModelTabOptions{
 		skeleton:        sk,
 		Style:           OptionsStyle,
 		options:         initialOptions,
 		optionsAction:   initialOptionsAction,
 		optionsWithFunc: optionsWithFunc,
-		optionStatus:    OptionWait,
+		optionStatus:    StatusWait,
 		status:          modelStatus,
 	}
 }
 
-func (o *Options) Init() tea.Cmd {
+func (o *ModelTabOptions) Init() tea.Cmd {
 	return nil
 }
 
-func (o *Options) Update(msg tea.Msg) (*Options, tea.Cmd) {
+func (o *ModelTabOptions) Update(msg tea.Msg) (*ModelTabOptions, tea.Cmd) {
 	var cmd tea.Cmd
 
-	if o.optionStatus == OptionWait || o.optionStatus == OptionNone {
+	if o.optionStatus == StatusWait || o.optionStatus == StatusNone {
 		return o, cmd
 	}
 
@@ -112,7 +112,7 @@ func (o *Options) Update(msg tea.Msg) (*Options, tea.Cmd) {
 	return o, cmd
 }
 
-func (o *Options) View() string {
+func (o *ModelTabOptions) View() string {
 	var style = o.Style.Foreground(lipgloss.Color("15"))
 
 	var opts []string
@@ -120,9 +120,9 @@ func (o *Options) View() string {
 
 	for i, option := range o.optionsAction {
 		switch o.optionStatus {
-		case OptionWait:
+		case StatusWait:
 			style = style.BorderForeground(lipgloss.Color("208"))
-		case OptionNone:
+		case StatusNone:
 			style = style.BorderForeground(lipgloss.Color("240"))
 		default:
 			isActive := i == o.cursor
@@ -139,7 +139,7 @@ func (o *Options) View() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, opts...)
 }
 
-func (o *Options) resetOptionsWithOriginal() {
+func (o *ModelTabOptions) resetOptionsWithOriginal() {
 	if o.isTabSelected {
 		return
 	}
@@ -153,12 +153,12 @@ func (o *Options) resetOptionsWithOriginal() {
 	}
 	o.modelLock = false
 	o.switchToPreviousError()
-	o.optionsAction[0] = string(OptionIdle)
+	o.optionsAction[0] = string(StatusIdle)
 	o.cursor = 0
 	o.isTabSelected = false
 }
 
-func (o *Options) updateCursor(cursor int) {
+func (o *ModelTabOptions) updateCursor(cursor int) {
 	if cursor < len(o.options) {
 		o.cursor = cursor
 		o.showAreYouSure()
@@ -166,13 +166,13 @@ func (o *Options) updateCursor(cursor int) {
 	}
 }
 
-func (o *Options) SetStatus(status OptionStatus) {
+func (o *ModelTabOptions) SetStatus(status OptionStatus) {
 	o.optionStatus = status
 	o.options[0] = status.String()
 	o.optionsAction[0] = status.String()
 }
 
-func (o *Options) AddOption(option string, action func()) {
+func (o *ModelTabOptions) AddOption(option string, action func()) {
 	var optionWithNumber string
 	var optionNumber = len(o.options)
 	optionWithNumber = fmt.Sprintf("%d) %s", optionNumber, option)
@@ -181,13 +181,13 @@ func (o *Options) AddOption(option string, action func()) {
 	o.optionsWithFunc[optionNumber] = action
 }
 
-func (o *Options) getOptionMessage() string {
+func (o *ModelTabOptions) getOptionMessage() string {
 	option := o.options[o.cursor]
 	option = strings.TrimPrefix(option, fmt.Sprintf("%d) ", o.cursor))
 	return option
 }
 
-func (o *Options) showAreYouSure() {
+func (o *ModelTabOptions) showAreYouSure() {
 	var yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Blink(true)
 
 	if !o.modelLock {
@@ -203,14 +203,14 @@ func (o *Options) showAreYouSure() {
 
 }
 
-func (o *Options) switchToPreviousError() {
+func (o *ModelTabOptions) switchToPreviousError() {
 	if o.modelLock {
 		return
 	}
 	*o.status = o.previousStatus
 }
 
-func (o *Options) executeOption() {
+func (o *ModelTabOptions) executeOption() {
 	go o.optionsWithFunc[o.cursor]()
 	o.cursor = 0
 	o.timer = -1
