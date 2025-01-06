@@ -6,6 +6,17 @@ GAMA is a powerful terminal-based user interface tool designed to streamline the
 <a href="https://goreportcard.com/report/github.com/termkit/gama" target="_blank"><img src="https://goreportcard.com/badge/github.com/termkit/gama?style=for-the-badge&logo=go" alt="GAMA Go Report Card" /></a>
 <a href="https://github.com/termkit/gama" target="_blank"><img src="https://img.shields.io/github/license/termkit/gama?style=for-the-badge" alt="GAMA Licence" /></a>
 
+## Table of Contents
+- [Key Features](#key-features)
+- [Live Mode](#live-mode)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Configuration](#configuration)
+- [Build & Installation](#build--installation)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact & Author](#contact--author)
+
 ![gama demo](docs/gama.gif)
 
 ## Key Features
@@ -14,6 +25,18 @@ GAMA is a powerful terminal-based user interface tool designed to streamline the
 - **Workflow History**: Conveniently list all historical runs of workflows in a repository.
 - **Discoverability**: Easily list all triggerable (dispatchable) workflows in a repository.
 - **Workflow Management**: Trigger specific workflows with custom inputs.
+- **Live Updates**: Automatically refresh workflow status at configurable intervals.
+- **Docker Support**: Run directly from a container for easy deployment.
+
+### Live Mode
+
+GAMA includes a live mode feature that automatically refreshes the workflow status at regular intervals:
+
+- **Toggle Live Updates**: Press `ctrl+l` to turn live mode on/off
+- **Auto-start**: Set `settings.live_mode.enabled: true` to start GAMA with live mode enabled
+- **Refresh Interval**: Configure how often the view updates with `settings.live_mode.interval` (e.g., "15s", "1m")
+
+Live mode is particularly useful when monitoring ongoing workflow runs, as it eliminates the need for manual refreshing.
 
 ## Getting Started
 
@@ -36,8 +59,14 @@ keys:
   switch_tab_left: shift+left
   quit: ctrl+c
   refresh: ctrl+r
+  live_mode: ctrl+l  # Toggle live mode on/off
   enter: enter
   tab: tab
+
+settings:
+  live_mode:
+    enabled: true    # Enable live mode at startup
+    interval: 15s    # Refresh interval for live updates
 ```
 
 #### Environment Variable Configuration

@@ -75,6 +75,42 @@ func (u useCase) ListRepositories(ctx context.Context, input ListRepositoriesInp
 	}, errors.Join(resultErrs...)
 }
 
+func (u useCase) GetRepositoryBranches(ctx context.Context, input GetRepositoryBranchesInput) (*GetRepositoryBranchesOutput, error) {
+	// Get Repository to get the default branch
+	repository, err := u.githubRepository.GetRepository(ctx, input.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	var mainBranch = repository.DefaultBranch
+
+	branches, err := u.githubRepository.ListBranches(ctx, input.Repository)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(branches) == 0 {
+		return &GetRepositoryBranchesOutput{}, nil
+	}
+
+	var result = []GithubBranch{
+		{
+			Name:      mainBranch,
+			IsDefault: true,
+		},
+	}
+
+	for _, branch := range branches {
+		result = append(result, GithubBranch{
+			Name: branch.Name,
+		})
+	}
+
+	return &GetRepositoryBranchesOutput{
+		Branches: result,
+	}, nil
+}
+
 func (u useCase) workerListRepositories(ctx context.Context, repository gr.GithubRepository, results chan<- GithubRepository, errs chan<- error) {
 	getWorkflows, err := u.githubRepository.GetWorkflows(ctx, repository.FullName)
 	if err != nil {
@@ -213,21 +249,24 @@ func (u useCase) timeToString(t time.Time) string {
 }
 
 func (u useCase) getDuration(startTime time.Time, endTime time.Time, status string) string {
-	if status != "completed" {
-		return "running"
-	}
-
 	// Convert UTC times to local timezone
 	localStartTime := startTime.In(time.Local)
 	localEndTime := endTime.In(time.Local)
 
-	diff := localEndTime.Sub(localStartTime)
+	var diff time.Duration
 
-	if diff.Seconds() < 60 {
-		return fmt.Sprintf("%ds", int(diff.Seconds()))
-	} else if diff.Seconds() < 3600 {
-		return fmt.Sprintf("%dm %ds", int(diff.Minutes()), int(diff.Seconds())%60)
+	if status != "completed" {
+		diff = time.Since(localStartTime)
 	} else {
+		diff = localEndTime.Sub(localStartTime)
+	}
+
+	switch {
+	case diff.Seconds() < 60:
+		return fmt.Sprintf("%ds", int(diff.Seconds()))
+	case diff.Seconds() < 3600:
+		return fmt.Sprintf("%dm %ds", int(diff.Minutes()), int(diff.Seconds())%60)
+	default:
 		return fmt.Sprintf("%dh %dm %ds", int(diff.Hours()), int(diff.Minutes())%60, int(diff.Seconds())%60)
 	}
 }
