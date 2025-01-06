@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -213,20 +214,20 @@ func (m *ModelGithubTrigger) initializeWorkflowSync() tea.Cmd {
 // -----------------------------------------------------------------------------
 
 func (m *ModelGithubTrigger) handleKeyMsg(msg tea.KeyMsg) tea.Cmd {
-	switch msg.String() {
-	case "up":
+	switch {
+	case msg.String() == "up":
 		return m.handleUpKey()
-	case "down":
+	case msg.String() == "down":
 		return m.handleDownKey()
-	case "ctrl+r", "ctrl+R":
+	case key.Matches(msg, m.Keys.Refresh):
 		go m.syncWorkflowContent(m.syncWorkflowContext)
-	case "left":
+	case msg.String() == "left":
 		m.handleLeftKey()
-	case "right":
+	case msg.String() == "right":
 		m.handleRightKey()
-	case "tab":
+	case msg.String() == "tab":
 		m.handleTabKey()
-	case "enter":
+	case msg.String() == "enter":
 		if m.triggerFocused && m.isTriggerable {
 			go m.triggerWorkflow()
 		}

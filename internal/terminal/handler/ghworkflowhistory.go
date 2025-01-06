@@ -36,7 +36,6 @@ type ModelGithubWorkflowHistory struct {
 	// Table state
 	tableReady     bool
 	tableStyle     lipgloss.Style
-	updateRound    int
 	workflows      []gu.Workflow
 	lastRepository string
 
