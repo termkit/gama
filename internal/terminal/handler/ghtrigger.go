@@ -628,7 +628,7 @@ func (m *ModelGithubTrigger) getSelectorStyle() lipgloss.Style {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
-		Width(m.skeleton.GetTerminalWidth() - 18).
+		Width(m.skeleton.GetTerminalWidth() - 17).
 		MarginLeft(1)
 }
 
