@@ -63,16 +63,16 @@ type ModelGithubWorkflow struct {
 // Constructor & Initialization
 // -----------------------------------------------------------------------------
 
-func SetupModelGithubWorkflow(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
+func SetupModelGithubWorkflow(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
 	m := &ModelGithubWorkflow{
 		// Initialize core dependencies
-		skeleton: sk,
+		skeleton: s,
 		github:   githubUseCase,
 
 		// Initialize UI components
 		help:      help.New(),
 		keys:      githubWorkflowKeys,
-		status:    SetupModelStatus(sk),
+		status:    SetupModelStatus(s),
 		textInput: setupBranchInput(),
 
 		// Initialize state

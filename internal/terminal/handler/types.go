@@ -6,7 +6,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Types
+// SelectedRepository is a struct that holds the selected repository, workflow, and branch
+// It is a shared state between the different tabs
 type SelectedRepository struct {
 	RepositoryName string
 	WorkflowName   string
@@ -17,14 +18,6 @@ type SelectedRepository struct {
 const (
 	MinTerminalWidth  = 102
 	MinTerminalHeight = 24
-
-	DefaultTableHeight    = 13
-	DefaultTerminalWidth  = 80
-	DefaultTerminalHeight = 24
-
-	ColorPrimary   = "#3b698f"
-	ColorSecondary = "#ff0055"
-	ColorError     = "#ff0000"
 )
 
 // Styles

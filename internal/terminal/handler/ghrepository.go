@@ -53,18 +53,18 @@ type ModelGithubRepository struct {
 // Constructor & Initialization
 // -----------------------------------------------------------------------------
 
-func SetupModelGithubRepository(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubRepository {
+func SetupModelGithubRepository(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubRepository {
 	m := &ModelGithubRepository{
 		// Initialize core dependencies
-		skeleton: sk,
+		skeleton: s,
 		github:   githubUseCase,
 
 		// Initialize UI components
 		help:            help.New(),
 		Keys:            githubRepositoryKeys,
-		status:          SetupModelStatus(sk),
+		status:          SetupModelStatus(s),
 		textInput:       setupTextInput(),
-		modelTabOptions: NewOptions(sk, SetupModelStatus(sk)),
+		modelTabOptions: NewOptions(s, SetupModelStatus(s)),
 
 		// Initialize state
 		selectedRepository:      NewSelectedRepository(),
@@ -357,23 +357,15 @@ func (m *ModelGithubRepository) resetTableCursors() {
 
 func (m *ModelGithubRepository) updateRepositoryData(repos *gu.ListRepositoriesOutput) {
 	if len(repos.Repositories) == 0 {
-		m.handleEmptyRepositories()
+		m.modelTabOptions.SetStatus(StatusNone)
+		m.status.SetDefaultMessage("No repositories found")
+		m.textInput.Blur()
 		return
 	}
 
-	m.updateWidgetCount(len(repos.Repositories))
+	m.skeleton.UpdateWidgetValue("repositories", fmt.Sprintf("Repository Count: %d", len(repos.Repositories)))
 	m.updateTableRows(repos.Repositories)
 	m.finalizeTableUpdate()
-}
-
-func (m *ModelGithubRepository) handleEmptyRepositories() {
-	m.modelTabOptions.SetStatus(StatusNone)
-	m.status.SetDefaultMessage("No repositories found")
-	m.textInput.Blur()
-}
-
-func (m *ModelGithubRepository) updateWidgetCount(count int) {
-	m.skeleton.UpdateWidgetValue("repositories", fmt.Sprintf("Repository Count: %d", count))
 }
 
 func (m *ModelGithubRepository) updateTableRows(repositories []gu.GithubRepository) {

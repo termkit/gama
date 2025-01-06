@@ -40,18 +40,18 @@ type ModelInfo struct {
 // Constructor & Initialization
 // -----------------------------------------------------------------------------
 
-func SetupModelInfo(sk *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
+func SetupModelInfo(s *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	const releaseURL = "https://github.com/termkit/gama/releases"
 
 	return &ModelInfo{
 		// Initialize core dependencies
-		skeleton: sk,
+		skeleton: s,
 		github:   githubUseCase,
 		version:  version,
 
 		// Initialize UI components
 		help:   help.New(),
-		status: SetupModelStatus(sk),
+		status: SetupModelStatus(s),
 		keys:   githubInformationKeys,
 
 		// Initialize application state

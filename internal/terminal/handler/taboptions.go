@@ -14,8 +14,6 @@ import (
 type ModelTabOptions struct {
 	skeleton *skeleton.Skeleton
 
-	Style lipgloss.Style
-
 	status         *ModelStatus
 	previousStatus ModelStatus
 	modelLock      bool
@@ -52,15 +50,6 @@ func (o OptionStatus) String() string {
 }
 
 func NewOptions(sk *skeleton.Skeleton, modelStatus *ModelStatus) *ModelTabOptions {
-	var b = lipgloss.RoundedBorder()
-	b.Right = "├"
-	b.Left = "┤"
-
-	var OptionsStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15")).
-		Align(lipgloss.Center).Padding(0, 1, 0, 1).
-		Border(b)
-
 	var initialOptions = []string{
 		StatusWait.String(),
 	}
@@ -73,7 +62,6 @@ func NewOptions(sk *skeleton.Skeleton, modelStatus *ModelStatus) *ModelTabOption
 
 	return &ModelTabOptions{
 		skeleton:        sk,
-		Style:           OptionsStyle,
 		options:         initialOptions,
 		optionsAction:   initialOptionsAction,
 		optionsWithFunc: optionsWithFunc,
@@ -113,7 +101,14 @@ func (o *ModelTabOptions) Update(msg tea.Msg) (*ModelTabOptions, tea.Cmd) {
 }
 
 func (o *ModelTabOptions) View() string {
-	var style = o.Style.Foreground(lipgloss.Color("15"))
+	var b = lipgloss.RoundedBorder()
+	b.Right = "├"
+	b.Left = "┤"
+
+	var style = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15")).
+		Align(lipgloss.Center).Padding(0, 1, 0, 1).
+		Border(b).Foreground(lipgloss.Color("15"))
 
 	var opts []string
 	opts = append(opts, " ")

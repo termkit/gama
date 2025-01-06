@@ -68,16 +68,16 @@ type ModelGithubTrigger struct {
 // Constructor & Initialization
 // -----------------------------------------------------------------------------
 
-func SetupModelGithubTrigger(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubTrigger {
+func SetupModelGithubTrigger(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubTrigger {
 	m := &ModelGithubTrigger{
 		// Initialize core dependencies
-		skeleton: sk,
+		skeleton: s,
 		github:   githubUseCase,
 
 		// Initialize UI components
 		help:         help.New(),
 		Keys:         githubTriggerKeys,
-		status:       SetupModelStatus(sk),
+		status:       SetupModelStatus(s),
 		textInput:    setupTriggerInput(),
 		tableTrigger: setupTriggerTable(),
 

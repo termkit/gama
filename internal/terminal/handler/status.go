@@ -10,6 +10,7 @@ import (
 
 type ModelStatus struct {
 	skeleton *skeleton.Skeleton
+
 	// err is hold the error
 	err error
 

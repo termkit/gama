@@ -62,7 +62,7 @@ type workflowHistoryUpdateMsg struct {
 // Constructor & Initialization
 // -----------------------------------------------------------------------------
 
-func SetupModelGithubWorkflowHistory(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
+func SetupModelGithubWorkflowHistory(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load config: %v", err))
@@ -70,14 +70,14 @@ func SetupModelGithubWorkflowHistory(sk *skeleton.Skeleton, githubUseCase gu.Use
 
 	m := &ModelGithubWorkflowHistory{
 		// Initialize core dependencies
-		skeleton: sk,
+		skeleton: s,
 		github:   githubUseCase,
 
 		// Initialize UI components
 		Help:            help.New(),
 		keys:            githubWorkflowHistoryKeys,
-		status:          SetupModelStatus(sk),
-		modelTabOptions: NewOptions(sk, SetupModelStatus(sk)),
+		status:          SetupModelStatus(s),
+		modelTabOptions: NewOptions(s, SetupModelStatus(s)),
 
 		// Initialize state
 		selectedRepository:         NewSelectedRepository(),

@@ -16,7 +16,6 @@ var tableColumnsTrigger = []table.Column{
 	{Title: "Type", Width: 6},
 	{Title: "Key", Width: 24},
 	{Title: "Default", Width: 16},
-	//{Title: "Description", Width: 64},
 	{Title: "Value", Width: 44},
 }
 

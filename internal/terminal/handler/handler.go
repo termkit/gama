@@ -23,7 +23,10 @@ func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Mod
 	s.AddPage("workflow", "Workflow", SetupModelGithubWorkflow(s, githubUseCase))
 	s.AddPage("trigger", "Trigger", SetupModelGithubTrigger(s, githubUseCase))
 
-	s.SetBorderColor("#ff0055").SetActiveTabBorderColor("#ff0055").SetInactiveTabBorderColor("#82636f").SetWidgetBorderColor("#ff0055")
+	s.SetBorderColor("#ff0055").
+		SetActiveTabBorderColor("#ff0055").
+		SetInactiveTabBorderColor("#82636f").
+		SetWidgetBorderColor("#ff0055")
 
 	if cfg.Settings.LiveMode.Enabled {
 		s.AddWidget("live", "Live Mode: On")
