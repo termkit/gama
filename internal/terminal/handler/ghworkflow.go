@@ -33,9 +33,7 @@ type ModelGithubWorkflow struct {
 	textInput                textinput.Model
 
 	// Table state
-	tableReady     bool
-	lastRepository string
-	mainBranch     string
+	tableReady bool
 
 	// Context management
 	syncTriggerableWorkflowsContext context.Context
@@ -43,6 +41,22 @@ type ModelGithubWorkflow struct {
 
 	// Shared state
 	selectedRepository *SelectedRepository
+
+	// Indicates if there are any available workflows
+	hasWorkflows           bool
+	lastSelectedRepository string // Track last repository for state persistence
+
+	// State management
+	state struct {
+		Ready      bool
+		Repository struct {
+			Current  string
+			Last     string
+			Branch   string
+			HasFlows bool
+		}
+		Syncing bool
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -67,8 +81,10 @@ func SetupModelGithubWorkflow(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *
 		cancelSyncTriggerableWorkflows:  func() {},
 	}
 
-	// Setup table
+	// Setup table and blur initially
 	m.tableTriggerableWorkflow = setupWorkflowTable()
+	m.tableTriggerableWorkflow.Blur()
+	m.textInput.Blur()
 
 	return m
 }
@@ -121,10 +137,18 @@ func setupWorkflowTable() table.Model {
 // -----------------------------------------------------------------------------
 
 func (m *ModelGithubWorkflow) Init() tea.Cmd {
+	// Check initial state
+	if m.lastSelectedRepository == m.selectedRepository.RepositoryName && !m.hasWorkflows {
+		m.skeleton.LockTab("trigger")
+		// Blur components initially
+		m.tableTriggerableWorkflow.Blur()
+		m.textInput.Blur()
+	}
 	return nil
 }
 
 func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check repository change and return command if exists
 	if cmd := m.handleRepositoryChange(); cmd != nil {
 		return m, cmd
 	}
@@ -159,17 +183,13 @@ func (m *ModelGithubWorkflow) View() string {
 // -----------------------------------------------------------------------------
 
 func (m *ModelGithubWorkflow) handleRepositoryChange() tea.Cmd {
-	if m.lastRepository != m.selectedRepository.RepositoryName {
-		m.tableReady = false
-		m.cancelSyncTriggerableWorkflows()
-
-		m.lastRepository = m.selectedRepository.RepositoryName
-		m.mainBranch = m.selectedRepository.BranchName
-
-		m.syncTriggerableWorkflowsContext, m.cancelSyncTriggerableWorkflows = context.WithCancel(context.Background())
-
-		go m.syncTriggerableWorkflows(m.syncTriggerableWorkflowsContext)
-		go m.syncBranches(m.syncTriggerableWorkflowsContext)
+	if m.state.Repository.Current != m.selectedRepository.RepositoryName {
+		m.state.Ready = false
+		m.state.Repository.Current = m.selectedRepository.RepositoryName
+		m.state.Repository.Branch = m.selectedRepository.BranchName
+		m.syncWorkflows()
+	} else if !m.state.Repository.HasFlows {
+		m.skeleton.LockTab("trigger")
 	}
 	return nil
 }
@@ -180,19 +200,20 @@ func (m *ModelGithubWorkflow) handleRepositoryChange() tea.Cmd {
 
 func (m *ModelGithubWorkflow) handleBranchSelection() {
 	selectedBranch := m.textInput.Value()
-	if selectedBranch == "" {
-		m.selectedRepository.BranchName = m.mainBranch
-		m.skeleton.UnlockTabs()
-		return
-	}
 
-	if m.isBranchValid(selectedBranch) {
+	// Set branch
+	if selectedBranch == "" {
+		m.selectedRepository.BranchName = m.state.Repository.Branch
+	} else if m.isBranchValid(selectedBranch) {
 		m.selectedRepository.BranchName = selectedBranch
-		m.skeleton.UnlockTabs()
 	} else {
 		m.status.SetErrorMessage(fmt.Sprintf("Branch %s does not exist", selectedBranch))
 		m.skeleton.LockTabsToTheRight()
+		return
 	}
+
+	// Update tab state
+	m.updateTabState()
 }
 
 func (m *ModelGithubWorkflow) isBranchValid(branch string) bool {
@@ -207,6 +228,26 @@ func (m *ModelGithubWorkflow) isBranchValid(branch string) bool {
 // -----------------------------------------------------------------------------
 // Workflow Sync & Management
 // -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflow) syncWorkflows() {
+	if m.state.Syncing {
+		m.cancelSyncTriggerableWorkflows()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	m.cancelSyncTriggerableWorkflows = cancel
+	m.state.Syncing = true
+
+	go func() {
+		defer func() {
+			m.state.Syncing = false
+			m.skeleton.TriggerUpdate()
+		}()
+
+		m.syncBranches(ctx)
+		m.syncTriggerableWorkflows(ctx)
+	}()
+}
 
 func (m *ModelGithubWorkflow) syncTriggerableWorkflows(ctx context.Context) {
 	defer m.skeleton.TriggerUpdate()
@@ -245,19 +286,49 @@ func (m *ModelGithubWorkflow) fetchTriggerableWorkflows(ctx context.Context) (*g
 }
 
 func (m *ModelGithubWorkflow) processWorkflows(workflows *gu.GetTriggerableWorkflowsOutput) {
-	if len(workflows.TriggerableWorkflows) == 0 {
+	m.state.Repository.HasFlows = len(workflows.TriggerableWorkflows) > 0
+	m.state.Repository.Current = m.selectedRepository.RepositoryName
+	m.state.Ready = true
+
+	if !m.state.Repository.HasFlows {
 		m.handleEmptyWorkflows()
 		return
 	}
 
 	m.updateWorkflowTable(workflows.TriggerableWorkflows)
+	m.updateTabState()
 	m.finalizeUpdate()
+
+	// Focus components when workflows exist
+	m.tableTriggerableWorkflow.Focus()
+	m.textInput.Focus()
 }
 
 func (m *ModelGithubWorkflow) handleEmptyWorkflows() {
 	m.selectedRepository.WorkflowName = ""
+	m.skeleton.LockTab("trigger")
+
+	// Blur components when no workflows
+	m.tableTriggerableWorkflow.Blur()
+	m.textInput.Blur()
+
 	m.status.SetDefaultMessage(fmt.Sprintf("[%s@%s] No triggerable workflow found.",
 		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+
+	m.fillTableWithEmptyMessage()
+}
+
+func (m *ModelGithubWorkflow) fillTableWithEmptyMessage() {
+	var rows []table.Row
+	for i := 0; i < 100; i++ {
+		rows = append(rows, table.Row{
+			"EMPTY",
+			"No triggerable workflow found",
+		})
+	}
+
+	m.tableTriggerableWorkflow.SetRows(rows)
+	m.tableTriggerableWorkflow.SetCursor(0)
 }
 
 // -----------------------------------------------------------------------------
@@ -381,7 +452,11 @@ func (m *ModelGithubWorkflow) renderBranchInput() string {
 		MarginLeft(1)
 
 	if len(m.textInput.AvailableSuggestions()) > 0 && m.textInput.Value() == "" {
-		m.textInput.Placeholder = fmt.Sprintf("Type to switch branch (default: %s)", m.mainBranch)
+		if !m.state.Repository.HasFlows {
+			m.textInput.Placeholder = "Branch selection disabled - No triggerable workflows available"
+		} else {
+			m.textInput.Placeholder = fmt.Sprintf("Type to switch branch (default: %s)", m.state.Repository.Branch)
+		}
 	}
 
 	return style.Render(m.textInput.View())
@@ -408,4 +483,16 @@ func (m *ModelGithubWorkflow) updateTableDimensions() {
 		m.tableTriggerableWorkflow.SetColumns(newTableColumns)
 		m.tableTriggerableWorkflow.SetHeight(termHeight - 17)
 	}
+}
+
+// -----------------------------------------------------------------------------
+// Tab Management
+// -----------------------------------------------------------------------------
+
+func (m *ModelGithubWorkflow) updateTabState() {
+	if !m.state.Repository.HasFlows {
+		m.skeleton.LockTab("trigger")
+		return
+	}
+	m.skeleton.UnlockTabs()
 }

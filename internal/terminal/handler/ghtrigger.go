@@ -58,6 +58,9 @@ type ModelGithubTrigger struct {
 
 	// Shared state
 	selectedRepository *SelectedRepository
+
+	// Track last branch for refresh
+	lastBranch string
 }
 
 // -----------------------------------------------------------------------------
@@ -170,6 +173,7 @@ func (m *ModelGithubTrigger) handleWorkflowChange() tea.Cmd {
 	}
 
 	if m.shouldSyncWorkflow() {
+		m.lastBranch = m.selectedRepository.BranchName
 		return m.initializeWorkflowSync()
 	}
 
@@ -185,7 +189,8 @@ func (m *ModelGithubTrigger) handleNoWorkflow() {
 func (m *ModelGithubTrigger) shouldSyncWorkflow() bool {
 	return m.selectedRepository.WorkflowName != "" &&
 		(m.selectedRepository.WorkflowName != m.selectedWorkflow ||
-			m.selectedRepository.RepositoryName != m.selectedRepositoryName)
+			m.selectedRepository.RepositoryName != m.selectedRepositoryName ||
+			m.lastBranch != m.selectedRepository.BranchName)
 }
 
 func (m *ModelGithubTrigger) initializeWorkflowSync() tea.Cmd {

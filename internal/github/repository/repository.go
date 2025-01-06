@@ -190,7 +190,13 @@ func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) (
 
 	// Filter workflows to only include those that are dispatchable and manually triggerable
 	for _, workflow := range workflows.Workflows {
-		go r.workerGetTriggerableWorkflows(ctx, repository, workflow, results, errs)
+		// if workflow.Path starts with .github/workflows/
+		if strings.HasPrefix(workflow.Path, ".github/workflows/") {
+			go r.workerGetTriggerableWorkflows(ctx, repository, workflow, results, errs)
+		} else {
+			// do not send but we created a channel for it
+			results <- nil
+		}
 	}
 
 	// Collect the results and errors
