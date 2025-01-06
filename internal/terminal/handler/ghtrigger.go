@@ -511,14 +511,12 @@ func (m *ModelGithubTrigger) triggerWorkflow() {
 		return
 	}
 
-	_, err = m.github.TriggerWorkflow(context.Background(), gu.TriggerWorkflowInput{
+	if err := m.github.TriggerWorkflow(context.Background(), gu.TriggerWorkflowInput{
 		Repository:   m.selectedRepository.RepositoryName,
 		Branch:       m.selectedRepository.BranchName,
 		WorkflowFile: m.selectedWorkflow,
 		Content:      content,
-	})
-
-	if err != nil {
+	}); err != nil {
 		m.status.SetError(err)
 		m.status.SetErrorMessage("Workflow cannot be triggered")
 		return

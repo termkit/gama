@@ -45,14 +45,8 @@ func TestRepo_ListWorkflowRuns(t *testing.T) {
 	repo := newRepo(ctx)
 
 	targetRepositoryName := "canack/tc"
-	targetRepository, err := repo.GetRepository(ctx, targetRepositoryName)
-	if err != nil {
-		t.Error(err)
-	}
 
-	defaultBranch := targetRepository.DefaultBranch
-
-	workflowRuns, err := repo.ListWorkflowRuns(ctx, targetRepositoryName, defaultBranch)
+	workflowRuns, err := repo.ListWorkflowRuns(ctx, targetRepositoryName)
 	if err != nil {
 		t.Error(err)
 	}

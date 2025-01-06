@@ -85,7 +85,7 @@ func TestUseCase_TriggerWorkflow(t *testing.T) {
 		t.Error(err)
 	}
 
-	trigger, err := githubUseCase.TriggerWorkflow(ctx, TriggerWorkflowInput{
+	err = githubUseCase.TriggerWorkflow(ctx, TriggerWorkflowInput{
 		WorkflowFile: ".github/workflows/dispatch_test.yaml",
 		Repository:   "canack/tc",
 		Branch:       "master",
@@ -94,5 +94,4 @@ func TestUseCase_TriggerWorkflow(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log(trigger)
 }

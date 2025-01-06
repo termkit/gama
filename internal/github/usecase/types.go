@@ -114,11 +114,6 @@ type TriggerWorkflowInput struct {
 	Content      string // workflow content in json format
 }
 
-type TriggerWorkflowOutput struct {
-	// Return workflow information
-	// Like status url etc.
-}
-
 // ------------------------------------------------------------
 
 type GetTriggerableWorkflowsInput struct {
@@ -143,9 +138,6 @@ type ReRunFailedJobsInput struct {
 	WorkflowID int64
 }
 
-type ReRunFailedJobsOutput struct {
-}
-
 // ------------------------------------------------------------
 
 type ReRunWorkflowInput struct {
@@ -153,15 +145,9 @@ type ReRunWorkflowInput struct {
 	WorkflowID int64
 }
 
-type ReRunWorkflowOutput struct {
-}
-
 // ------------------------------------------------------------
 
 type CancelWorkflowInput struct {
 	Repository string
 	WorkflowID int64
-}
-
-type CancelWorkflowOutput struct {
 }

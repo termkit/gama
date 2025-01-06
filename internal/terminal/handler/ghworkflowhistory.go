@@ -491,12 +491,10 @@ func (m *ModelGithubWorkflowHistory) openInBrowser() {
 func (m *ModelGithubWorkflowHistory) rerunFailedJobs() {
 	m.status.SetProgressMessage("Re-running failed jobs...")
 
-	_, err := m.github.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
+	if err := m.github.ReRunFailedJobs(context.Background(), gu.ReRunFailedJobsInput{
 		Repository: m.selectedRepository.RepositoryName,
 		WorkflowID: m.selectedWorkflowID,
-	})
-
-	if err != nil {
+	}); err != nil {
 		m.status.SetError(err)
 		m.status.SetErrorMessage("Failed to re-run failed jobs")
 		return
@@ -515,12 +513,10 @@ func (m *ModelGithubWorkflowHistory) rerunWorkflow() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	_, err := m.github.ReRunWorkflow(ctx, gu.ReRunWorkflowInput{
+	if err := m.github.ReRunWorkflow(ctx, gu.ReRunWorkflowInput{
 		Repository: m.selectedRepository.RepositoryName,
 		WorkflowID: m.selectedWorkflowID,
-	})
-
-	if err != nil {
+	}); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			m.status.SetErrorMessage("Workflow re-run request timed out")
 		} else {
@@ -541,12 +537,10 @@ func (m *ModelGithubWorkflowHistory) rerunWorkflow() {
 func (m *ModelGithubWorkflowHistory) cancelWorkflow() {
 	m.status.SetProgressMessage("Canceling workflow...")
 
-	_, err := m.github.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
+	if err := m.github.CancelWorkflow(context.Background(), gu.CancelWorkflowInput{
 		Repository: m.selectedRepository.RepositoryName,
 		WorkflowID: m.selectedWorkflowID,
-	})
-
-	if err != nil {
+	}); err != nil {
 		m.status.SetError(err)
 		m.status.SetErrorMessage("Failed to cancel workflow")
 		return

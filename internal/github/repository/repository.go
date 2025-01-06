@@ -125,15 +125,12 @@ func (r *Repo) GetRepository(ctx context.Context, repository string) (*GithubRep
 	return &repo, nil
 }
 
-func (r *Repo) ListWorkflowRuns(ctx context.Context, repository string, branch string) (*WorkflowRuns, error) {
+func (r *Repo) ListWorkflowRuns(ctx context.Context, repository string) (*WorkflowRuns, error) {
 	// List workflow runs for the given repository and branch
 	var workflowRuns WorkflowRuns
 	err := r.do(ctx, nil, &workflowRuns, requestOptions{
 		method: http.MethodGet,
 		paths:  []string{"repos", repository, "actions", "runs"},
-		queryParams: map[string]string{
-			"branch": branch,
-		},
 	})
 	if err != nil {
 		return nil, err
@@ -289,20 +286,6 @@ func (r *Repo) getWorkflowFile(ctx context.Context, repository string, path stri
 	}
 
 	return string(decodedContent), nil
-}
-
-func (r *Repo) GetWorkflowRunLogs(ctx context.Context, repository string, runID int64) (GithubWorkflowRunLogs, error) {
-	// Get the logs for a given workflow run
-	var workflowRunLogs GithubWorkflowRunLogs
-	err := r.do(ctx, nil, &workflowRunLogs, requestOptions{
-		method: http.MethodGet,
-		paths:  []string{"repos", repository, "actions", "runs", strconv.FormatInt(runID, 10), "logs"},
-	})
-	if err != nil {
-		return GithubWorkflowRunLogs{}, err
-	}
-
-	return workflowRunLogs, nil
 }
 
 func (r *Repo) ReRunFailedJobs(ctx context.Context, repository string, runID int64) error {

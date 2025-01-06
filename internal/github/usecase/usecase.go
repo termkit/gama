@@ -137,16 +137,8 @@ func (u useCase) workerListRepositories(ctx context.Context, repository gr.Githu
 
 func (u useCase) GetWorkflowHistory(ctx context.Context, input GetWorkflowHistoryInput) (*GetWorkflowHistoryOutput, error) {
 	var targetRepositoryName = input.Repository
-	var targetBranch = input.Branch
-	if targetBranch == "" {
-		repository, err := u.githubRepository.GetRepository(ctx, targetRepositoryName)
-		if err != nil {
-			return nil, err
-		}
-		targetBranch = repository.DefaultBranch
-	}
 
-	workflowRuns, err := u.githubRepository.ListWorkflowRuns(ctx, targetRepositoryName, targetBranch)
+	workflowRuns, err := u.githubRepository.ListWorkflowRuns(ctx, targetRepositoryName)
 	if err != nil {
 		return nil, err
 	}
@@ -214,34 +206,20 @@ func (u useCase) InspectWorkflow(ctx context.Context, input InspectWorkflowInput
 	}, nil
 }
 
-func (u useCase) TriggerWorkflow(ctx context.Context, input TriggerWorkflowInput) (*TriggerWorkflowOutput, error) {
-	err := u.githubRepository.TriggerWorkflow(ctx, input.Repository, input.Branch, input.WorkflowFile, input.Content)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TriggerWorkflowOutput{}, nil
+func (u useCase) TriggerWorkflow(ctx context.Context, input TriggerWorkflowInput) error {
+	return u.githubRepository.TriggerWorkflow(ctx, input.Repository, input.Branch, input.WorkflowFile, input.Content)
 }
 
-func (u useCase) ReRunFailedJobs(ctx context.Context, input ReRunFailedJobsInput) (*ReRunFailedJobsOutput, error) {
-	if err := u.githubRepository.ReRunFailedJobs(ctx, input.Repository, input.WorkflowID); err != nil {
-		return nil, err
-	}
-	return &ReRunFailedJobsOutput{}, nil
+func (u useCase) ReRunFailedJobs(ctx context.Context, input ReRunFailedJobsInput) error {
+	return u.githubRepository.ReRunFailedJobs(ctx, input.Repository, input.WorkflowID)
 }
 
-func (u useCase) ReRunWorkflow(ctx context.Context, input ReRunWorkflowInput) (*ReRunWorkflowOutput, error) {
-	if err := u.githubRepository.ReRunWorkflow(ctx, input.Repository, input.WorkflowID); err != nil {
-		return nil, err
-	}
-	return &ReRunWorkflowOutput{}, nil
+func (u useCase) ReRunWorkflow(ctx context.Context, input ReRunWorkflowInput) error {
+	return u.githubRepository.ReRunWorkflow(ctx, input.Repository, input.WorkflowID)
 }
 
-func (u useCase) CancelWorkflow(ctx context.Context, input CancelWorkflowInput) (*CancelWorkflowOutput, error) {
-	if err := u.githubRepository.CancelWorkflow(ctx, input.Repository, input.WorkflowID); err != nil {
-		return nil, err
-	}
-	return &CancelWorkflowOutput{}, nil
+func (u useCase) CancelWorkflow(ctx context.Context, input CancelWorkflowInput) error {
+	return u.githubRepository.CancelWorkflow(ctx, input.Repository, input.WorkflowID)
 }
 
 func (u useCase) timeToString(t time.Time) string {

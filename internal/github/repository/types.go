@@ -4,14 +4,6 @@ import (
 	"time"
 )
 
-type GithubConfig struct {
-	Token string
-}
-
-type InitializeOptions struct {
-	HTTPTimeout time.Duration
-}
-
 type GithubRepository struct {
 	Id              int       `json:"id"`
 	NodeId          string    `json:"node_id"`
@@ -114,12 +106,6 @@ type Actor struct {
 	Id        int64  `json:"id"`
 	Login     string `json:"login"`
 	AvatarUrl string `json:"avatar_url"`
-}
-
-type GithubWorkflowRunLogs struct {
-	TotalSize int    `json:"total_size"`
-	Url       string `json:"url"`
-	Download  string `json:"download_url"`
 }
 
 type GithubUser struct {
