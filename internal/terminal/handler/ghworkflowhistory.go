@@ -219,10 +219,19 @@ func (m *ModelGithubWorkflowHistory) handleUpdateMsg(msg workflowHistoryUpdateMs
 // -----------------------------------------------------------------------------
 
 func (m *ModelGithubWorkflowHistory) startLiveMode() {
+	ticker := time.NewTicker(m.liveModeInterval)
 	go func() {
-		for range time.NewTicker(m.liveModeInterval).C {
-			if m.liveMode {
-				m.skeleton.TriggerUpdateWithMsg(workflowHistoryUpdateMsg{UpdateAfter: time.Nanosecond})
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if m.liveMode {
+					m.skeleton.TriggerUpdateWithMsg(workflowHistoryUpdateMsg{
+						UpdateAfter: time.Nanosecond,
+					})
+				}
+			case <-m.syncWorkflowHistoryContext.Done():
+				return
 			}
 		}
 	}()
@@ -230,13 +239,20 @@ func (m *ModelGithubWorkflowHistory) startLiveMode() {
 
 func (m *ModelGithubWorkflowHistory) toggleLiveMode() tea.Cmd {
 	m.liveMode = !m.liveMode
+
+	status := "Off"
+	message := "Live mode disabled"
+
 	if m.liveMode {
-		m.status.SetSuccessMessage("Live mode enabled")
-		m.skeleton.UpdateWidgetValue("live", "Live Mode: On")
-	} else {
-		m.status.SetSuccessMessage("Live mode disabled")
-		m.skeleton.UpdateWidgetValue("live", "Live Mode: Off")
+		status = "On"
+		message = "Live mode enabled"
+		// Trigger immediate update when enabling
+		go m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
 	}
+
+	m.status.SetSuccessMessage(message)
+	m.skeleton.UpdateWidgetValue("live", fmt.Sprintf("Live Mode: %s", status))
+
 	return nil
 }
 
@@ -267,13 +283,37 @@ func (m *ModelGithubWorkflowHistory) handleRepositoryChange() tea.Cmd {
 func (m *ModelGithubWorkflowHistory) syncWorkflowHistory(ctx context.Context) {
 	defer m.skeleton.TriggerUpdate()
 
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	m.initializeSyncState()
+
+	// Check context before proceeding
+	if ctx.Err() != nil {
+		m.status.SetDefaultMessage("Operation cancelled")
+		return
+	}
+
 	workflowHistory, err := m.fetchWorkflowHistory(ctx)
 	if err != nil {
+		m.handleFetchError(err)
 		return
 	}
 
 	m.processWorkflowHistory(workflowHistory)
+}
+
+func (m *ModelGithubWorkflowHistory) handleFetchError(err error) {
+	switch {
+	case errors.Is(err, context.Canceled):
+		m.status.SetDefaultMessage("Workflow history fetch cancelled")
+	case errors.Is(err, context.DeadlineExceeded):
+		m.status.SetErrorMessage("Workflow history fetch timed out")
+	default:
+		m.status.SetError(err)
+		m.status.SetErrorMessage(fmt.Sprintf("Failed to fetch workflow history: %v", err))
+	}
 }
 
 func (m *ModelGithubWorkflowHistory) initializeSyncState() {
@@ -385,28 +425,42 @@ func (m *ModelGithubWorkflowHistory) renderHelp() string {
 }
 
 func (m *ModelGithubWorkflowHistory) updateTableDimensions() {
+	const (
+		minTableWidth  = 80 // Minimum width to maintain readability
+		tablePadding   = 18 // Account for borders and margins
+		minColumnWidth = 10 // Minimum width for any column
+	)
+
 	termWidth := m.skeleton.GetTerminalWidth()
 	termHeight := m.skeleton.GetTerminalHeight()
+
+	if termWidth <= minTableWidth {
+		return // Prevent table from becoming too narrow
+	}
 
 	var tableWidth int
 	for _, t := range tableColumnsWorkflowHistory {
 		tableWidth += t.Width
 	}
 
-	newTableColumns := tableColumnsWorkflowHistory
-	widthDiff := termWidth - tableWidth
+	newTableColumns := make([]table.Column, len(tableColumnsWorkflowHistory))
+	copy(newTableColumns, tableColumnsWorkflowHistory)
 
+	widthDiff := termWidth - tableWidth - tablePadding
 	if widthDiff > 0 {
-		if m.updateRound%2 == 0 {
-			newTableColumns[0].Width += widthDiff - 18
-		} else {
-			newTableColumns[1].Width += widthDiff - 18
-		}
-		m.updateRound++
+		// Distribute extra width between workflow name and action name columns
+		extraWidth := widthDiff / 2
+		newTableColumns[0].Width = max(newTableColumns[0].Width+extraWidth, minColumnWidth)
+		newTableColumns[1].Width = max(newTableColumns[1].Width+extraWidth, minColumnWidth)
+
 		m.tableWorkflowHistory.SetColumns(newTableColumns)
 	}
 
-	m.tableWorkflowHistory.SetHeight(termHeight - 17)
+	// Ensure reasonable table height
+	maxHeight := termHeight - 17
+	if maxHeight > 0 {
+		m.tableWorkflowHistory.SetHeight(maxHeight)
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -453,20 +507,36 @@ func (m *ModelGithubWorkflowHistory) rerunFailedJobs() {
 }
 
 func (m *ModelGithubWorkflowHistory) rerunWorkflow() {
-	m.status.SetProgressMessage("Re-running workflow...")
+	if m.selectedWorkflowID == 0 {
+		m.status.SetErrorMessage("No workflow selected")
+		return
+	}
 
-	_, err := m.github.ReRunWorkflow(context.Background(), gu.ReRunWorkflowInput{
+	m.status.SetProgressMessage("Re-running workflow...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := m.github.ReRunWorkflow(ctx, gu.ReRunWorkflowInput{
 		Repository: m.selectedRepository.RepositoryName,
 		WorkflowID: m.selectedWorkflowID,
 	})
 
 	if err != nil {
-		m.status.SetError(err)
-		m.status.SetErrorMessage("Failed to re-run workflow")
+		if errors.Is(err, context.DeadlineExceeded) {
+			m.status.SetErrorMessage("Workflow re-run request timed out")
+		} else {
+			m.status.SetError(err)
+			m.status.SetErrorMessage(fmt.Sprintf("Failed to re-run workflow: %v", err))
+		}
 		return
 	}
 
-	m.status.SetSuccessMessage("Re-ran workflow")
+	m.status.SetSuccessMessage("Workflow re-run initiated")
+	// Trigger refresh after short delay to show updated status
+	go func() {
+		time.Sleep(2 * time.Second)
+		m.syncWorkflowHistory(m.syncWorkflowHistoryContext)
+	}()
 }
 
 func (m *ModelGithubWorkflowHistory) cancelWorkflow() {

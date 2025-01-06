@@ -184,28 +184,31 @@ func (r *Repo) GetTriggerableWorkflows(ctx context.Context, repository string) (
 		return nil, err
 	}
 
-	// Create a buffered channel for results and errors
-	results := make(chan *Workflow, len(workflows.Workflows))
-	errs := make(chan error, len(workflows.Workflows))
-
-	// Filter workflows to only include those that are dispatchable and manually triggerable
+	// Count how many workflows we'll actually process
+	var validWorkflowCount int
 	for _, workflow := range workflows.Workflows {
-		// if workflow.Path starts with .github/workflows/
+		if strings.HasPrefix(workflow.Path, ".github/workflows/") {
+			validWorkflowCount++
+		}
+	}
+
+	// Create buffered channels only for valid workflows
+	results := make(chan *Workflow, validWorkflowCount)
+	errs := make(chan error, validWorkflowCount)
+
+	// Only process workflows with valid paths
+	for _, workflow := range workflows.Workflows {
 		if strings.HasPrefix(workflow.Path, ".github/workflows/") {
 			go r.workerGetTriggerableWorkflows(ctx, repository, workflow, results, errs)
-		} else {
-			// do not send but we created a channel for it
-			results <- nil
 		}
 	}
 
 	// Collect the results and errors
 	var result []Workflow
 	var resultErrs []error
-	for range workflows.Workflows {
+	for i := 0; i < validWorkflowCount; i++ {
 		select {
 		case res := <-results:
-			// append only triggerable (dispatch) workflows
 			if res != nil {
 				result = append(result, *res)
 			}

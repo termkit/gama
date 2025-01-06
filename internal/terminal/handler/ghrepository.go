@@ -236,7 +236,6 @@ func (m *ModelGithubRepository) View() string {
 	)
 }
 
-
 // -----------------------------------------------------------------------------
 // UI Rendering
 // -----------------------------------------------------------------------------
@@ -284,6 +283,10 @@ func (m *ModelGithubRepository) syncRepositories(ctx context.Context) {
 	m.status.SetProgressMessage("Fetching repositories...")
 	m.clearTables()
 
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	repos, err := m.fetchRepositories(ctx)
 	if err != nil {
 		m.handleFetchError(err)
@@ -311,17 +314,33 @@ func (m *ModelGithubRepository) clearTables() {
 }
 
 func (m *ModelGithubRepository) updateTableDimensions() {
+	const minTableWidth = 60 // Minimum width to maintain readability
+	const tablePadding = 14  // Account for borders and margins
+
 	var tableWidth int
 	for _, t := range tableColumnsGithubRepository {
 		tableWidth += t.Width
 	}
 
-	newTableColumns := tableColumnsGithubRepository
-	widthDiff := m.skeleton.GetTerminalWidth() - tableWidth
+	termWidth := m.skeleton.GetTerminalWidth()
+	if termWidth <= minTableWidth {
+		return // Prevent table from becoming too narrow
+	}
+
+	newTableColumns := make([]table.Column, len(tableColumnsGithubRepository))
+	copy(newTableColumns, tableColumnsGithubRepository)
+
+	widthDiff := termWidth - tableWidth - tablePadding
 	if widthDiff > 0 {
-		newTableColumns[0].Width += widthDiff - 14
+		// Add extra width to repository name column
+		newTableColumns[0].Width += widthDiff
 		m.tableGithubRepository.SetColumns(newTableColumns)
-		m.tableGithubRepository.SetHeight(m.skeleton.GetTerminalHeight() - 20)
+
+		// Adjust height while maintaining some padding
+		maxHeight := m.skeleton.GetTerminalHeight() - 20
+		if maxHeight > 0 {
+			m.tableGithubRepository.SetHeight(maxHeight)
+		}
 	}
 }
 
@@ -387,22 +406,26 @@ func (m *ModelGithubRepository) finalizeTableUpdate() {
 // -----------------------------------------------------------------------------
 
 func (m *ModelGithubRepository) updateTableRowsBySearchBar() {
-	searchValue := m.textInput.Value()
-	rows := m.searchTableGithubRepository.Rows()
+	searchValue := strings.ToLower(m.textInput.Value())
+	if searchValue == "" {
+		// If search is empty, restore original rows
+		m.tableGithubRepository.SetRows(m.searchTableGithubRepository.Rows())
+		return
+	}
 
-	// Filter rows based on repository name
+	rows := m.searchTableGithubRepository.Rows()
 	filteredRows := make([]table.Row, 0, len(rows))
+
 	for _, row := range rows {
-		if strings.Contains(row[0], searchValue) {
+		if strings.Contains(strings.ToLower(row[0]), searchValue) {
 			filteredRows = append(filteredRows, row)
 		}
 	}
 
+	m.tableGithubRepository.SetRows(filteredRows)
 	if len(filteredRows) == 0 {
 		m.clearSelectedRepository()
 	}
-
-	m.tableGithubRepository.SetRows(filteredRows)
 }
 
 func (m *ModelGithubRepository) clearSelectedRepository() {
@@ -457,11 +480,16 @@ func (m *ModelGithubRepository) setupBrowserOption() {
 
 func (m *ModelGithubRepository) handleFetchError(err error) {
 	if errors.Is(err, context.Canceled) {
+		m.status.SetDefaultMessage("Repository fetch cancelled")
+		return
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		m.status.SetErrorMessage("Repository fetch timed out")
 		return
 	}
 
 	m.status.SetError(err)
-	m.status.SetErrorMessage("Repositories cannot be listed")
+	m.status.SetErrorMessage(fmt.Sprintf("Failed to list repositories: %v", err))
 }
 
 // -----------------------------------------------------------------------------
