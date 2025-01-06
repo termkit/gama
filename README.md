@@ -1,10 +1,12 @@
 # GitHub Actions Manager (GAMA)
 
-GAMA is a powerful terminal-based user interface tool designed to streamline the management of GitHub Actions workflows. It allows developers to list, trigger, and manage workflows with ease directly from the terminal.
-
 <a href="https://github.com/termkit/gama" target="_blank"><img src="https://img.shields.io/github/go-mod/go-version/termkit/gama?style=for-the-badge&logo=go" alt="GAMA Go Version" /></a>
 <a href="https://goreportcard.com/report/github.com/termkit/gama" target="_blank"><img src="https://goreportcard.com/badge/github.com/termkit/gama?style=for-the-badge&logo=go" alt="GAMA Go Report Card" /></a>
 <a href="https://github.com/termkit/gama" target="_blank"><img src="https://img.shields.io/github/license/termkit/gama?style=for-the-badge" alt="GAMA Licence" /></a>
+
+GAMA is a powerful terminal-based user interface tool designed to streamline the management of GitHub Actions workflows. It allows developers to list, trigger, and manage workflows with ease directly from the terminal.
+
+![gama demo](docs/gama.gif)
 
 ## Table of Contents
 - [Key Features](#key-features)
@@ -16,8 +18,6 @@ GAMA is a powerful terminal-based user interface tool designed to streamline the
 - [Contributing](#contributing)
 - [License](#license)
 - [Contact & Author](#contact--author)
-
-![gama demo](docs/gama.gif)
 
 ## Key Features
 
