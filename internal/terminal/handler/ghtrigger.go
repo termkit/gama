@@ -69,6 +69,8 @@ type ModelGithubTrigger struct {
 // -----------------------------------------------------------------------------
 
 func SetupModelGithubTrigger(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubTrigger {
+	modelStatus := SetupModelStatus(s)
+
 	m := &ModelGithubTrigger{
 		// Initialize core dependencies
 		skeleton: s,
@@ -77,7 +79,7 @@ func SetupModelGithubTrigger(s *skeleton.Skeleton, githubUseCase gu.UseCase) *Mo
 		// Initialize UI components
 		help:         help.New(),
 		Keys:         githubTriggerKeys,
-		status:       SetupModelStatus(s),
+		status:       modelStatus,
 		textInput:    setupTriggerInput(),
 		tableTrigger: setupTriggerTable(),
 

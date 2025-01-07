@@ -54,6 +54,9 @@ type ModelGithubRepository struct {
 // -----------------------------------------------------------------------------
 
 func SetupModelGithubRepository(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubRepository {
+	modelStatus := SetupModelStatus(s)
+	tabOptions := NewOptions(s, modelStatus)
+
 	m := &ModelGithubRepository{
 		// Initialize core dependencies
 		skeleton: s,
@@ -62,9 +65,9 @@ func SetupModelGithubRepository(s *skeleton.Skeleton, githubUseCase gu.UseCase) 
 		// Initialize UI components
 		help:            help.New(),
 		Keys:            githubRepositoryKeys,
-		status:          SetupModelStatus(s),
+		status:          modelStatus,
 		textInput:       setupTextInput(),
-		modelTabOptions: NewOptions(s, SetupModelStatus(s)),
+		modelTabOptions: tabOptions,
 
 		// Initialize state
 		selectedRepository:      NewSelectedRepository(),

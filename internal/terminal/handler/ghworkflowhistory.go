@@ -68,6 +68,8 @@ func SetupModelGithubWorkflowHistory(s *skeleton.Skeleton, githubUseCase gu.UseC
 		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
+	modelStatus := SetupModelStatus(s)
+	tabOptions := NewOptions(s, modelStatus)
 	m := &ModelGithubWorkflowHistory{
 		// Initialize core dependencies
 		skeleton: s,
@@ -76,8 +78,8 @@ func SetupModelGithubWorkflowHistory(s *skeleton.Skeleton, githubUseCase gu.UseC
 		// Initialize UI components
 		Help:            help.New(),
 		keys:            githubWorkflowHistoryKeys,
-		status:          SetupModelStatus(s),
-		modelTabOptions: NewOptions(s, SetupModelStatus(s)),
+		status:          modelStatus,
+		modelTabOptions: tabOptions,
 
 		// Initialize state
 		selectedRepository:         NewSelectedRepository(),
@@ -145,10 +147,7 @@ func (m *ModelGithubWorkflowHistory) Init() tea.Cmd {
 }
 
 func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle repository changes
-	if cmd := m.handleRepositoryChange(); cmd != nil {
-		return m, cmd
-	}
+	m.handleRepositoryChange()
 
 	cursor := m.tableWorkflowHistory.Cursor()
 	if m.workflows != nil && cursor >= 0 && cursor < len(m.workflows) {
@@ -174,7 +173,7 @@ func (m *ModelGithubWorkflowHistory) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Update UI components
 	if cmd = m.updateUIComponents(msg); cmd != nil {
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.updateUIComponents(msg))
 	}
 
 	return m, tea.Batch(cmds...)

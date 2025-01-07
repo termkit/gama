@@ -64,6 +64,8 @@ type ModelGithubWorkflow struct {
 // -----------------------------------------------------------------------------
 
 func SetupModelGithubWorkflow(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflow {
+	modelStatus := SetupModelStatus(s)
+
 	m := &ModelGithubWorkflow{
 		// Initialize core dependencies
 		skeleton: s,
@@ -72,7 +74,7 @@ func SetupModelGithubWorkflow(s *skeleton.Skeleton, githubUseCase gu.UseCase) *M
 		// Initialize UI components
 		help:      help.New(),
 		keys:      githubWorkflowKeys,
-		status:    SetupModelStatus(s),
+		status:    modelStatus,
 		textInput: setupBranchInput(),
 
 		// Initialize state
@@ -148,10 +150,7 @@ func (m *ModelGithubWorkflow) Init() tea.Cmd {
 }
 
 func (m *ModelGithubWorkflow) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Check repository change and return command if exists
-	if cmd := m.handleRepositoryChange(); cmd != nil {
-		return m, cmd
-	}
+	m.handleRepositoryChange()
 
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
@@ -182,7 +181,7 @@ func (m *ModelGithubWorkflow) View() string {
 // Repository Change Handling
 // -----------------------------------------------------------------------------
 
-func (m *ModelGithubWorkflow) handleRepositoryChange() tea.Cmd {
+func (m *ModelGithubWorkflow) handleRepositoryChange() {
 	if m.state.Repository.Current != m.selectedRepository.RepositoryName {
 		m.state.Ready = false
 		m.state.Repository.Current = m.selectedRepository.RepositoryName
@@ -191,7 +190,6 @@ func (m *ModelGithubWorkflow) handleRepositoryChange() tea.Cmd {
 	} else if !m.state.Repository.HasFlows {
 		m.skeleton.LockTab("trigger")
 	}
-	return nil
 }
 
 // -----------------------------------------------------------------------------

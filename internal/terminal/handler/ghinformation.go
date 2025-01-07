@@ -43,6 +43,8 @@ type ModelInfo struct {
 func SetupModelInfo(s *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgversion.Version) *ModelInfo {
 	const releaseURL = "https://github.com/termkit/gama/releases"
 
+	modelStatus := SetupModelStatus(s)
+
 	return &ModelInfo{
 		// Initialize core dependencies
 		skeleton: s,
@@ -51,7 +53,7 @@ func SetupModelInfo(s *skeleton.Skeleton, githubUseCase gu.UseCase, version pkgv
 
 		// Initialize UI components
 		help:   help.New(),
-		status: SetupModelStatus(s),
+		status: modelStatus,
 		keys:   githubInformationKeys,
 
 		// Initialize application state
