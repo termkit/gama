@@ -317,8 +317,7 @@ func (m *ModelGithubWorkflowHistory) handleFetchError(err error) {
 func (m *ModelGithubWorkflowHistory) initializeSyncState() {
 	m.tableReady = false
 	m.status.Reset()
-	m.status.SetProgressMessage(fmt.Sprintf("[%s@%s] Fetching workflow history...",
-		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+	m.status.SetProgressMessage(fmt.Sprintf("[%s] Fetching workflow history...", m.selectedRepository.RepositoryName))
 	m.modelTabOptions.SetStatus(StatusWait)
 	m.clearWorkflowHistory()
 }
@@ -362,8 +361,8 @@ func (m *ModelGithubWorkflowHistory) processWorkflowHistory(history *gu.GetWorkf
 
 func (m *ModelGithubWorkflowHistory) handleEmptyWorkflowHistory() {
 	m.modelTabOptions.SetStatus(StatusNone)
-	m.status.SetDefaultMessage(fmt.Sprintf("[%s@%s] No workflow history found.",
-		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+	m.status.SetDefaultMessage(fmt.Sprintf("[%s] No workflow history found.",
+		m.selectedRepository.RepositoryName))
 }
 
 func (m *ModelGithubWorkflowHistory) updateWorkflowTable() {
@@ -385,8 +384,7 @@ func (m *ModelGithubWorkflowHistory) finalizeUpdate() {
 	m.tableReady = true
 	m.tableWorkflowHistory.SetCursor(0)
 	m.modelTabOptions.SetStatus(StatusIdle)
-	m.status.SetSuccessMessage(fmt.Sprintf("[%s@%s] Workflow history fetched.",
-		m.selectedRepository.RepositoryName, m.selectedRepository.BranchName))
+	m.status.SetSuccessMessage(fmt.Sprintf("[%s] Workflow history fetched.", m.selectedRepository.RepositoryName))
 }
 
 // -----------------------------------------------------------------------------
