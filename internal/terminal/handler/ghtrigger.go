@@ -30,6 +30,7 @@ type ModelGithubTrigger struct {
 	optionInit             bool
 	optionCursor           int
 	optionValues           []string
+	currentBranch          string
 	currentOption          string
 	selectedWorkflow       string
 	selectedRepositoryName string
@@ -61,21 +62,15 @@ func SetupModelGithubTrigger(sk *skeleton.Skeleton, githubUseCase gu.UseCase) *M
 		table.WithHeight(7),
 	)
 
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	tableTrigger.SetStyles(s)
+	// Apply styles
+	tableTrigger.SetStyles(defaultTableStyles())
+
+	// Apply keymap
+	tableTrigger.KeyMap = defaultTableKeyMap()
 
 	ti := textinput.New()
 	ti.Blur()
-	ti.CharLimit = 72
+	ti.CharLimit = 160
 
 	modelStatus := SetupModelStatus(sk)
 	return &ModelGithubTrigger{
@@ -104,7 +99,10 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.selectedRepository.WorkflowName != "" && (m.selectedRepository.WorkflowName != m.selectedWorkflow || m.selectedRepository.RepositoryName != m.selectedRepositoryName) {
+	if m.selectedRepository.WorkflowName != "" && (m.selectedRepository.WorkflowName != m.selectedWorkflow ||
+		m.selectedRepository.RepositoryName != m.selectedRepositoryName ||
+		m.selectedRepository.BranchName != m.currentBranch) {
+
 		m.tableReady = false
 		m.isTriggerable = false
 		m.triggerFocused = false
@@ -113,6 +111,7 @@ func (m *ModelGithubTrigger) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.selectedWorkflow = m.selectedRepository.WorkflowName
 		m.selectedRepositoryName = m.selectedRepository.RepositoryName
+		m.currentBranch = m.selectedRepository.BranchName
 		m.syncWorkflowContext, m.cancelSyncWorkflow = context.WithCancel(context.Background())
 
 		go m.syncWorkflowContent(m.syncWorkflowContext)
@@ -614,7 +613,7 @@ func (m *ModelGithubTrigger) emptySelector() string {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
-		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
+		Width(m.skeleton.GetTerminalWidth() - 17).MarginLeft(1)
 
 	return windowStyle.Render("")
 }
@@ -625,7 +624,7 @@ func (m *ModelGithubTrigger) inputSelector() string {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
-		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
+		Width(m.skeleton.GetTerminalWidth() - 17).MarginLeft(1)
 
 	return windowStyle.Render(m.textInput.View())
 }
@@ -638,7 +637,7 @@ func (m *ModelGithubTrigger) optionSelector() string {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#3b698f")).
 		Padding(0, 1).
-		Width(m.skeleton.GetTerminalWidth() - 18).MarginLeft(1)
+		Width(m.skeleton.GetTerminalWidth() - 17).MarginLeft(1)
 
 	// Define styles for selected and unselected options
 	selectedOptionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Padding(0, 1)

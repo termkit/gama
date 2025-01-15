@@ -125,9 +125,7 @@ func (m *ModelStatus) HaveError() bool {
 }
 
 func (m *ModelStatus) viewError() string {
-	doc := strings.Builder{}
-	doc.WriteString(fmt.Sprintf("Error [%v]: %s", m.err, m.errorMessage))
-	return doc.String()
+	return fmt.Sprintf("[%v]", m.err)
 }
 
 func (m *ModelStatus) viewMessage() string {

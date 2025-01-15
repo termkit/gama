@@ -115,32 +115,6 @@ func setupTextInput() textinput.Model {
 	return ti
 }
 
-func defaultTableStyles() table.Styles {
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	return s
-}
-
-func defaultTableKeyMap() table.KeyMap {
-	// We use "up" and "down" for both line up and down, we do not use "k" and "j" to prevent conflict with text input
-	return table.KeyMap{
-		LineUp:     key.NewBinding(key.WithKeys("up"), key.WithHelp("↑", "up")),
-		LineDown:   key.NewBinding(key.WithKeys("down"), key.WithHelp("↓", "down")),
-		PageUp:     key.NewBinding(key.WithKeys("pgup"), key.WithHelp("pgup", "page up")),
-		PageDown:   key.NewBinding(key.WithKeys("pgdown", " "), key.WithHelp("pgdn", "page down")),
-		GotoTop:    key.NewBinding(key.WithKeys("home"), key.WithHelp("home", "go to start")),
-		GotoBottom: key.NewBinding(key.WithKeys("end"), key.WithHelp("end", "go to end")),
-	}
-}
-
 // -----------------------------------------------------------------------------
 // Bubbletea Model Implementation
 // -----------------------------------------------------------------------------
