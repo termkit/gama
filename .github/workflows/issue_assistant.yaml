@@ -10,7 +10,7 @@ jobs:
       issues: write
       contents: read
     steps:
-      - uses: workflowkit/issue-assistant@v1
+      - uses: workflowkit/issue-assistant@v1.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           ai_type: "claude"
