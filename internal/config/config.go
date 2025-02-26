@@ -2,11 +2,12 @@ package config
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -46,7 +47,9 @@ func LoadConfig() (*Config, error) {
 	setConfig()
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer(`.`, `_`))
-	viper.BindEnv("github.token", "GITHUB_TOKEN")
+	if err := viper.BindEnv("github.token", "GITHUB_TOKEN"); err != nil {
+		return nil, fmt.Errorf("failed to bind environment variable: %w", err)
+	}
 	viper.AutomaticEnv()
 
 	// Read the config file first
