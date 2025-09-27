@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/termkit/gama/internal/config"
 	gu "github.com/termkit/gama/internal/github/usecase"
 	"github.com/termkit/gama/pkg/browser"
 	"github.com/termkit/skeleton"
@@ -63,10 +62,7 @@ type workflowHistoryUpdateMsg struct {
 // -----------------------------------------------------------------------------
 
 func SetupModelGithubWorkflowHistory(s *skeleton.Skeleton, githubUseCase gu.UseCase) *ModelGithubWorkflowHistory {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
-	}
+	cfg := loadConfig()
 
 	modelStatus := SetupModelStatus(s)
 	tabOptions := NewOptions(s, modelStatus)
