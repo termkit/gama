@@ -71,6 +71,12 @@ func TestUseCase_TriggerWorkflow(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+		return // Exit early if there's an error
+	}
+
+	if workflow == nil || workflow.Workflow == nil {
+		t.Error("workflow or workflow.Workflow is nil")
+		return
 	}
 
 	for i, w := range workflow.Workflow.Inputs {

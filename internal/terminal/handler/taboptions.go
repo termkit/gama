@@ -141,14 +141,18 @@ func (o *ModelTabOptions) resetOptionsWithOriginal() {
 	o.isTabSelected = true
 	o.timer = 3
 	for o.timer >= 0 {
-		o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
+		if len(o.optionsAction) > 0 {
+			o.optionsAction[0] = fmt.Sprintf("> %ds", o.timer)
+		}
 		time.Sleep(1 * time.Second)
 		o.timer--
 		o.skeleton.TriggerUpdate()
 	}
 	o.modelLock = false
 	o.switchToPreviousError()
-	o.optionsAction[0] = string(StatusIdle)
+	if len(o.optionsAction) > 0 {
+		o.optionsAction[0] = string(StatusIdle)
+	}
 	o.cursor = 0
 	o.isTabSelected = false
 }
@@ -163,8 +167,12 @@ func (o *ModelTabOptions) updateCursor(cursor int) {
 
 func (o *ModelTabOptions) SetStatus(status OptionStatus) {
 	o.optionStatus = status
-	o.options[0] = status.String()
-	o.optionsAction[0] = status.String()
+	if len(o.options) > 0 {
+		o.options[0] = status.String()
+	}
+	if len(o.optionsAction) > 0 {
+		o.optionsAction[0] = status.String()
+	}
 }
 
 func (o *ModelTabOptions) AddOption(option string, action func()) {
@@ -177,6 +185,9 @@ func (o *ModelTabOptions) AddOption(option string, action func()) {
 }
 
 func (o *ModelTabOptions) getOptionMessage() string {
+	if o.cursor >= len(o.options) {
+		return ""
+	}
 	option := o.options[o.cursor]
 	option = strings.TrimPrefix(option, fmt.Sprintf("%d) ", o.cursor))
 	return option
@@ -206,7 +217,9 @@ func (o *ModelTabOptions) switchToPreviousError() {
 }
 
 func (o *ModelTabOptions) executeOption() {
-	go o.optionsWithFunc[o.cursor]()
+	if fn, exists := o.optionsWithFunc[o.cursor]; exists {
+		go fn()
+	}
 	o.cursor = 0
 	o.timer = -1
 }
