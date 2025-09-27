@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/termkit/gama/internal/config"
 	gu "github.com/termkit/gama/internal/github/usecase"
@@ -12,7 +11,14 @@ import (
 func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Model {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
+		// Return a skeleton with minimal error handling
+		// Instead of panicking, we'll create a basic working terminal
+		cfg = &config.Config{}
+		// Apply defaults manually
+		cfg.Shortcuts.SwitchTabRight = "shift+right"
+		cfg.Shortcuts.SwitchTabLeft = "shift+left"
+		cfg.Shortcuts.Quit = "ctrl+c"
+		cfg.Settings.LiveMode.Enabled = false
 	}
 
 	s := skeleton.NewSkeleton()
@@ -36,6 +42,8 @@ func SetupTerminal(githubUseCase gu.UseCase, version pkgversion.Version) tea.Mod
 
 	s.SetTerminalViewportWidth(MinTerminalWidth)
 	s.SetTerminalViewportHeight(MinTerminalHeight)
+
+	handlerKeys := createHandlerKeys(cfg)
 
 	s.KeyMap.SetKeyNextTab(handlerKeys.SwitchTabRight)
 	s.KeyMap.SetKeyPrevTab(handlerKeys.SwitchTabLeft)

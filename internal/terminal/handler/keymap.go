@@ -2,19 +2,12 @@ package handler
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/termkit/gama/internal/config"
 
 	teakey "github.com/charmbracelet/bubbles/key"
 )
-
-func loadConfig() *config.Config {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
-	}
-	return cfg
-}
 
 // ---------------------------------------------------------------------------
 
@@ -24,9 +17,50 @@ type handlerKeyMap struct {
 	Quit           teakey.Binding
 }
 
-var handlerKeys = func() handlerKeyMap {
-	cfg := loadConfig()
+func loadConfig() *config.Config {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		// Return a config with default values instead of panicking
+		cfg = &config.Config{}
+		cfg = fillDefaultShortcuts(cfg)
+		cfg = fillDefaultSettings(cfg)
+	}
+	return cfg
+}
 
+func fillDefaultShortcuts(cfg *config.Config) *config.Config {
+	if cfg.Shortcuts.SwitchTabRight == "" {
+		cfg.Shortcuts.SwitchTabRight = "shift+right"
+	}
+	if cfg.Shortcuts.SwitchTabLeft == "" {
+		cfg.Shortcuts.SwitchTabLeft = "shift+left"
+	}
+	if cfg.Shortcuts.Quit == "" {
+		cfg.Shortcuts.Quit = "ctrl+c"
+	}
+	if cfg.Shortcuts.Refresh == "" {
+		cfg.Shortcuts.Refresh = "ctrl+r"
+	}
+	if cfg.Shortcuts.Enter == "" {
+		cfg.Shortcuts.Enter = "enter"
+	}
+	if cfg.Shortcuts.Tab == "" {
+		cfg.Shortcuts.Tab = "tab"
+	}
+	if cfg.Shortcuts.LiveMode == "" {
+		cfg.Shortcuts.LiveMode = "ctrl+l"
+	}
+	return cfg
+}
+
+func fillDefaultSettings(cfg *config.Config) *config.Config {
+	if cfg.Settings.LiveMode.Interval == 0 {
+		cfg.Settings.LiveMode.Interval = 15 * time.Second
+	}
+	return cfg
+}
+
+func createHandlerKeys(cfg *config.Config) handlerKeyMap {
 	return handlerKeyMap{
 		SwitchTabRight: teakey.NewBinding(
 			teakey.WithKeys(cfg.Shortcuts.SwitchTabRight),
@@ -38,7 +72,7 @@ var handlerKeys = func() handlerKeyMap {
 			teakey.WithKeys(cfg.Shortcuts.Quit),
 		),
 	}
-}()
+}
 
 // ---------------------------------------------------------------------------
 

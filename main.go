@@ -23,7 +23,8 @@ var Version = "under development" // will be set by build flag
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		panic(fmt.Sprintf("failed to load config: %v", err))
+		fmt.Fprintf(os.Stderr, "Error: failed to load config: %v\n", err)
+		os.Exit(1)
 	}
 
 	version := pkgversion.New(repositoryOwner, repositoryName, Version)

@@ -212,7 +212,7 @@ func (m *ModelGithubTrigger) View() string {
 
 	var selectedRow = m.tableTrigger.SelectedRow()
 	var selector = m.emptySelector()
-	if len(m.tableTrigger.Rows()) > 0 {
+	if len(m.tableTrigger.Rows()) > 0 && len(selectedRow) > 1 {
 		if selectedRow[1] == "input" {
 			selector = m.inputSelector()
 		} else {
@@ -227,6 +227,10 @@ func (m *ModelGithubTrigger) View() string {
 
 func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
 	var selectedRow = m.tableTrigger.SelectedRow()
+	
+	if len(selectedRow) < 5 {
+		return // Insufficient data to operate safely
+	}
 
 	if selectedRow[1] == "input" || selectedRow[1] == "bool" {
 		m.textInput.Focus()
@@ -235,7 +239,7 @@ func (m *ModelGithubTrigger) switchBetweenInputAndTable() {
 		m.textInput.Blur()
 		m.tableTrigger.Focus()
 	}
-	m.textInput.SetValue(m.tableTrigger.SelectedRow()[4])
+	m.textInput.SetValue(selectedRow[4])
 	m.textInput.SetCursor(len(m.textInput.Value()))
 }
 
@@ -246,8 +250,8 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 
 	if len(m.tableTrigger.Rows()) > 0 {
 		var selectedRow = m.tableTrigger.SelectedRow()
-		if len(selectedRow) == 0 {
-			return
+		if len(selectedRow) < 5 {
+			return // Need at least 5 elements for safe access
 		}
 
 		switch selectedRow[1] {
@@ -297,14 +301,14 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 		var selectedRow = m.tableTrigger.SelectedRow()
 		var rows = m.tableTrigger.Rows()
 
-		if len(selectedRow) == 0 || len(rows) == 0 {
+		if len(selectedRow) < 5 || len(rows) == 0 || m.optionCursor >= len(m.optionValues) {
 			return
 		}
 		if fmt.Sprintf("%d", choice.ID) == selectedRow[0] {
 			m.workflowContent.Choices[i].SetValue(m.optionValues[m.optionCursor])
 
 			for i, row := range rows {
-				if row[0] == selectedRow[0] {
+				if len(row) >= 5 && row[0] == selectedRow[0] {
 					rows[i][4] = m.optionValues[m.optionCursor]
 				}
 			}
@@ -317,14 +321,14 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 		for i, boolean := range m.workflowContent.Boolean {
 			var selectedRow = m.tableTrigger.SelectedRow()
 			var rows = m.tableTrigger.Rows()
-			if len(selectedRow) == 0 || len(rows) == 0 {
+			if len(selectedRow) < 5 || len(rows) == 0 || m.optionCursor >= len(m.optionValues) {
 				return
 			}
 			if fmt.Sprintf("%d", boolean.ID) == selectedRow[0] {
 				m.workflowContent.Boolean[i].SetValue(m.optionValues[m.optionCursor])
 
 				for i, row := range rows {
-					if row[0] == selectedRow[0] {
+					if len(row) >= 5 && row[0] == selectedRow[0] {
 						rows[i][4] = m.optionValues[m.optionCursor]
 					}
 				}
@@ -341,7 +345,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 
 		var selectedRow = m.tableTrigger.SelectedRow()
 		var rows = m.tableTrigger.Rows()
-		if len(selectedRow) == 0 || len(rows) == 0 {
+		if len(selectedRow) < 5 || len(rows) == 0 {
 			return
 		}
 
@@ -351,7 +355,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 				m.workflowContent.Inputs[i].SetValue(m.textInput.Value())
 
 				for i, row := range rows {
-					if row[0] == selectedRow[0] {
+					if len(row) >= 5 && row[0] == selectedRow[0] {
 						rows[i][4] = m.textInput.Value()
 					}
 				}
@@ -366,7 +370,7 @@ func (m *ModelGithubTrigger) inputController(_ context.Context) {
 				m.workflowContent.KeyVals[i].SetValue(m.textInput.Value())
 
 				for i, row := range rows {
-					if row[0] == selectedRow[0] {
+					if len(row) >= 5 && row[0] == selectedRow[0] {
 						rows[i][4] = m.textInput.Value()
 					}
 				}
